@@ -1,0 +1,68 @@
+{{define "net_bond"}}
+  - name: 10-bond0-slave.network
+    runtime: true
+    content: |
+      [Match]
+      Name=en*
+
+      [Network]
+      Bond=bond0
+
+  - name: 20-bond0.network
+    runtime: true
+    content: |
+      [Match]
+      Name=bond0
+
+      [Network]
+      DHCP=none
+      VLAN=bond0.3
+      VLAN=bond0.4
+
+  - name: 15-bond0.netdev
+    runtime: true
+    content: |
+      [NetDev]
+      Name=bond0
+      Kind=bond
+
+      [Bond]
+      Mode=802.3ad
+      LACPTransmitRate=fast
+      MIIMonitorSec=1s
+      UpDelaySec=3s
+      DownDelaySec=9s
+
+  - name: 35-bond0.3.netdev
+    runtime: true
+    content: |
+      [NetDev]
+      Name=bond0.3
+      Kind=vlan
+
+      [VLAN]
+      Id=3
+
+  - name: 35-bond0.4.netdev
+    runtime: true
+    content: |
+      [NetDev]
+      Name=bond0.4
+      Kind=vlan
+
+      [VLAN]
+      Id=4
+
+  - name: 40-vlan.network
+    runtime: true
+    content: |
+      [Match]
+      Name=bond0.3
+
+      [Network]
+      Address={{.Host.InternalAddr}}/22
+      Gateway=10.0.7.251
+      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+      {{ end }}
+
+{{end}}

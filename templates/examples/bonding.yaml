@@ -1,0 +1,154 @@
+#cloud-config
+hostname: {{.Host.Hostname}}
+coreos:
+  units:
+  - name: update-engine.service
+    command: stop
+    mask: true
+  - name: systemd-modules-load.service
+    command: restart
+  - name: etcd2.service
+    command: start
+  - name: fleet.service
+    command: start
+{{template "quobyte" .}}
+  - name: ensure-connectivity.service
+    command: start
+    content: |
+      [Unit]
+      Description=Ensures theres connectivity before starting fleet and etcd2
+      After=systemd-networkd.service
+      Wants=systemd-networkd.service
+      Before=etcd2.service fleet.service yochu.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 2 ; done'
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=etcd2.service fleet.service yochu.service
+{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+  - name: refresh-network-ifs.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Restart network interfaces
+      Before=ensure-connectivity.service
+      Wants=ensure-connectivity.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/tmp/restart-network
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target etcd.service fleet.service etcd2.service ensure-connectivity.service
+  - name: set-giantswarm-environment.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Configures giantswarm environment
+      Wants=ensure-connectivity.service
+      After=ensure-connectivity.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'echo "COREOS_PRIVATE_IPV4={{.Host.InternalAddr}}" > /etc/environment'
+
+      [Install]
+      WantedBy=multi-user.target etcd.service fleet.service etcd2.service
+
+  {{ if .YochuVersion}}
+  - name: yochu.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Giant Swarm yochu
+      Before=etcd2.service
+
+      [Service]
+      Type=oneshot
+      EnvironmentFile=/etc/yochu-env
+      ExecStartPre=/usr/bin/mkdir -p /home/core/bin
+      ExecStartPre=/bin/sh -c 'while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 2 ; done'
+      ExecStartPre=/bin/sh -c 'sleep 5'
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
+      ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
+      ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
+      ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION}
+      ExecStartPost=/bin/sh -c 'sleep 5'
+      ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoSecure}}--no-secure{{end}} --update-versions
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target etcd2.service
+  {{end}}
+  update:
+    reboot-strategy: off
+  fleet:
+    etcd_servers: http://{{.Host.InternalAddr}}:2379
+{{if .Host.FleetMetadata}}    metadata: {{.Host.FleetMetadata}}{{end}}
+  etcd2:
+    discovery: {{.EtcdDiscoveryUrl}}
+    advertise-client-urls: http://{{.Host.InternalAddr}}:2379
+    initial-advertise-peer-urls: http://{{.Host.InternalAddr}}:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001
+write_files:
+- path: /tmp/restart-network
+  permissions: 0755
+  owner: root
+  content: |
+    #!/bin/bash
+    for i in /sys/class/net/enp* ; do ip link set  $(basename $i) down ; done ; sleep 1 ; systemctl restart systemd-networkd ; sleep 5
+{{if .Host.FleetMetadata}}
+- path: /etc/systemd/system/fleet.service.d/30-giantswarm.conf
+  permissions: 0644
+  owner: root
+  content: |
+    [Service]
+    Environment="FLEET_METADATA={{.Host.FleetMetadata}}"
+{{end}}
+{{if eq .ClusterNetwork.NetworkModel "bond"}}
+- path: /etc/modprobe.d/bonding.conf
+  permissions: 0644
+  owner: root
+  content: options bonding miimon=100 mode=4 lacp_rate=1
+- path: /etc/modules-load.d/bonding.conf
+  permissions: 0644
+  owner: root
+  content: bonding
+{{end}}
+- path: /etc/hosts
+  permissions: 0644
+  owner: root
+  content: |
+    127.0.0.1 localhost
+    127.0.0.1 {{.Host.Hostname}}
+    127.0.0.1 etcd.giantswarm
+- path: /etc/resolv.conf
+  permissions: 0644
+  owner: root
+  content: |
+    {{ range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+    {{ end }}
+{{ if .YochuVersion}}
+- path: /etc/yochu-env
+  permissions: 0644
+  owner: root
+  content: |
+    YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
+    DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
+    ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
+    FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+{{ end }}
+
+ssh_authorized_keys:
+{{ range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}- {{ $pubkey }}
+{{end}}

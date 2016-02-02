@@ -1,0 +1,48 @@
+tftproot: ./tftproot
+static_html_path: ./static_html
+ipxe: undionly.kpxe
+first_stage_script: ./templates/first_stage_script.sh
+last_stage_cloudconfig: ./templates/last_stage_cloudconfig.yaml
+dnsmasq_template: ./templates/dnsmasq_template.conf
+template_snippets: ./template_snippets
+dnsmasq: /usr/sbin/dnsmasq
+images_cache_dir: ./images
+http_port: 4080
+http_bind_addr: 0.0.0.0
+
+network:
+  pxe: true
+  interface: bond0
+  bind_addr: 10.0.3.251
+  bootstrap_range:
+    start: 10.0.3.10
+    end: 10.0.3.30
+  ip_range:
+    start: 10.0.3.31
+    end: 10.0.3.70
+  dns: [8.8.8.8, 8.8.4.4]
+  router: 10.0.3.251
+  network_model: singlenic
+
+profiles:
+  - name: core
+    quantity: 3
+    tags:
+      - "role-core=true"
+  - name: default
+    tags:
+      - "role-worker=true"
+      - "stack-compute=true"
+
+yochu_version: 0.15.1
+
+templates_env:
+  ssh_authorized_keys:
+    - "<your public key>"
+  yochu_localsubnet: "10.0.0.0/24"
+  yochu_gateway: "10.0.3.251/32"
+  yochu_private_registry: "registry.private.tiny.swarm"
+  yochu_http_endpoint: "http://10.0.3.251:4080"
+  etcd_version: v2.2.1-gs-1
+  fleet_version: v0.11.3-gs-2
+  docker_version: 1.6.2

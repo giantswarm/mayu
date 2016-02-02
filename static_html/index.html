@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html ng-app="hostsApp">
+<head>
+    <title>things</title>
+    <link rel="stylesheet"
+          href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.17/angular.min.js"></script>
+    <script>
+        var hosts_url = "/admin/hosts"
+        var hostsApp = angular.module("hostsApp", []);
+        hostsApp.controller("HostsCtrl", function($scope,$http) {
+            $scope.refreshHost = function(serial) {
+                console.log("refreshing " + serial);
+                var r = confirm("are you sure you want to DESTROY " + serial + " ?");
+                if (r == true) {
+                    $http.put("/admin/" + serial + "/mark_refresh","true").success(
+                            function(data) {
+
+                            }
+                    );
+                }
+            };
+
+            var updateHosts = function() {
+                $http.get(hosts_url).
+                        success(function(data) {
+                            $scope.hosts = data;
+                        });
+            };
+
+            updateHosts();
+        });
+    </script>
+</head>
+<body ng-controller="HostsCtrl">
+<div class="container">
+    <div class="page-header" style="margin: 0">
+        <h1>hosts</h1>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <td>Serial</td>
+            <td>InternalAddr</td>
+            <td>State</td>
+            <td>LastPong</td>
+            <td>FleetMetadata</td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="(k,host) in hosts">
+            <td>{{host.Serial}}</td>
+            <td>{{host.InternalAddr}}</td>
+            <td>{{host.State}}
+                <span class="glyphicon glyphicon-refresh" aria-hidden="true" ng-click="refreshHost(host.Serial)">&nbsp;</span>
+            </td>
+            <td></td>
+            <td>{{host.FleetMetadata}}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{{define "net_singlenic"}}
+  - name: systemd-networkd.service
+    command: stop
+  - name: 10-nodhcp.network
+    runtime: false
+    content: |
+      [Match]
+      Name=*
+
+      [Network]
+      DHCP=no
+  - name: 00-{{.Host.ConnectedNIC}}.network
+    runtime: false
+    content: |
+      [Match]
+      Name={{.Host.ConnectedNIC}}
+
+      [Network]
+      Address={{.Host.InternalAddr}}/22
+      Gateway={{.ClusterNetwork.Router}}
+      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+      {{ end }}
+  - name: down-interfaces.service
+    command: start
+    content: |
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/ip link set {{.Host.ConnectedNIC}} down
+      ExecStart=/usr/bin/ip addr flush dev {{.Host.ConnectedNIC}}
+  - name: systemd-networkd.service
+    command: restart
+{{end}}

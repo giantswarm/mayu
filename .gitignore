@@ -1,0 +1,11 @@
+*.swp
+config.yaml
+bin
+bin-dist
+cache/*
+*/bindata.go
+infopusher/infopusher
+helpers/infopusher
+mayu
+cluster/
+.gobuild
