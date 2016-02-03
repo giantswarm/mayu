@@ -20,11 +20,12 @@ endif
 COREOS_VERSION := 681.2.0
 ETCD_VERSION := v2.2.1-gs-1
 FLEET_VERSION := v0.11.3-gs-2
+DOCKER_VERSION := 1.6.2
 YOCHU_VERSION := 0.15.1
 
 .PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
 
-all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL) cache/coreos_production_pxe.vmlinuz cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_image.bin.bz2 cache/yochu/$(YOCHU_VERSION) cache/fleet/$(FLEET_VERSION) cache/etcd/$(ETCD_VERSION)
+all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL) cache/coreos_production_pxe.vmlinuz cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_image.bin.bz2 cache/yochu/$(YOCHU_VERSION) cache/fleet/$(FLEET_VERSION) cache/etcd/$(ETCD_VERSION) cache/docker/$(DOCKER_VERSION)
 
 .gobuild:
 	mkdir -p $(PROJECT_PATH)
@@ -119,6 +120,10 @@ cache/fleet/$(FLEET_VERSION):
 	wget -O cache/fleet/${FLEET_VERSION}/fleetd http://bootstrap.giantswarm.io.s3.amazonaws.com/fleet/${FLEET_VERSION}/fleetd
 	wget -O cache/fleet/${FLEET_VERSION}/fleetctl http://bootstrap.giantswarm.io.s3.amazonaws.com/fleet/${FLEET_VERSION}/fleetctl
 
+cache/docker/$(DOCKER_VERSION):
+	mkdir -p cache/docker/docker${DOCKER_VERSION}
+	wget -O cache/docker/${DOCKER_VERSION}/docker https://bootstrap.giantswarm.io/docker/${DOCKER_VERSION}/docker
+
 clean-bin-dist:
 	rm -fr bin-dist
 
@@ -134,6 +139,7 @@ bin-dist: all
 	cp -R cache/yochu/* bin-dist/static_html
 	cp -R cache/etcd bin-dist/static_html
 	cp -R cache/fleet bin-dist/static_html
+	cp -R cache/docker bin-dist/static_html
 	cp cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_pxe.vmlinuz bin-dist/images
 	cp cache/coreos_production_image.bin.bz2 bin-dist/images
 	cp -f $(BINARY_SERVER) bin-dist
