@@ -40,6 +40,7 @@ func loadConfig(filePath string) (configuration, error) {
 type configuration struct {
 	filesystem         fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 	FirstStageScript   string        `yaml:"first_stage_script"`
+	FirstStageCC       string        `yaml:"first_stage_cloudconfig"`
 	LastStageCC        string        `yaml:"last_stage_cloudconfig"`
 	TemplateSnippets   string        `yaml:"template_snippets"`
 	DNSmasqTmpl        string        `yaml:"dnsmasq_template"`

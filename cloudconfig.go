@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -46,26 +47,46 @@ func validateCC(cloudConfig []byte) error {
 	return yaml.Unmarshal(cloudConfig, &cc)
 }
 
+func (mgr *pxeManagerT) writeFirstStageCC(wr io.Writer) error {
+	thisHost := fmt.Sprintf("http://%s:%d", conf.Network.BindAddr, conf.HTTPPort)
+
+	ctx := struct {
+		MayuURL      string
+		TemplatesEnv map[string]interface{}
+	}{
+		MayuURL:      thisHost,
+		TemplatesEnv: conf.TemplatesEnv,
+	}
+
+	tmpl, err := getTemplate(conf.FirstStageCC)
+	if err != nil {
+		glog.Fatalln(err)
+		return err
+	}
+
+	return tmpl.Execute(wr, ctx)
+}
+
 func (mgr *pxeManagerT) writeLastStageCC(host hostmgr.Host, wr io.Writer) error {
 	ctx := struct {
 		Host               hostmgr.Host
 		EtcdDiscoveryUrl   string
-		YochuVersion string
+		ProvisionerVersion string
 		ClusterNetwork     network
-		MayuHost         string
-		MayuPort         int
-		MayuURL          string
+		MayuHost           string
+		MayuPort           int
+		MayuURL            string
 		PostBootURL        string
 		NoSecure           bool
 		TemplatesEnv       map[string]interface{}
 	}{
 		Host:               host,
 		ClusterNetwork:     conf.Network,
-		YochuVersion: mgr.cluster.Config.YochuVersion,
+		ProvisionerVersion: mgr.cluster.Config.ProvisionerVersion,
 		EtcdDiscoveryUrl:   mgr.cluster.Config.EtcdDiscoveryURL,
-		MayuHost:         conf.Network.BindAddr,
-		MayuPort:         conf.HTTPPort,
-		MayuURL:          thisHost(),
+		MayuHost:           conf.Network.BindAddr,
+		MayuPort:           conf.HTTPPort,
+		MayuURL:            thisHost(),
 		PostBootURL:        thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
 		NoSecure:           conf.NoSecure,
 		TemplatesEnv:       conf.TemplatesEnv,
