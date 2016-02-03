@@ -21,7 +21,7 @@ COREOS_VERSION := 681.2.0
 ETCD_VERSION := v2.2.1-gs-1
 FLEET_VERSION := v0.11.3-gs-2
 DOCKER_VERSION := 1.6.2
-YOCHU_VERSION := 0.15.1
+YOCHU_VERSION := 0.16.0+git
 
 .PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
 

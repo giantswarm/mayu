@@ -43,6 +43,7 @@ templates_env:
   yochu_gateway: "10.0.3.251/32"
   yochu_private_registry: "registry.private.tiny.swarm"
   yochu_http_endpoint: "http://10.0.3.251:4080"
+  yochu_version: 0.16.0+git
   etcd_version: v2.2.1-gs-1
   fleet_version: v0.11.3-gs-2
   docker_version: 1.6.2
