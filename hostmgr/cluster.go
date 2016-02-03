@@ -37,8 +37,7 @@ type Cluster struct {
 }
 
 type ClusterConfig struct {
-	EtcdDiscoveryURL   string
-	YochuVersion string
+	EtcdDiscoveryURL string
 }
 
 type cachedHost struct {

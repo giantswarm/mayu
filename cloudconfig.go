@@ -48,27 +48,25 @@ func validateCC(cloudConfig []byte) error {
 
 func (mgr *pxeManagerT) writeLastStageCC(host hostmgr.Host, wr io.Writer) error {
 	ctx := struct {
-		Host               hostmgr.Host
-		EtcdDiscoveryUrl   string
-		YochuVersion string
-		ClusterNetwork     network
+		Host             hostmgr.Host
+		EtcdDiscoveryUrl string
+		ClusterNetwork   network
 		MayuHost         string
 		MayuPort         int
 		MayuURL          string
-		PostBootURL        string
-		NoSecure           bool
-		TemplatesEnv       map[string]interface{}
+		PostBootURL      string
+		NoSecure         bool
+		TemplatesEnv     map[string]interface{}
 	}{
-		Host:               host,
-		ClusterNetwork:     conf.Network,
-		YochuVersion: mgr.cluster.Config.YochuVersion,
-		EtcdDiscoveryUrl:   mgr.cluster.Config.EtcdDiscoveryURL,
+		Host:             host,
+		ClusterNetwork:   conf.Network,
+		EtcdDiscoveryUrl: mgr.cluster.Config.EtcdDiscoveryURL,
 		MayuHost:         conf.Network.BindAddr,
 		MayuPort:         conf.HTTPPort,
 		MayuURL:          thisHost(),
-		PostBootURL:        thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
-		NoSecure:           conf.NoSecure,
-		TemplatesEnv:       conf.TemplatesEnv,
+		PostBootURL:      thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
+		NoSecure:         conf.NoSecure,
+		TemplatesEnv:     conf.TemplatesEnv,
 	}
 
 	tmpl, err := getTemplate(conf.LastStageCC)

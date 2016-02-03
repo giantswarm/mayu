@@ -32,11 +32,6 @@ func defaultPXEManager(cluster *hostmgr.Cluster) (*pxeManagerT, error) {
 		mu:      new(sync.Mutex),
 	}
 
-	if mgr.cluster.Config.YochuVersion == "" {
-		mgr.cluster.Config.YochuVersion = conf.YochuVersion
-		mgr.cluster.Commit("grabbed yochu version from base config")
-	}
-
 	if mgr.cluster.Config.EtcdDiscoveryURL == "" {
 		mgr.cluster.GenerateEtcdDiscoveryURL(defaultEtcdQuorumSize)
 		mgr.cluster.Commit("generated etcd discovery url")
