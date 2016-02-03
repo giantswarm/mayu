@@ -28,6 +28,7 @@ all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY
 
 .gobuild:
 	mkdir -p $(PROJECT_PATH)
+	mkdir -p $(GOPATH)/doc
 	cd $(PROJECT_PATH) && ln -s ../../../.. $(PROJECT)
 
 infopusher/infopusher:
@@ -151,4 +152,19 @@ vendor-update: vendor-clean
 	find vendor/ -name .git -type d -prune | xargs rm -rf
 
 install: $(BINARY_SERVER) $(BINARY_CTL)
-	cp $(BINARY_SERVER) $(BINARY_CTL) /usr/local/bin/
+	cp bin/$(BINARY_SERVER) bin/$(BINARY_CTL) /usr/local/bin/
+
+godoc: all
+	@echo Opening godoc server at http://localhost:6060/pkg/github.com/$(ORGANIZATION)/$(PROJECT)/
+	docker run \
+	    --rm \
+	    -v $(shell pwd):/usr/code \
+	    -e GOPATH=/usr/code/.gobuild \
+	    -e GOROOT=/usr/code/.gobuild \
+	    -e GOOS=$(GOOS) \
+	    -e GOARCH=$(GOARCH) \
+	    -e GO15VENDOREXPERIMENT=1 \
+	    -w /usr/code \
+      -p 6060:6060 \
+		golang:1.5 \
+		godoc -http=:6060
