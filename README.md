@@ -2,14 +2,13 @@
 
 {CI Badge} - {DockerHub/Quay.io Badge}
 
-{LOGO}
-
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
 that must follow a specific configuration with CoreOS. It sets up fleet
-meta-data, and patched versions of fleet, etcd, and docker when using the
-[yochu](https://github.com/giantswarm/yochu).
+meta-data, and patched versions of fleet, etcd, and docker when using 
+[Yochu](https://github.com/giantswarm/yochu).
 
 ## Prerequisites
+
 Mayu requires some basic configuration and layer 2 connectivity to the rest
 of the nodes. Usually the cluster’s management node is used for this. The
 management node acts as a PXE server and should support three kinds of requests
@@ -28,6 +27,7 @@ commits. This is a feature for production systems and requires `git` (> 1.7.4)
 installed. Use the `-no-git` flag when starting mayu to turn this feature off.
 
 Developing Mayu requires the following tools to be installed.
+
  * `wget`
  * `go-bindata`
  * `cpio`
@@ -42,24 +42,23 @@ Download the latest docker image from here: `registry.giantswarm.io/giantswarm/m
 
 ## Running Mayu
 
-###### Preparing configuration
+### Preparing configuration
+
 Copy the default configuration and apply changes regarding your needs.
+
 ```
-$ cp config.yaml.dist config.yaml
+cp config.yaml.dist config.yaml
 ```
 
----
+### Run Mayu from source
 
-###### Run Mayu from source
 start mayu:
 ```
 make bin-dist
 ./mayu -cluster-directory cluster -v=12 -no-git
 ```
 
----
-
-###### Run Mayu within a Docker container
+### Run Mayu within a Docker container
 
 ```
 docker run --rm -it \
@@ -92,7 +91,7 @@ Check code documentation: [godoc](https://godoc.org/github.com/giantswarm/mayu)
 
 ## Contact
 
-- Mailing list: [giantswarm](https://groups.google.com/forum/!forum/giantswarm)
+- Mailing list: [giantswarm](https://groups.google.com/forum/#!forum/giantswarm)
 - IRC: #[giantswarm](irc://irc.freenode.org:6667/#giantswarm) on freenode.org
 - Bugs: [issues](https://github.com/giantswarm/mayu/issues)
 
