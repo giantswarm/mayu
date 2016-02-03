@@ -106,17 +106,17 @@ cache/coreos_production_pxe_image.cpio.gz: cache/coreos_pxe_image.cpio.gz
 
 cache/yochu/$(YOCHU_VERSION):
 	mkdir -p cache/yochu/${YOCHU_VERSION}
-	wget -O cache/yochu/${YOCHU_VERSION}/yochu https://bootstrap.giantswarm.io/yochu/${YOCHU_VERSION}/yochu
+	wget -O cache/yochu/${YOCHU_VERSION}/yochu https://downloads.giantswarm.io/yochu/${YOCHU_VERSION}/yochu
 
 cache/etcd/$(ETCD_VERSION):
 	mkdir -p cache/etcd/${ETCD_VERSION}
-	wget -O cache/etcd/${ETCD_VERSION}/etcd https://bootstrap.giantswarm.io/etcd/${ETCD_VERSION}/etcd
-	wget -O cache/etcd/${ETCD_VERSION}/etcdctl https://bootstrap.giantswarm.io/etcd/${ETCD_VERSION}/etcdctl
+	wget -O cache/etcd/${ETCD_VERSION}/etcd https://downloads.giantswarm.io/etcd/${ETCD_VERSION}/etcd
+	wget -O cache/etcd/${ETCD_VERSION}/etcdctl https://downloads.giantswarm.io/etcd/${ETCD_VERSION}/etcdctl
 
 cache/fleet/$(FLEET_VERSION):
 	mkdir -p cache/fleet/${FLEET_VERSION}
-	wget -O cache/fleet/${FLEET_VERSION}/fleetd https://bootstrap.giantswarm.io/fleet/${FLEET_VERSION}/fleetd
-	wget -O cache/fleet/${FLEET_VERSION}/fleetctl https://bootstrap.giantswarm.io/fleet/${FLEET_VERSION}/fleetctl
+	wget -O cache/fleet/${FLEET_VERSION}/fleetd https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetd
+	wget -O cache/fleet/${FLEET_VERSION}/fleetctl https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetctl
 
 clean-bin-dist:
 	rm -fr bin-dist
