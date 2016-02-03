@@ -77,7 +77,7 @@ coreos:
       ExecStartPre=/usr/bin/mkdir -p /home/core/bin
       ExecStartPre=/bin/sh -c 'while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 2 ; done'
       ExecStartPre=/bin/sh -c 'sleep 5'
-      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
       ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
