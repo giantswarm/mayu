@@ -152,7 +152,7 @@ vendor-update: vendor-clean
 	find vendor/ -name .git -type d -prune | xargs rm -rf
 
 install: $(BINARY_SERVER) $(BINARY_CTL)
-	cp bin/$(BINARY_SERVER) bin/$(BINARY_CTL) /usr/local/bin/
+	cp $(BINARY_SERVER) $(BINARY_CTL) /usr/local/bin/
 
 godoc: all
 	@echo Opening godoc server at http://localhost:6060/pkg/github.com/$(ORGANIZATION)/$(PROJECT)/
