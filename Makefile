@@ -122,7 +122,7 @@ cache/fleet/$(FLEET_VERSION):
 
 cache/docker/$(DOCKER_VERSION):
 	mkdir -p cache/docker/docker${DOCKER_VERSION}
-	wget -O cache/docker/${DOCKER_VERSION}/docker https://bootstrap.giantswarm.io/docker/${DOCKER_VERSION}/docker
+	wget -O cache/docker/${DOCKER_VERSION}/docker https://downloads.giantswarm.io/docker/${DOCKER_VERSION}/docker
 
 clean-bin-dist:
 	rm -fr bin-dist
