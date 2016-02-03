@@ -1,0 +1,72 @@
+#cloud-config
+hostname: {{.Host.Hostname}}
+coreos:
+  units:
+  - name: etcd2.service
+    command: start
+  - name: fleet.service
+    command: start
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+  - name: mayu-post-boot-notifier.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Mayu Post Boot Notifier
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 2 ; done'
+      ExecStartPost=/usr/bin/curl -s {{.PostBootURL}} -X PUT --header "Content-Length: 0"
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  - name: provisioner.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Swarm cluster provisioner
+      Before=etcd2.service mayu-post-boot-notifier.service
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/mkdir -p /home/core/bin
+      ExecStartPre=/bin/sh -c 'while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 2 ; done'
+      ExecStartPre=/bin/sh -c 'sleep 5'
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "provisioner_http_endpoint"}}/{{index .TemplatesEnv "provisioner_version"}}/provisioner -O /home/core/bin/provisioner
+      ExecStartPre=/usr/bin/chmod +x /home/core/bin/provisioner
+      ExecStart=/home/core/bin/provisioner setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "provisioner_localsubnet"}}" --gateway="{{index .TemplatesEnv "provisioner_gateway"}}" --private-registry={{index .TemplatesEnv "provisioner_private_registry"}} --http-endpoint={{index .TemplatesEnv "provisioner_http_endpoint"}} --fleet-version={{index .TemplatesEnv "fleet_version"}} --etcd-version={{index .TemplatesEnv "etcd_version"}}
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target etcd2.service
+  fleet:
+    etcd_servers: http://{{.Host.InternalAddr}}:2379
+{{if .Host.FleetMetadata}}    metadata: {{.Host.FleetMetadata}}{{end}}
+  etcd2:
+    discovery: {{.EtcdDiscoveryUrl}}
+    advertise-client-urls: http://{{.Host.InternalAddr}}:2379
+    initial-advertise-peer-urls: http://{{.Host.InternalAddr}}:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001
+write_files:
+{{if .Host.FleetMetadata}}
+  - path: /etc/systemd/system/fleet.service.d/30-mayu.conf
+    permissions: 0644
+    owner: root
+    content: |
+      [Service]
+      Environment="FLEET_METADATA={{.Host.FleetMetadata}}"
+{{end}}
+  - path: /etc/resolv.conf
+    permissions: 0644
+    owner: root
+    content: |
+      {{ range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+      {{ end }}
+
+{{ if .TemplatesEnv.ssh_authorized_keys}}ssh_authorized_keys:
+{{ range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}  - {{ $pubkey }}
+{{end}}{{end}}

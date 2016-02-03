@@ -57,6 +57,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 
 	// first stage ipxe boot script
 	mgr.router.Methods("GET").PathPrefix("/ipxebootscript").HandlerFunc(ipxeBootScript)
+	mgr.router.Methods("GET").PathPrefix("/first-stage-cloud-config.yaml").HandlerFunc(mgr.firstStageCloudConfigGenerator)
 	mgr.router.Methods("GET").PathPrefix("/first-stage-script/{serial}").HandlerFunc(mgr.firstStageScriptGenerator)
 
 	// used by the first-stage-script:

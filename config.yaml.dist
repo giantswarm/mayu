@@ -2,6 +2,7 @@ tftproot: ./tftproot
 static_html_path: ./static_html
 ipxe: undionly.kpxe
 first_stage_script: ./templates/first_stage_script.sh
+first_stage_cloudconfig: ./templates/first_stage_cloudconfig.yaml
 last_stage_cloudconfig: ./templates/last_stage_cloudconfig.yaml
 dnsmasq_template: ./templates/dnsmasq_template.conf
 template_snippets: ./template_snippets

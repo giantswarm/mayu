@@ -30,8 +30,9 @@ func ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString("#!ipxe\n")
-	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", thisHost(), thisHost(), thisHost()+"/first-stage-script/__SERIAL__"))
-	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", thisHost()))
+	buffer.WriteString("set base-url http://stable.release.core-os.net/amd64-usr/current\n")
+	buffer.WriteString(fmt.Sprintf("kernel ${base-url}/coreos_production_pxe.vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s cloud-config-url=%s/first-stage-cloud-config.yaml\n", thisHost(), thisHost()+"/first-stage-script/__SERIAL__", thisHost()))
+	buffer.WriteString(fmt.Sprintf("initrd ${base-url}/coreos_production_pxe_image.cpio.gz\n"))
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
@@ -53,16 +54,16 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		CloudConfigURL    string
 		InstallImageURL   string
 		SetInstalledURL   string
-		MayuURL         string
-		MayuVersion     string
+		MayuURL           string
+		MayuVersion       string
 		MachineID         string
 	}{
 		HostInfoHelperURL: infoHelperURL,
 		CloudConfigURL:    cloudConfigURL,
 		InstallImageURL:   installImageURL,
 		SetInstalledURL:   setInstalledURL,
-		MayuURL:         thisHost(),
-		MayuVersion:     projectVersion,
+		MayuURL:           thisHost(),
+		MayuVersion:       projectVersion,
 		MachineID:         host.MachineID,
 	}
 
@@ -71,6 +72,12 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		glog.Fatalln(err)
 	}
 	tmpl.Execute(w, ctx)
+}
+
+func (mgr *pxeManagerT) firstStageCloudConfigGenerator(w http.ResponseWriter, r *http.Request) {
+	glog.V(2).Infoln("generating a first stage cloudconfig")
+
+	mgr.writeFirstStageCC(w)
 }
 
 func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {

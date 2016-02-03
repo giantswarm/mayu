@@ -68,12 +68,23 @@ func main() {
 	if *showTemplates {
 		placeholderHost := hostmgr.Host{}
 
-		os.Stdout.WriteString("last stage cloud config:\n")
-		pxeManager.writeLastStageCC(placeholderHost, os.Stdout)
+		os.Stdout.WriteString("first stage cloud config:\n")
+		pxeManager.writeFirstStageCC(os.Stdout)
 
 		b := bytes.NewBuffer(nil)
-		pxeManager.writeLastStageCC(placeholderHost, b)
+		pxeManager.writeFirstStageCC(b)
 		yamlErr := validateCC(b.Bytes())
+		if yamlErr != nil {
+			fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
+			os.Exit(1)
+		}
+
+		os.Stdout.WriteString("\n\nlast stage cloud config:\n")
+		pxeManager.writeLastStageCC(placeholderHost, os.Stdout)
+
+		b = bytes.NewBuffer(nil)
+		pxeManager.writeLastStageCC(placeholderHost, b)
+		yamlErr = validateCC(b.Bytes())
 		if yamlErr != nil {
 			fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
 			os.Exit(1)
