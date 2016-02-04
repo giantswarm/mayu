@@ -143,13 +143,9 @@ func (mgr *pxeManagerT) Start() error {
 
 func (mgr *pxeManagerT) getNextProfile() string {
 	profileCount := mgr.cluster.GetProfileCount()
-	fmt.Printf("pxemanager.go:146 > profileCount: %#v\n", profileCount)
 
 	for _, profile := range conf.Profiles {
-		fmt.Printf("pxemanager.go:149 > profile: %#v\n", profile)
-		fmt.Printf("pxemanager.go:150 > profileCount[profile.Name] < profile.Quantity: %#v\n", profileCount[profile.Name] < profile.Quantity)
 		if profileCount[profile.Name] < profile.Quantity {
-			fmt.Printf("pxemanager.go:152 > profile.Name: %#v\n", profile.Name)
 			return profile.Name
 		}
 	}
