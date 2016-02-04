@@ -91,15 +91,19 @@ clean-cache:
 	rm -rf cache/fleet
 
 cache/coreos_production_pxe.vmlinuz:
+	mkdir -p cache
 	wget -O cache/coreos_production_pxe.vmlinuz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe.vmlinuz
 
 cache/coreos_pxe_image.cpio.gz:
+	mkdir -p cache
 	wget -O cache/coreos_pxe_image.cpio.gz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe_image.cpio.gz
 
 cache/coreos_production_image.bin.bz2:
+	mkdir -p cache
 	wget -O cache/coreos_production_image.bin.bz2 http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_image.bin.bz2
 
 cache/coreos_production_pxe_image.cpio.gz: cache/coreos_pxe_image.cpio.gz
+	mkdir -p cache
 	docker run --rm -v $(shell pwd)/cache:/usr/code/cache \
 			debian:jessie /bin/bash -c "apt-get update -y && apt-get install cpio && \
 			zcat /usr/code/cache/coreos_pxe_image.cpio.gz > /usr/code/cache/coreos_production_pxe_image.cpio && \
