@@ -53,16 +53,16 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		CloudConfigURL    string
 		InstallImageURL   string
 		SetInstalledURL   string
-		MayuURL         string
-		MayuVersion     string
+		MayuURL           string
+		MayuVersion       string
 		MachineID         string
 	}{
 		HostInfoHelperURL: infoHelperURL,
 		CloudConfigURL:    cloudConfigURL,
 		InstallImageURL:   installImageURL,
 		SetInstalledURL:   setInstalledURL,
-		MayuURL:         thisHost(),
-		MayuVersion:     projectVersion,
+		MayuURL:           thisHost(),
+		MayuVersion:       projectVersion,
 		MachineID:         host.MachineID,
 	}
 
