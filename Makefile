@@ -121,7 +121,7 @@ cache/fleet/$(FLEET_VERSION):
 	wget -O cache/fleet/${FLEET_VERSION}/fleetctl https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetctl
 
 cache/docker/$(DOCKER_VERSION):
-	mkdir -p cache/docker/docker${DOCKER_VERSION}
+	mkdir -p cache/docker/${DOCKER_VERSION}
 	wget -O cache/docker/${DOCKER_VERSION}/docker https://downloads.giantswarm.io/docker/${DOCKER_VERSION}/docker
 
 clean-bin-dist:
