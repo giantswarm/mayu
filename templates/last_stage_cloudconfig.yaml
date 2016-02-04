@@ -43,7 +43,7 @@ coreos:
       Type=oneshot
       EnvironmentFile=/etc/yochu-env
       ExecStartPre=/usr/bin/mkdir -p /home/core/bin
-      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
       ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
@@ -88,7 +88,7 @@ write_files:
   content: |
     {{ range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
     {{ end }}
-{{ if .YochuVersion}}
+{{ if index .TemplatesEnv "yochu_version"}}
 - path: /etc/yochu-env
   permissions: 0644
   owner: root

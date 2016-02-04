@@ -36,12 +36,12 @@ type Host struct {
 
 	State hostState
 
-	CoreOSVersion      string `json:",omitempty"`
-	MayuVersion      string `json:",omitempty"`
-	DockerVersion      string `json:",omitempty"`
-	FleetVersion       string `json:",omitempty"`
-	EtcdVersion        string `json:",omitempty"`
-	YochuVersion string `json:",omitempty"`
+	CoreOSVersion string `json:",omitempty"`
+	MayuVersion   string `json:",omitempty"`
+	DockerVersion string `json:",omitempty"`
+	FleetVersion  string `json:",omitempty"`
+	EtcdVersion   string `json:",omitempty"`
+	YochuVersion  string `json:",omitempty"`
 
 	hostDir     *os.File
 	lastModTime time.Time

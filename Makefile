@@ -21,7 +21,7 @@ COREOS_VERSION := 681.2.0
 ETCD_VERSION := v2.2.1-gs-1
 FLEET_VERSION := v0.11.3-gs-2
 DOCKER_VERSION := 1.6.2
-YOCHU_VERSION := 0.15.1
+YOCHU_VERSION := 0.17.0
 
 .PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
 
@@ -108,21 +108,21 @@ cache/coreos_production_pxe_image.cpio.gz: cache/coreos_pxe_image.cpio.gz
 
 cache/yochu/$(YOCHU_VERSION):
 	mkdir -p cache/yochu/${YOCHU_VERSION}
-	wget -O cache/yochu/${YOCHU_VERSION}/yochu http://bootstrap.giantswarm.io.s3.amazonaws.com/${YOCHU_VERSION}/yochu
+	wget -O cache/yochu/${YOCHU_VERSION}/yochu https://downloads.giantswarm.io/yochu/${YOCHU_VERSION}/yochu
 
 cache/etcd/$(ETCD_VERSION):
 	mkdir -p cache/etcd/${ETCD_VERSION}
-	wget -O cache/etcd/${ETCD_VERSION}/etcd http://bootstrap.giantswarm.io.s3.amazonaws.com/etcd/${ETCD_VERSION}/etcd
-	wget -O cache/etcd/${ETCD_VERSION}/etcdctl http://bootstrap.giantswarm.io.s3.amazonaws.com/etcd/${ETCD_VERSION}/etcdctl
+	wget -O cache/etcd/${ETCD_VERSION}/etcd https://downloads.giantswarm.io/etcd/${ETCD_VERSION}/etcd
+	wget -O cache/etcd/${ETCD_VERSION}/etcdctl https://downloads.giantswarm.io/etcd/${ETCD_VERSION}/etcdctl
 
 cache/fleet/$(FLEET_VERSION):
 	mkdir -p cache/fleet/${FLEET_VERSION}
-	wget -O cache/fleet/${FLEET_VERSION}/fleetd http://bootstrap.giantswarm.io.s3.amazonaws.com/fleet/${FLEET_VERSION}/fleetd
-	wget -O cache/fleet/${FLEET_VERSION}/fleetctl http://bootstrap.giantswarm.io.s3.amazonaws.com/fleet/${FLEET_VERSION}/fleetctl
+	wget -O cache/fleet/${FLEET_VERSION}/fleetd https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetd
+	wget -O cache/fleet/${FLEET_VERSION}/fleetctl https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetctl
 
 cache/docker/$(DOCKER_VERSION):
 	mkdir -p cache/docker/docker${DOCKER_VERSION}
-	wget -O cache/docker/${DOCKER_VERSION}/docker https://bootstrap.giantswarm.io/docker/${DOCKER_VERSION}/docker
+	wget -O cache/docker/${DOCKER_VERSION}/docker https://downloads.giantswarm.io/docker/${DOCKER_VERSION}/docker
 
 clean-bin-dist:
 	rm -fr bin-dist
@@ -136,7 +136,7 @@ bin-dist: all
 	cp helpers/undionly.kpxe bin-dist/tftproot
 	cp infopusher/infopusher bin-dist/static_html
 	cp $(BINARY_CTL) bin-dist/static_html
-	cp -R cache/yochu/* bin-dist/static_html
+	cp -R cache/yochu bin-dist/static_html
 	cp -R cache/etcd bin-dist/static_html
 	cp -R cache/fleet bin-dist/static_html
 	cp -R cache/docker bin-dist/static_html
