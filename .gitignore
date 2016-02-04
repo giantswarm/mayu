@@ -2,7 +2,7 @@
 config.yaml
 bin
 bin-dist
-cache/*
+cache
 */bindata.go
 infopusher/infopusher
 helpers/infopusher
