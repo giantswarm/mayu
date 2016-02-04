@@ -103,3 +103,7 @@ contribution workflow as well as reporting bugs.
 ## License
 
 Mayu is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+
+## Origin of the Name
+
+`mayu` (まゆ[繭] pronounced "mah-yoo") is Japanese for cocoon.
