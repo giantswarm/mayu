@@ -53,16 +53,16 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		CloudConfigURL    string
 		InstallImageURL   string
 		SetInstalledURL   string
-		MayuURL         string
-		MayuVersion     string
+		MayuURL           string
+		MayuVersion       string
 		MachineID         string
 	}{
 		HostInfoHelperURL: infoHelperURL,
 		CloudConfigURL:    cloudConfigURL,
 		InstallImageURL:   installImageURL,
 		SetInstalledURL:   setInstalledURL,
-		MayuURL:         thisHost(),
-		MayuVersion:     projectVersion,
+		MayuURL:           thisHost(),
+		MayuVersion:       projectVersion,
 		MachineID:         host.MachineID,
 	}
 
@@ -77,15 +77,19 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	host, exists := mgr.cluster.HostWithSerial(serial)
+	fmt.Printf("ipxe_handlers.go:80 > exists: %#v\n", exists)
 	if !exists {
 		var err error
 		host, err = mgr.cluster.CreateNewHost(serial)
 		if err != nil {
 			glog.Fatalln(err)
 		}
+		fmt.Printf("ipxe_handlers.go:87 > host: %#v\n", host)
 
 		if host.InternalAddr == nil {
+			fmt.Printf("ipxe_handlers.go:90 > %#v\n", "host.InternalAddr == nil")
 			host.InternalAddr = mgr.getNextInternalIP()
+			fmt.Printf("ipxe_handlers.go:92 > host.InternalAddr: %#v\n", host.InternalAddr)
 			err = host.Commit("updated host InternalAddr")
 			if err != nil {
 				glog.Fatalln(err)
@@ -94,11 +98,13 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()
+			fmt.Printf("ipxe_handlers.go:101 > host.Profile: %#v\n", host.Profile)
 			if host.Profile != "" {
 				host.FleetMetadata = profileMetadata(host.Profile)
 			} else {
 				host.FleetMetadata = profileMetadata("default")
 			}
+			fmt.Printf("ipxe_handlers.go:107 > host.FleetMetadata: %#v\n", host.FleetMetadata)
 			err = host.Commit("updated host profile and metadata")
 			if err != nil {
 				glog.Fatalln(err)
@@ -109,8 +115,11 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 }
 
 func profileMetadata(profileName string) []string {
+	fmt.Printf("ipxe_handlers.go:118 > profileName: %#v\n", profileName)
 	for _, v := range conf.Profiles {
+		fmt.Printf("ipxe_handlers.go:120 > v: %#v\n", v)
 		if v.Name == profileName {
+			fmt.Printf("ipxe_handlers.go:122 > v.Tags: %#v\n", v.Tags)
 			return v.Tags
 		}
 	}

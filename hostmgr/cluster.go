@@ -228,16 +228,20 @@ func (c *Cluster) HostWithSerial(serial string) (*Host, bool) {
 func (c *Cluster) GetProfileCount() map[string]int {
 	count := map[string]int{}
 	allHosts := c.GetAllHosts()
+	fmt.Printf("hostmgr/cluster.go:231 > allHosts: %#v\n", allHosts)
 	for _, host := range allHosts {
+		fmt.Printf("hostmgr/cluster.go:233 > host.Profile == \"\": %#v\n", host.Profile == "")
 		if host.Profile == "" {
 			continue
 		}
+		fmt.Printf("hostmgr/cluster.go:237 > host.Profile: %#v\n", host.Profile)
 		if cnt, exists := count[host.Profile]; exists {
 			count[host.Profile] = cnt + 1
 		} else {
 			count[host.Profile] = 1
 		}
 	}
+	fmt.Printf("hostmgr/cluster.go:244 > count: %#v\n", count)
 	return count
 }
 
