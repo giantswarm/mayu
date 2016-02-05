@@ -70,7 +70,7 @@ docker run --rm -it \
   -v=12 -no-git
 ```
 
-Or use the `mayu.service` unit file included in this repository.
+Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.
 
 For running `mayu` in a local VM you might want to add two more volumes, to
 enable DNS resultion by the `dnsmasq` included in `mayu`:
