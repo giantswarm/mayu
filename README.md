@@ -1,5 +1,6 @@
 # Mayu
 
+[![Build Status](https://api.travis-ci.org/giantswarm/mayu.svg)](https://travis-ci.org/giantswarm/mayu)
 [![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu) [![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
 
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
