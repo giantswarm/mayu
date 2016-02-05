@@ -1,6 +1,6 @@
 # Mayu
 
-{CI Badge} - {DockerHub/Quay.io Badge} - [![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
+[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu) [![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
 
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
 that must follow a specific configuration with CoreOS. It sets up fleet
@@ -38,7 +38,7 @@ Download the latest tarball from here: https://downloads.giantswarm.io/mayu/late
 
 Clone the latest git repository version from here: `git@github.com:giantswarm/mayu.git`
 
-Download the latest docker image from here: `registry.giantswarm.io/giantswarm/mayu`
+Get the latest docker image from here: https://hub.docker.com/r/giantswarm/mayu/
 
 ## Running Mayu
 
@@ -66,11 +66,11 @@ docker run --rm -it \
   --net=host \
   -v $(pwd)/bin-dist/cluster:/opt/mayu/cluster \
   -v /etc/mayu/config.yaml:/opt/mayu/config/config.yaml \
-  registry.giantswarm.io/giantswarm/mayu \
+  giantswarm/mayu \
   -v=12 -no-git
 ```
 
-Or use the `mayu.service` unit file included in this repository.
+Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.
 
 For running `mayu` in a local VM you might want to add two more volumes, to
 enable DNS resultion by the `dnsmasq` included in `mayu`:

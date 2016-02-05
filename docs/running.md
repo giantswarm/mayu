@@ -7,6 +7,20 @@ make bin-dist
 ./mayu -cluster-directory cluster -v=12 -no-git
 ```
 
+You can also run it within a Docker container:
+
+```
+docker run --rm -it \
+  --cap-add=NET_ADMIN \
+  --net=host \
+  -v $(pwd)/bin-dist/cluster:/opt/mayu/cluster \
+  -v /etc/mayu/config.yaml:/opt/mayu/config/config.yaml \
+  giantswarm/mayu \
+  -v=12 -no-git
+```
+  
+Or use the `mayu.service` unit file included in the `giantswarm/mayu` repository.
+
 Mayu is now ready to bootstrap a new cluster. Mayu uses the
 `cluster-directory` to save the cluster state:
 
