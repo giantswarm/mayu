@@ -37,7 +37,7 @@ profiles:
 templates_env:
   ssh_authorized_keys:
     - "<your public key>"
-  yochu_localsubnet: "10.0.0.0/24"
+  yochu_localsubnet: "10.0.3.0/24"
   yochu_gateway: "10.0.3.251/32"
   yochu_private_registry: "registry.private.tiny.swarm"
   yochu_http_endpoint: "http://10.0.3.251:4080"
