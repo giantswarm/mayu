@@ -1,0 +1,16 @@
+sudo: required
+
+language: go
+
+services:
+  - docker
+
+before_install:
+- docker pull golang:1.5
+- wget https://downloads.giantswarm.io/builder/0.11.0/builder
+- chmod +x ./builder
+- export PATH=$PATH:$PWD
+
+script:
+- make all
+- make test
