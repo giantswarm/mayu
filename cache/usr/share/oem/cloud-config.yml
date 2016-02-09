@@ -1,0 +1,62 @@
+#cloud-config
+coreos:
+  units:
+  - name: systemd-modules-load.service
+    command: restart
+
+  - name: run-installer-script.service
+    command: start
+
+    content: |
+      [Unit]
+      Description=Wait for network connectivity and run installer script
+      Wants=network.target
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/bin/sh -c "while [[ -z $(curl -s $(cat /proc/cmdline | tr ' ' '\n' | awk -F= 'match($1, /mayu/) {print $2}')) ]] ; do sleep 1 ; done"
+      ExecStart=/tmp/maybe-install-coreos.sh
+
+      [Install]
+      WantedBy=multi-user.target
+  - name: systemd-modules-load.service
+    command: restart
+
+write_files:
+- path: /etc/modprobe.d/bonding.conf
+  permissions: 0644
+  owner: root
+  content: options bonding miimon=100 mode=4 lacp_rate=1
+- path: /etc/modules-load.d/ipmi.conf
+  permissions: 0644
+  owner: root
+  content: ipmi_devintf
+- path: /etc/modules-load.d/bonding.conf
+  permissions: 0644
+  owner: root
+  content: bonding
+- path: /tmp/maybe-install-coreos.sh
+  permissions: 0755
+  owner: root
+  content: |
+    #!/bin/bash
+
+    serial=$(cat /sys/devices/virtual/dmi/id/{product,chassis,board}_serial | tr  ' ' '-' | sed '/^\s*$/d' | head -1)
+    SCRIPT_URL=$(cat /proc/cmdline | tr ' ' '\n' | awk -F= 'match($1, /next-script/) {print $2}' | sed "s/__SERIAL__/$serial/")
+
+    wget -O /tmp/first_stage_script.sh $SCRIPT_URL
+    chmod +x /tmp/first_stage_script.sh
+    exec /tmp/first_stage_script.sh
+- path: /tmp/gs-installer-progress.sh
+  permissions: 0755
+  owner: root
+  content: |
+    #!/bin/sh
+    journalctl -fu run-installer-script.service
+- path: /etc/motd
+  permissions: 0644
+  owner: root
+  content: |
+    CoreOS is installing...
+    You can look at installation progresses running `/tmp/gs-installer-progress.sh`
