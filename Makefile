@@ -89,6 +89,7 @@ clean-cache:
 	rm -rf cache/yochu
 	rm -rf cache/etcd
 	rm -rf cache/fleet
+	rm -rf cache/docker
 
 cache/coreos_production_pxe.vmlinuz:
 	mkdir -p cache
@@ -151,7 +152,7 @@ bin-dist: all
 	cp config.yaml.dist bin-dist
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
-	cd bin-dist && tar czf $(PROJECT).$(VERSION).tar.gz *
+	cd bin-dist && rm -f $(PROJECT).$(VERSION).tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
 
 vendor-clean:
 	rm -rf vendor/

@@ -1,3 +1,4 @@
 .gobuild
 cache
 bin-dist/mayu*.tar.gz
+bin-dist/cluster
