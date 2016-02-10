@@ -38,23 +38,23 @@ func loadConfig(filePath string) (configuration, error) {
 }
 
 type configuration struct {
-	filesystem         fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
-	FirstStageScript   string        `yaml:"first_stage_script"`
-	LastStageCC        string        `yaml:"last_stage_cloudconfig"`
-	TemplateSnippets   string        `yaml:"template_snippets"`
-	DNSmasqTmpl        string        `yaml:"dnsmasq_template"`
-	TFTPRoot           string
-	IPxe               string
-	HTTPBindAddr       string `yaml:"http_bind_addr"`
-	HTTPPort           int    `yaml:"http_port"`
-	NoSecure           bool   `yaml:"no_secure"`
-	HTTPSCertFile      string `yaml:"https_cert_file"`
-	HTTPSKeyFile       string `yaml:"https_key_file"`
-	Dnsmasq            string
-	ImagesCacheDir     string                 `yaml:"images_cache_dir"`
-	StaticHTMLPath     string                 `yaml:"static_html_path"`
-	YochuVersion string                 `yaml:"yochu_version"`
-	TemplatesEnv       map[string]interface{} `yaml:"templates_env"`
+	filesystem       fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
+	FirstStageScript string        `yaml:"first_stage_script"`
+	LastStageCC      string        `yaml:"last_stage_cloudconfig"`
+	TemplateSnippets string        `yaml:"template_snippets"`
+	DNSmasqTmpl      string        `yaml:"dnsmasq_template"`
+	TFTPRoot         string
+	IPxe             string
+	HTTPBindAddr     string `yaml:"http_bind_addr"`
+	HTTPPort         int    `yaml:"http_port"`
+	NoSecure         bool   `yaml:"no_secure"`
+	HTTPSCertFile    string `yaml:"https_cert_file"`
+	HTTPSKeyFile     string `yaml:"https_key_file"`
+	Dnsmasq          string
+	ImagesCacheDir   string                 `yaml:"images_cache_dir"`
+	StaticHTMLPath   string                 `yaml:"static_html_path"`
+	YochuVersion     string                 `yaml:"yochu_version"`
+	TemplatesEnv     map[string]interface{} `yaml:"templates_env"`
 
 	Profiles []profile
 
