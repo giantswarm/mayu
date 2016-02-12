@@ -9,8 +9,10 @@ RUN apt-get update && \
     git=${GIT_VERSION} && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY ./bin-dist /opt/mayu
-
+COPY . /opt/mayu
 WORKDIR /opt/mayu
-ENTRYPOINT ["/opt/mayu/mayu", "-config=/opt/mayu/config.yaml"]
+
+RUN if [ ! -f config.yaml ]; then cp config.yaml.dist config.yaml; fi
+
+ENTRYPOINT ["./mayu", "-config=config.yaml"]
 CMD ["-v=12"]

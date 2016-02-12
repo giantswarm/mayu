@@ -150,6 +150,8 @@ bin-dist: all
 	cp -f $(BINARY_SERVER) bin-dist
 	cp -f $(BINARY_CTL) bin-dist
 	cp config.yaml.dist bin-dist
+	cp Dockerfile.dist bin-dist/Dockerfile
+	cp .dockerignore.dist bin-dist/.dockerignore
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
 	cd bin-dist && rm -f $(PROJECT).$(VERSION).tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
