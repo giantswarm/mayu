@@ -9,10 +9,18 @@ RUN apt-get update && \
     git=${GIT_VERSION} && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY . /opt/mayu
-WORKDIR /opt/mayu
+RUN mkdir -p /etc/mayu /var/lib/mayu /usr/lib/mayu
+COPY mayu mayuctl /usr/bin/
+COPY tftproot /usr/lib/mayu/tftproot
+COPY images /usr/lib/mayu/images
+COPY static_html /usr/lib/mayu/static_html
+COPY template_snippets /usr/lib/mayu/template_snippets
+COPY templates /usr/lib/mayu/templates
+COPY config.yaml* /etc/mayu/
 
-RUN if [ ! -f config.yaml ]; then cp config.yaml.dist config.yaml; fi
+WORKDIR /usr/lib/mayu
 
-ENTRYPOINT ["./mayu", "-config=config.yaml"]
+RUN if [ ! -f /etc/mayu/config.yaml ]; then cp /etc/mayu/config.yaml.dist /etc/mayu/config.yaml; fi
+
+ENTRYPOINT ["mayu"]
 CMD ["-v=12"]
