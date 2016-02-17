@@ -3,15 +3,15 @@ hostname: {{.Host.Hostname}}
 coreos:
   units:
   - name: update-engine.service
+    enable: false
     command: stop
     mask: true
-  - name: etcd2.service
-    command: start
-  - name: fleet.service
-    command: start
 {{template "quobyte" .}}
 {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
 {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+  - name: systemd-networkd-wait-online.service
+    enable: true
+    command: start
   - name: set-giantswarm-environment.service
     command: start
     enable: true
@@ -27,7 +27,6 @@ coreos:
 
       [Install]
       WantedBy=multi-user.target
-
   {{if index .TemplatesEnv "yochu_version"}}
   - name: yochu.service
     command: start
@@ -55,6 +54,15 @@ coreos:
       [Install]
       WantedBy=multi-user.target
   {{end}}
+  - name: etcd2.service
+    enable: true
+    command: start
+  - name: fleet.service
+    enable: true
+    command: start
+  - name: docker.service
+    enable: true
+    command: start
   update:
     reboot-strategy: off
   fleet:
