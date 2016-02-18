@@ -50,7 +50,7 @@ func main() {
 
 	var cluster *hostmgr.Cluster
 
-	if fileExists(*clusterDir) {
+	if fileExists(fmt.Sprintf("%s/cluster.json", *clusterDir)) {
 		cluster, err = hostmgr.OpenCluster(*clusterDir)
 	} else {
 		cluster, err = hostmgr.NewCluster(*clusterDir, true)

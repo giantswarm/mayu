@@ -17,11 +17,11 @@ ifndef GOARCH
   GOARCH := $(shell go env GOARCH)
 endif
 
-COREOS_VERSION := 681.2.0
-ETCD_VERSION := v2.2.1-gs-1
+COREOS_VERSION := 835.12.0
+ETCD_VERSION := v2.2.5-gs-1
 FLEET_VERSION := v0.11.3-gs-2
 DOCKER_VERSION := 1.6.2
-YOCHU_VERSION := 0.17.0
+YOCHU_VERSION := 0.18.0
 
 .PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
 
@@ -150,9 +150,11 @@ bin-dist: all
 	cp -f $(BINARY_SERVER) bin-dist
 	cp -f $(BINARY_CTL) bin-dist
 	cp config.yaml.dist bin-dist
+	cp Dockerfile.dist bin-dist/Dockerfile
+	cp .dockerignore.dist bin-dist/.dockerignore
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
-	cd bin-dist && rm -f $(PROJECT).$(VERSION).tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
+	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
 
 vendor-clean:
 	rm -rf vendor/
