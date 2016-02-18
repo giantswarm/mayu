@@ -101,6 +101,9 @@ func (mgr *pxeManagerT) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mgr *pxeManagerT) updateDNSmasqs() error {
+	mgr.mu.Lock()
+	defer mgr.mu.Unlock()
+
 	conf.Network.StaticHosts = []hostmgr.IPMac{}
 	conf.Network.IgnoredHosts = []string{}
 
