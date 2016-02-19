@@ -4,7 +4,7 @@ In your `/etc/mayu/config.yaml` you can define template environment variables
 that are dynamically usable in `templates/last_stage_cloudconfig.yaml` when
 doing tne following.
 
-```
+```yaml
 templates_env:
   ssh_authorized_keys:
     - "pub key one"
@@ -19,7 +19,7 @@ looks like the following. Because the last stage template is effectively a
 cloud config, that way you can configure it dynamically to your own needs. As
 here seen configuring ssh keys.
 
-```
+```nohighlight
 ssh_authorized_keys:
 {{ range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}- {{ $pubkey }}
 {{end}}

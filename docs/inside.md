@@ -4,7 +4,7 @@ Here we looking inside a deployed cluster. New nodes can be added to the
 cluster at any time and the same bootstrap procedure will be applied. In this
 example, we created a 4 node cluster:
 
-```
+```nohighlight
 $ cd cluster
 $ egrep -r 'Host|InternalAddr' */conf.json
 004b27ed-692e-b32e-1f68-d89aff66c71b/conf.json:  "InternalAddr": "10.0.3.31",
@@ -17,7 +17,7 @@ aa1f18e1-f14f-2dd9-4fa0-dae7317c712c/conf.json:  "InternalAddr": "10.0.3.34",
 aa1f18e1-f14f-2dd9-4fa0-dae7317c712c/conf.json:  "Hostname": "0000b1895b74c624",
 ```
 
-```
+```nohighlight
 $ ssh core@10.0.3.31 fleetctl list-machines -l
 Warning: Permanently added '10.0.3.31' (ED25519) to the list of known hosts.
 MACHINE         IP    METADATA
@@ -38,13 +38,10 @@ How It Works? Let's start by analyzing the bootstrap process of a fresh node:
 Adding a fresh node to the cluster consists of three parts:
 
 * initial boot
-
 * system installation
-
 * final reboot to installed system
 
-
-###### Initial boot
+## Initial boot
 
 The fresh node is by definition empty and boots over ethernet by default. It
 sends a DHCP request for a `pxeclient`, which gets answered by the management
@@ -55,9 +52,7 @@ path. The node then requests the kernel image and subsequently the initial root
 directory over HTTP. With this the node can then boot into installation from
 the initial root directory.
 
----
-
-###### System Installation
+## System Installation
 
 The initial root directory contains a version of CoreOS that is modified to run
 one unit that in turn requests a first stage script and runs that. The script
@@ -68,9 +63,7 @@ cached on the management node. This image gets installed by default to
 `/dev/sda` configured through the above-mentioned `cloudconfig`. Finally the
 node announces itself as installed to the management node and reboots.
 
----
-
-###### Final Reboot To Installed System
+## Final Reboot To Installed System
 
 On the final reboot (as well as each next reboot, as long as nothing in the
 mayu configuration gets changed) the node will again try to boot over

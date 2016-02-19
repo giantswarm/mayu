@@ -7,20 +7,20 @@ setup does not provide or rely on TLS for whatever reasons, you can set
 `mayuctl` is `--no-secure`. Check [mayuctl](mayuctl.md) for more
 information about the client.
 
-### File Tree
+## File Tree
 
-```
+```nohighlight
 .
-|-- mayu                            - the mayu executable
+|-- mayu                              - the mayu executable
 |-- config.yaml.dist                  - mayu configuration file template
 |-- images                            - directory containing the boot and installation images
-|   |-- ...
+|   `-- ...
 |-- static_html
 |   `-- infopusher                    - small node info pusher used during the installation process
 |-- templates
 |   |-- dnsmasq_template.conf         - template file used to generate the dnsmasq configuration
 |   |-- first_stage_script.sh         - template used to generate the installation script
-|   `-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
+|   |-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
 |-- template_snippets                 - directory containing some template snippets used by the final cloud-config
 |   |-- net_bond.yaml
 |   `-- net_singlenic.yaml
@@ -32,9 +32,8 @@ For a new environment to be configured, there are three main files that might
 have to be adapted: `config.yaml`, `last_stage_cloudconfig.yaml` and one of the
 network snippets `net_bond.yaml` or `net_singlenic.yaml`.
 
----
 
-### /etc/mayu/config.yaml
+## `/etc/mayu/config.yaml`
 
 The very first thing to do is to copy `config.yaml.dist` to
 `/etc/mayu/config.yaml` and modify it regarding your needs. The initial
@@ -42,7 +41,7 @@ section configures the paths to the templates, some binaries (ipxe and dnsmasq)
 and some directories. The default settings match the distributed mayu file
 tree.
 
-```
+```yaml
 tftproot: ./tftproot
 static_html_path: ./static_html
 ipxe: undionly.kpxe
@@ -55,24 +54,22 @@ images_cache_dir: ./images
 http_port: 4080
 ```
 
----
-
-###### Certificates
+### Certificates
 
 Communication between `mayu` and `mayuctl` by default is TLS encrypted. For
 that you need to provide certificates as follows. To disable this security
 feature you can set `no_secure` to `true`. Then no certificate needs to be
 provided.
 
-```
+```yaml
 no_secure: false
 https_cert_file: "./cert.pem"
 https_key_file: "./key.pem"
 ```
 
-###### Network
+### Network
 
-```
+```yaml
 network:
   pxe: true
   interface: bond0
@@ -94,11 +91,9 @@ installation. The `ip_range` is a range of addresses that will be statically
 assigned to the cluster nodes. The `network_model` specifies which network
 template snippet will be used.
 
----
+### Profiles
 
-###### Profiles
-
-```
+```yaml
 profiles:
   - name: core
     quantity: 3
@@ -120,11 +115,10 @@ means we have 3 nodes with the profile core), mayu will assign the profile
 "default" to the remaining nodes. Thus, profiles with a `quantity` set are of
 higher priority than the default profile.
 
----
 
-###### Template Variables For Cloudconfig
+### Template Variables For Cloudconfig
 
-```
+```yaml
 templates_env:
   ssh_authorized_keys:
     - "ssh-rsa ..."
@@ -137,7 +131,7 @@ templates_env:
 These variables are used by the templates (most of them are directly injected
 into the final cloudconfig file).
 
-### last_stage_cloudconfig.yaml
+## `last_stage_cloudconfig.yaml`
 
 This template is a vanilla
 [cloud-config](https://coreos.com/os/docs/latest/cloud-config.html) file with a
@@ -145,13 +139,13 @@ few additions to automatically deploy the Giant Swarm yochu, setup the
 fleet metadata, define the etcd discovery url, update the `ssh_authorized_keys`
 for the user `core` and configure the network.
 
-### template_snippets/net_singlenic.yaml
+## `template_snippets/net_singlenic.yaml`
 
 In the near future, the existence of multiple network template snippets will be
 changed, so we'll focus on the singlenic template (used by the default
 configuration) for now.
 
-```
+```yaml
 {{define "net_singlenic"}}
   - name: systemd-networkd.service
     command: stop
@@ -195,4 +189,3 @@ defines the
 In this example it just disables DHCP and configures the `ConnectedNIC` with a
 static IP address. The `ConnectedNIC` is aquired during installation time by
 analyzing which interface is used to reach the default gateway.
-

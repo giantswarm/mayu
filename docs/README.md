@@ -1,8 +1,8 @@
-# Documentation
+# Mayu Documentation
 
 Here we provide more detailed documentation about Mayu.
 
-### Table Of Contents
+## Table Of Contents
 
 - [Mayu Configuration](configuration.md)
 - [Flags of the Mayu binary](flags.md)

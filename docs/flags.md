@@ -1,9 +1,9 @@
-# Flags of the Mayu binary
+# Flags of the 'mayu' binary
 
 Mayu provides the following command line flags. When doing `mayu -h` you
 should see this.
 
-```
+```nohighlight
 Usage of mayu:
   -alsologtostderr
       log to standard error as well as files
