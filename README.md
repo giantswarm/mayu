@@ -51,6 +51,12 @@ Copy the default configuration and apply changes regarding your needs.
 cp config.yaml.dist config.yaml
 ```
 
+Fetch a CoreOS image that you want to provision on your machines:
+
+```
+./fetch-coreos-image 835.13.0
+```
+
 ### Run Mayu from source
 
 start mayu:
@@ -65,8 +71,9 @@ make bin-dist
 docker run --rm -it \
   --cap-add=NET_ADMIN \
   --net=host \
-  -v $(pwd)/bin-dist/cluster:/opt/mayu/cluster \
-  -v /etc/mayu/config.yaml:/opt/mayu/config/config.yaml \
+  --name=mayu \
+  -v /var/lib/mayu:/var/lib/mayu \
+  -v /usr/lib/mayu/images:/usr/lib/mayu/images \
   giantswarm/mayu \
   -v=12 -no-git
 ```

@@ -1,18 +1,12 @@
 FROM ubuntu:wily
 
-ENV DNSMASQ_VERSION 2.75-1
-ENV GIT_VERSION 1:2.5.0-1
-
 RUN apt-get update && \
-    apt-get install -y \
-    dnsmasq=${DNSMASQ_VERSION} \
-    git=${GIT_VERSION} && \
+    apt-get install -y dnsmasq git &&
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /etc/mayu /var/lib/mayu /usr/lib/mayu
 COPY mayu mayuctl /usr/bin/
 COPY tftproot /usr/lib/mayu/tftproot
-COPY images /usr/lib/mayu/images
 COPY static_html /usr/lib/mayu/static_html
 COPY template_snippets /usr/lib/mayu/template_snippets
 COPY templates /usr/lib/mayu/templates
