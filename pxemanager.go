@@ -73,8 +73,11 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	// add welcome handler for debugging
 	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
 
-	// serve static files like yochu, fleet, etc.
+	// serve static files like infopusher and mayuctl etc.
 	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(conf.StaticHTMLPath)))
+
+	// serve assets for yochu like etcd, fleet and docker
+	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(conf.AssetsPath)))
 
 	glogWrapper := logging.NewGlogWrapper(8)
 	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.router)
