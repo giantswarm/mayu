@@ -17,7 +17,6 @@ ifndef GOARCH
   GOARCH := $(shell go env GOARCH)
 endif
 
-COREOS_VERSION := 835.12.0
 ETCD_VERSION := v2.2.5-gs-1
 FLEET_VERSION := v0.11.3-gs-2
 DOCKER_VERSION := 1.6.2
@@ -25,7 +24,7 @@ YOCHU_VERSION := 0.18.0
 
 .PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
 
-all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL) cache/coreos_production_pxe.vmlinuz cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_image.bin.bz2 cache/yochu/$(YOCHU_VERSION) cache/fleet/$(FLEET_VERSION) cache/etcd/$(ETCD_VERSION) cache/docker/$(DOCKER_VERSION)
+all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL) cache/yochu/$(YOCHU_VERSION) cache/fleet/$(FLEET_VERSION) cache/etcd/$(ETCD_VERSION) cache/docker/$(DOCKER_VERSION)
 
 .gobuild:
 	mkdir -p $(PROJECT_PATH)
@@ -82,34 +81,10 @@ clean:
 	cd infopusher ; make clean
 
 clean-cache:
-	rm -f cache/coreos_production_pxe.vmlinuz
-	rm -f cache/coreos_pxe_image.cpio.gz
-	rm -f cache/coreos_production_image.bin.bz2
-	rm -f cache/coreos_production_pxe_image.cpio.gz
 	rm -rf cache/yochu
 	rm -rf cache/etcd
 	rm -rf cache/fleet
 	rm -rf cache/docker
-
-cache/coreos_production_pxe.vmlinuz:
-	mkdir -p cache
-	wget -O cache/coreos_production_pxe.vmlinuz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe.vmlinuz
-
-cache/coreos_pxe_image.cpio.gz:
-	mkdir -p cache
-	wget -O cache/coreos_pxe_image.cpio.gz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe_image.cpio.gz
-
-cache/coreos_production_image.bin.bz2:
-	mkdir -p cache
-	wget -O cache/coreos_production_image.bin.bz2 http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_image.bin.bz2
-
-cache/coreos_production_pxe_image.cpio.gz: cache/coreos_pxe_image.cpio.gz
-	mkdir -p cache
-	docker run --rm -v $(shell pwd)/cache:/usr/code/cache \
-			debian:jessie /bin/bash -c "apt-get update -y && apt-get install cpio && \
-			zcat /usr/code/cache/coreos_pxe_image.cpio.gz > /usr/code/cache/coreos_production_pxe_image.cpio && \
-			cd /usr/code/cache && find usr | cpio -o -A -H newc -O coreos_production_pxe_image.cpio && \
-			gzip coreos_production_pxe_image.cpio"
 
 cache/yochu/$(YOCHU_VERSION):
 	mkdir -p cache/yochu/${YOCHU_VERSION}
@@ -145,8 +120,6 @@ bin-dist: all
 	cp -R cache/etcd bin-dist/static_html
 	cp -R cache/fleet bin-dist/static_html
 	cp -R cache/docker bin-dist/static_html
-	cp cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_pxe.vmlinuz bin-dist/images
-	cp cache/coreos_production_image.bin.bz2 bin-dist/images
 	cp -f $(BINARY_SERVER) bin-dist
 	cp -f $(BINARY_CTL) bin-dist
 	cp config.yaml.dist bin-dist
@@ -154,6 +127,7 @@ bin-dist: all
 	cp .dockerignore.dist bin-dist/.dockerignore
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
+	cp scripts/fetch-coreos-image bin-dist/fetch-coreos-image
 	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
 
 vendor-clean:
