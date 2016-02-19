@@ -53,6 +53,7 @@ type configuration struct {
 	Dnsmasq          string
 	ImagesCacheDir   string                 `yaml:"images_cache_dir"`
 	StaticHTMLPath   string                 `yaml:"static_html_path"`
+	AssetsPath       string                 `yaml:"assets_path"`
 	YochuVersion     string                 `yaml:"yochu_version"`
 	TemplatesEnv     map[string]interface{} `yaml:"templates_env"`
 

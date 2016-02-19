@@ -1,4 +1,5 @@
 tftproot: ./tftproot
+assets_path: ./assets
 static_html_path: ./static_html
 ipxe: undionly.kpxe
 first_stage_script: ./templates/first_stage_script.sh
