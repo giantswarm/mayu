@@ -2,14 +2,14 @@
 
 Once Mayu is properly configured, it can be started:
 
-```
+```nohighlight
 make bin-dist
 ./mayu -cluster-directory cluster -v=12 -no-git
 ```
 
 You can also run it within a Docker container:
 
-```
+```nohighlight
 docker run --rm -it \
   --cap-add=NET_ADMIN \
   --net=host \
@@ -18,13 +18,13 @@ docker run --rm -it \
   giantswarm/mayu \
   -v=12 -no-git
 ```
-  
+
 Or use the `mayu.service` unit file included in the `giantswarm/mayu` repository.
 
 Mayu is now ready to bootstrap a new cluster. Mayu uses the
 `cluster-directory` to save the cluster state:
 
-```
+```nohighlight
 $ tree cluster
 cluster
 |-- 004b27ed-692e-b32e-1f68-d89aff66c71b
@@ -41,7 +41,7 @@ cluster
 Each cluster node has its own directory (identified by the serial number)
 containing a JSON file with data about the node:
 
-```
+```json
 {
   "Enabled": true,
   "Serial": "004b27ed-692e-b32e-1f68-d89aff66c71b",
@@ -65,7 +65,7 @@ The cluster directory itself contains a `cluster.json` file with persistent
 data about the cluster. If this file doesn't exist, it is initialized by
 mayu.
 
-```
+```json
 {
   "GitStore": true,
   "Config": {
@@ -77,7 +77,7 @@ mayu.
 By default, mayu treats the cluster directory as a git repository, commiting
 every change:
 
-```
+```nohighlight
 $ git log --format="%ai => %s"
 2015-10-08 19:14:37 +0200 => aa1f18e1-f14f-2dd9-4fa0-dae7317c712c: updated state to running
 2015-10-08 19:14:36 +0200 => 004b27ed-692e-b32e-1f68-d89aff66c71b: updated state to running

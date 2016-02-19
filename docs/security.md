@@ -31,11 +31,11 @@ See  http://security.stackexchange.com/questions/64915/what-are-the-biggest-secu
 > - Computer makes a DHCP request
 > - DHCP server responds with address and PXE parameters
 > - Computer downloads boot image using TFTP over UDP
-> 
+>
 > The obvious attacks are a rogue DHCP server responding with bad data (and thus
 > hijacking the boot process) and a rogue TFTP server blindly injecting forged
 > packets (hijacking or corrupting the boot image).
-> 
+>
 > UEFI secure boot can be used to prevent hijacking, but a rogue DHCP or TFTP
 > server can still prevent booting by ensuring the computer receives a corrupted
 > boot image.
