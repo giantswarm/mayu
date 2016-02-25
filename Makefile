@@ -95,7 +95,7 @@ bin-dist: all
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
 	cp scripts/fetch-coreos-image bin-dist/fetch-coreos-image
-	cp scripts/fetch-mayu-assets bin-dist/fetch-mayu-assets
+	cp scripts/fetch-yochu-assets bin-dist/fetch-yochu-assets
 	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
 
 vendor-clean:

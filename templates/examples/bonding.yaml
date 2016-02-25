@@ -7,10 +7,6 @@ coreos:
     mask: true
   - name: systemd-modules-load.service
     command: restart
-  - name: etcd2.service
-    command: start
-  - name: fleet.service
-    command: start
 {{template "quobyte" .}}
   - name: ensure-connectivity.service
     command: start
@@ -78,7 +74,7 @@ coreos:
       ExecStartPre=/bin/sh -c 'while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 2 ; done'
       ExecStartPre=/bin/sh -c 'sleep 5'
       ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
-      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
       ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION}
@@ -89,6 +85,10 @@ coreos:
       [Install]
       WantedBy=multi-user.target etcd2.service
   {{end}}
+  - name: etcd2.service
+    command: start
+  - name: fleet.service
+    command: start
   update:
     reboot-strategy: off
   fleet:
