@@ -60,7 +60,7 @@ Fetch a CoreOS image that you want to provision on your machines:
 Fetch docker, etcd, fleet versions you would like to provision on your CoreOS machines via Yochu:
 
 ```
-./fetch-mayu-assets
+./fetch-yochu-assets
 ```
 
 ### Run Mayu from source
@@ -80,7 +80,7 @@ docker run --rm -it \
   --name=mayu \
   -v /var/lib/mayu:/var/lib/mayu \
   -v /usr/lib/mayu/images:/usr/lib/mayu/images \
-  -v /usr/lib/mayu/assets:/usr/lib/mayu/assets \
+  -v /usr/lib/mayu/yochu:/usr/lib/mayu/yochu \
   giantswarm/mayu \
   -v=12 -no-git
 ```
