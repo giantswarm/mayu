@@ -37,7 +37,7 @@ Developing Mayu requires the following tools to be installed.
 
 Download the latest release from here: https://github.com/giantswarm/mayu/releases/latest
 
-Clone the latest git repository version from here: `git@github.com:giantswarm/mayu.git`
+Clone the latest git repository version from here: https://github.com/giantswarm/mayu.git
 
 Get the latest docker image from here: https://hub.docker.com/r/giantswarm/mayu/
 
