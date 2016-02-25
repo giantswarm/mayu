@@ -70,14 +70,14 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
 	mgr.router.Methods("GET").PathPrefix("/images").HandlerFunc(imagesHandler)
 
+	// serve assets for yochu like etcd, fleet and docker
+	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(conf.YochuPath))))
+
 	// add welcome handler for debugging
 	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
 
 	// serve static files like infopusher and mayuctl etc.
 	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(conf.StaticHTMLPath)))
-
-	// serve assets for yochu like etcd, fleet and docker
-	mgr.router.PathPrefix("/yochu").Handler(http.FileServer(http.Dir(conf.YochuPath)))
 
 	glogWrapper := logging.NewGlogWrapper(8)
 	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.router)
