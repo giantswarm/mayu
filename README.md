@@ -35,7 +35,7 @@ Developing Mayu requires the following tools to be installed.
 
 ## Getting Mayu
 
-Download the latest tarball from here: https://downloads.giantswarm.io/mayu/latest/mayu.tar.gz
+Download the latest release from here: https://github.com/giantswarm/mayu/releases/latest
 
 Clone the latest git repository version from here: `git@github.com:giantswarm/mayu.git`
 
