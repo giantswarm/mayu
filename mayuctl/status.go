@@ -54,6 +54,7 @@ func statusRun(cmd *cobra.Command, args []string) {
 	lines = append(lines, fmt.Sprintf(statusScheme, "Docker:", host.DockerVersion))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Etcd:", host.EtcdVersion))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Fleet:", host.FleetVersion))
+	lines = append(lines, fmt.Sprintf(statusScheme, "Rkt:", host.RktVersion))
 	lines = append(lines, fmt.Sprintf(statusScheme, "LastBoot:", host.LastBoot))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Enabled:", strconv.FormatBool(host.Enabled)))
 	fmt.Println(columnize.SimpleFormat(lines))

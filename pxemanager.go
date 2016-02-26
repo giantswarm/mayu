@@ -70,7 +70,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
 	mgr.router.Methods("GET").PathPrefix("/images").HandlerFunc(imagesHandler)
 
-	// serve assets for yochu like etcd, fleet and docker
+	// serve assets for yochu like etcd, fleet, docker and rkt
 	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(conf.YochuPath))))
 
 	// add welcome handler for debugging

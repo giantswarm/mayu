@@ -147,6 +147,7 @@ write_files:
     DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
     ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
     FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+    RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
 {{ end }}
 
 ssh_authorized_keys:

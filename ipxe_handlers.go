@@ -348,6 +348,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 	host.EtcdVersion = payload.EtcdVersion
 	host.FleetVersion = payload.FleetVersion
 	host.DockerVersion = payload.DockerVersion
+	host.RktVersion = payload.RktVersion
 	host.YochuVersion = payload.YochuVersion
 	glog.V(1).Infof("yochu version '%s'\n", payload.YochuVersion)
 

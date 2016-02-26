@@ -41,6 +41,7 @@ type Host struct {
 	DockerVersion string `json:",omitempty"`
 	FleetVersion  string `json:",omitempty"`
 	EtcdVersion   string `json:",omitempty"`
+	RktVersion    string `json:",omitempty"`
 	YochuVersion  string `json:",omitempty"`
 
 	hostDir     *os.File
