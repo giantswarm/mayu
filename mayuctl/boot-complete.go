@@ -65,7 +65,6 @@ func bootCompleteRun(cmd *cobra.Command, args []string) {
 				host.YochuVersion = value
 			case "RKT_VERSION":
 				host.RktVersion = value
-			}
 			case "K8S_VERSION":
 				host.K8sVersion = value
 			}
