@@ -42,6 +42,7 @@ type Host struct {
 	FleetVersion  string `json:",omitempty"`
 	EtcdVersion   string `json:",omitempty"`
 	RktVersion    string `json:",omitempty"`
+	K8sVersion    string `json:",omitempty"`
 	YochuVersion  string `json:",omitempty"`
 
 	hostDir     *os.File

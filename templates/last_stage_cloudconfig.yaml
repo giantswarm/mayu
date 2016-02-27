@@ -46,7 +46,7 @@ coreos:
       ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
-      ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION} --docker-version=${DOCKER_VERSION} --rkt-version=${RKT_VERSION}
+      ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION} --docker-version=${DOCKER_VERSION} --rkt-version=${RKT_VERSION} --k8s-version=${K8S_VERSION}
       ExecStartPost=/bin/sh -c 'sleep 5'
       ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoSecure}}--no-secure {{end}}--update-versions
       RemainAfterExit=yes
@@ -106,6 +106,7 @@ write_files:
     ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
     FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
     RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
+    K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
 {{end}}
 
 ssh_authorized_keys:
