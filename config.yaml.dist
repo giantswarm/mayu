@@ -47,5 +47,5 @@ templates_env:
   etcd_version: v2.2.5-gs-1
   fleet_version: v0.11.3-gs-2
   docker_version: 1.10.2
-  rkt_version: v1.1
+  rkt_version: v1.1.0
   k8s_version: v1.1.8
