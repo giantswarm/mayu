@@ -4,6 +4,8 @@ ETCD_VERSION=v2.2.5-gs-1
 FLEET_VERSION=v0.11.3-gs-2
 DOCKER_VERSION=1.10.2
 YOCHU_VERSION=0.18.1
+RKT_VERSION=v1.1.0
+K8S_VERSION=v1.1.8
 
 mkdir -p ./yochu
 
@@ -27,4 +29,14 @@ fi
 if [ ! -d "./yochu/docker/${DOCKER_VERSION}" ]; then
 	mkdir -p ./yochu/docker/${DOCKER_VERSION}
 	wget -O ./yochu/docker/${DOCKER_VERSION}/docker https://downloads.giantswarm.io/docker/${DOCKER_VERSION}/docker
+fi
+
+if [ ! -d "./yochu/rkt/${RKT_VERSION}" ]; then
+	mkdir -p ./yochu/rkt/${RKT_VERSION}
+	wget -O ./yochu/rkt/${RKT_VERSION}/rkt https://downloads.giantswarm.io/rkt/${RKT_VERSION}/rkt
+fi
+
+if [ ! -d "./yochu/k8s/${K8S_VERSION}" ]; then
+	mkdir -p ./yochu/k8s/${K8S_VERSION}
+	wget -O ./yochu/k8s/${K8S_VERSION}/kubectl https://downloads.giantswarm.io/k8s/${K8S_VERSION}/kubectl
 fi

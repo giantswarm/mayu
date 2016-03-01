@@ -20,7 +20,7 @@ var (
 		Long: `Change the state of a host to 'running' (only run on provisioned machines).
 
 Update the software versions running on a host with '--update-versions'.
-This includes versions of CoreOS, mayu, docker, etcd, fleet and the 
+This includes versions of CoreOS, mayu, docker, etcd, fleet, rkt, kubectl and the
 Giant Swarm yochu.
 `,
 		Run: bootCompleteRun,
@@ -63,6 +63,10 @@ func bootCompleteRun(cmd *cobra.Command, args []string) {
 				host.FleetVersion = value
 			case "YOCHU_VERSION":
 				host.YochuVersion = value
+			case "RKT_VERSION":
+				host.RktVersion = value
+			case "K8S_VERSION":
+				host.K8sVersion = value
 			}
 		}
 	}
