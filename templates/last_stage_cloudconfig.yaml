@@ -69,7 +69,7 @@ coreos:
     etcd_servers: http://{{.Host.InternalAddr}}:2379
 {{if .Host.FleetMetadata}}    metadata: {{.Host.FleetMetadata}}{{end}}
   etcd2:
-    discovery: {{.EtcdDiscoveryUrl}}
+{{if .EtcdDiscoveryUrl}}    discovery: {{.EtcdDiscoveryUrl}}{{end}}
     advertise-client-urls: http://{{.Host.InternalAddr}}:2379
     initial-advertise-peer-urls: http://{{.Host.InternalAddr}}:2380
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
