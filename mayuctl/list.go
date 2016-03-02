@@ -104,7 +104,7 @@ func init() {
 
 func listRun(cmd *cobra.Command, args []string) {
 	if listFlags.Fields == "" {
-		fmt.Printf("You have to define fields for the output. This can't be empty.\n\nUsage: %s\n", cmd.Usage())
+		fmt.Printf("Invalid fields parameter. Please choose valid fields: %s\n", strings.Join(hostToFieldKeys(listFields), ","))
 		os.Exit(1)
 	}
 
