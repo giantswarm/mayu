@@ -21,11 +21,11 @@ func maybeInitSnippets() {
 	}
 	snippetsFiles = []string{}
 
-	if len(conf.TemplateSnippets) > 0 {
-		if _, err := os.Stat(conf.TemplateSnippets); err == nil {
-			if fis, err := ioutil.ReadDir(conf.TemplateSnippets); err == nil {
+	if len(globalFlags.templateSnippets) > 0 {
+		if _, err := os.Stat(globalFlags.templateSnippets); err == nil {
+			if fis, err := ioutil.ReadDir(globalFlags.templateSnippets); err == nil {
 				for _, fi := range fis {
-					snippetsFiles = append(snippetsFiles, path.Join(conf.TemplateSnippets, fi.Name()))
+					snippetsFiles = append(snippetsFiles, path.Join(globalFlags.templateSnippets, fi.Name()))
 				}
 			}
 		}
@@ -52,7 +52,7 @@ func (mgr *pxeManagerT) writeLastStageCC(host hostmgr.Host, wr io.Writer) error 
 		EtcdDiscoveryUrl string
 		ClusterNetwork   network
 		MayuHost         string
-		MayuPort         int
+		MayuPort         string
 		MayuURL          string
 		PostBootURL      string
 		NoSecure         bool
@@ -62,14 +62,14 @@ func (mgr *pxeManagerT) writeLastStageCC(host hostmgr.Host, wr io.Writer) error 
 		ClusterNetwork:   conf.Network,
 		EtcdDiscoveryUrl: mgr.cluster.Config.EtcdDiscoveryURL,
 		MayuHost:         conf.Network.BindAddr,
-		MayuPort:         conf.HTTPPort,
+		MayuPort:         globalFlags.httpPort,
 		MayuURL:          thisHost(),
 		PostBootURL:      thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
-		NoSecure:         conf.NoSecure,
+		NoSecure:         globalFlags.noSecure,
 		TemplatesEnv:     conf.TemplatesEnv,
 	}
 
-	tmpl, err := getTemplate(conf.LastStageCC)
+	tmpl, err := getTemplate(globalFlags.lastStageCloudconfig)
 	if err != nil {
 		glog.Fatalln(err)
 		return err

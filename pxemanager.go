@@ -26,9 +26,16 @@ type pxeManagerT struct {
 const defaultEtcdQuorumSize = 3
 
 func defaultPXEManager(cluster *hostmgr.Cluster) (*pxeManagerT, error) {
+	dnsmasqConf := DNSmasqConfiguration{
+		Executable: globalFlags.dnsMasq,
+		TFTPRoot:   globalFlags.tFTPRoot,
+		NoSecure:   globalFlags.noSecure,
+		HTTPPort:   globalFlags.httpPort,
+	}
+
 	mgr := &pxeManagerT{
 		cluster: cluster,
-		DNSmasq: NewDNSmasq("/tmp/dnsmasq.mayu", conf),
+		DNSmasq: NewDNSmasq("/tmp/dnsmasq.mayu", dnsmasqConf),
 		mu:      new(sync.Mutex),
 	}
 
@@ -71,26 +78,26 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("GET").PathPrefix("/images").HandlerFunc(imagesHandler)
 
 	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
-	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(conf.YochuPath))))
+	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(globalFlags.yochuPath))))
 
 	// add welcome handler for debugging
 	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
 
 	// serve static files like infopusher and mayuctl etc.
-	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(conf.StaticHTMLPath)))
+	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(globalFlags.staticHTMLPath)))
 
 	glogWrapper := logging.NewGlogWrapper(8)
 	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.router)
 
-	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", conf.HTTPBindAddr, conf.HTTPPort))
+	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", globalFlags.httpBindAddress, globalFlags.httpPort))
 
-	if conf.NoSecure {
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.HTTPBindAddr, conf.HTTPPort), loggedRouter)
+	if globalFlags.noSecure {
+		err := http.ListenAndServe(fmt.Sprintf("%s:%d", globalFlags.httpBindAddress, globalFlags.httpPort), loggedRouter)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", conf.HTTPBindAddr, conf.HTTPPort), conf.HTTPSCertFile, conf.HTTPSKeyFile, loggedRouter)
+		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", globalFlags.httpBindAddress, globalFlags.httpPort), globalFlags.tlsCertFile, globalFlags.tlsKeyFile, loggedRouter)
 		if err != nil {
 			return err
 		}

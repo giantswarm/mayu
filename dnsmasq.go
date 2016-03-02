@@ -10,15 +10,22 @@ import (
 	"github.com/golang/glog"
 )
 
+type DNSmasqConfiguration struct {
+	Executable string
+	TFTPRoot   string
+	NoSecure   bool
+	HTTPPort   string
+}
+
 type DNSmasqInstance struct {
 	confpath string
 	args     []string
 
-	conf configuration
+	conf DNSmasqConfiguration
 	cmd  *exec.Cmd
 }
 
-func NewDNSmasq(baseFile string, conf configuration) *DNSmasqInstance {
+func NewDNSmasq(baseFile string, conf DNSmasqConfiguration) *DNSmasqInstance {
 	confFile := baseFile + ".conf"
 	leaseFile := baseFile + ".lease"
 
@@ -34,7 +41,7 @@ func NewDNSmasq(baseFile string, conf configuration) *DNSmasqInstance {
 
 func (dnsmasq *DNSmasqInstance) Start() error {
 	glog.V(8).Infoln("starting Dnsmasq server")
-	cmd := exec.Command(dnsmasq.conf.Dnsmasq, dnsmasq.args...)
+	cmd := exec.Command(dnsmasq.conf.Executable, dnsmasq.args...)
 
 	if glog.V(8) {
 		stdout, err := cmd.StdoutPipe()
@@ -85,14 +92,14 @@ func (dnsmasq *DNSmasqInstance) Restart() error {
 func (dnsmasq *DNSmasqInstance) updateConf(net network) error {
 	glog.V(8).Infoln("updating Dnsmasq configuration")
 
-	tmpl, err := template.ParseFiles(conf.DNSmasqTmpl)
+	tmpl, err := template.ParseFiles(globalFlags.dnsmasqTemplate)
 	if err != nil {
 		return err
 	}
 
 	tmplArgs := struct {
 		Network network
-		Global  configuration
+		Global  DNSmasqConfiguration
 	}{
 		Network: net,
 		Global:  dnsmasq.conf,

@@ -66,7 +66,7 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		MachineID:         host.MachineID,
 	}
 
-	tmpl, err := template.ParseFiles(conf.FirstStageScript)
+	tmpl, err := template.ParseFiles(globalFlags.firstStageScript)
 	if err != nil {
 		glog.Fatalln(err)
 	}
@@ -222,15 +222,15 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getInstallImage() (*os.File, error) {
-	return os.Open(path.Join(conf.ImagesCacheDir, installImageFile))
+	return os.Open(path.Join(globalFlags.imagesCacheDir, installImageFile))
 }
 
 func getKernelImage() (*os.File, error) {
-	return os.Open(path.Join(conf.ImagesCacheDir, vmlinuzFile))
+	return os.Open(path.Join(globalFlags.imagesCacheDir, vmlinuzFile))
 }
 
 func getInitRD() (*os.File, error) {
-	return os.Open(path.Join(conf.ImagesCacheDir, initrdFile))
+	return os.Open(path.Join(globalFlags.imagesCacheDir, initrdFile))
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
@@ -283,7 +283,7 @@ func (mgr *pxeManagerT) hostsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mgr *pxeManagerT) infoPusher(w http.ResponseWriter, r *http.Request) {
-	helper, err := os.Open(path.Join(conf.StaticHTMLPath, "infopusher"))
+	helper, err := os.Open(path.Join(globalFlags.staticHTMLPath, "infopusher"))
 	if err != nil {
 		glog.Warningln(err)
 	}

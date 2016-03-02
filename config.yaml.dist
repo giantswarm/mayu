@@ -1,16 +1,3 @@
-tftproot: ./tftproot
-yochu_path: ./yochu
-static_html_path: ./static_html
-ipxe: undionly.kpxe
-first_stage_script: ./templates/first_stage_script.sh
-last_stage_cloudconfig: ./templates/last_stage_cloudconfig.yaml
-dnsmasq_template: ./templates/dnsmasq_template.conf
-template_snippets: ./template_snippets
-dnsmasq: /usr/sbin/dnsmasq
-images_cache_dir: ./images
-http_port: 4080
-http_bind_addr: 0.0.0.0
-
 network:
   pxe: true
   interface: bond0
