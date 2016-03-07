@@ -1,7 +1,7 @@
-package main
+package pxemgr
 
 import "syscall"
 
 func genPlatformSysProcAttr() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{Pdeathsig: 9}
+	return &syscall.SysProcAttr{}
 }

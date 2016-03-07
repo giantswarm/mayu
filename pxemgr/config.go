@@ -1,7 +1,6 @@
-package main
+package pxemgr
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -60,13 +59,4 @@ type network struct {
 
 	IgnoredHosts []string
 	StaticHosts  []hostmgr.IPMac
-}
-
-func thisHost() string {
-	scheme := "https"
-	if globalFlags.noSecure {
-		scheme = "http"
-	}
-
-	return fmt.Sprintf("%s://%s:%d", scheme, conf.Network.BindAddr, globalFlags.httpPort)
 }

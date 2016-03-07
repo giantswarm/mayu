@@ -1,4 +1,4 @@
-package main
+package pxemgr
 
 import (
 	"bufio"
@@ -12,9 +12,10 @@ import (
 
 type DNSmasqConfiguration struct {
 	Executable string
+	Template   string
 	TFTPRoot   string
 	NoSecure   bool
-	HTTPPort   string
+	HTTPPort   int
 }
 
 type DNSmasqInstance struct {
@@ -28,9 +29,6 @@ type DNSmasqInstance struct {
 func NewDNSmasq(baseFile string, conf DNSmasqConfiguration) *DNSmasqInstance {
 	confFile := baseFile + ".conf"
 	leaseFile := baseFile + ".lease"
-
-	tempFiles <- confFile
-	tempFiles <- leaseFile
 
 	return &DNSmasqInstance{
 		args:     []string{"-k", "-d", "--conf-file=" + confFile, "--dhcp-leasefile=" + leaseFile},
@@ -92,7 +90,7 @@ func (dnsmasq *DNSmasqInstance) Restart() error {
 func (dnsmasq *DNSmasqInstance) updateConf(net network) error {
 	glog.V(8).Infoln("updating Dnsmasq configuration")
 
-	tmpl, err := template.ParseFiles(globalFlags.dnsmasqTemplate)
+	tmpl, err := template.ParseFiles(dnsmasq.conf.Template)
 	if err != nil {
 		return err
 	}

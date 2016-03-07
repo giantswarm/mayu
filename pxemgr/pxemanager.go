@@ -1,4 +1,4 @@
-package main
+package pxemgr
 
 import (
 	"errors"
@@ -14,7 +14,41 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type PXEManagerConfiguration struct {
+	ConfigFile           string
+	EtcdQuorumSize       int
+	DNSmasqExecutable    string
+	DNSmasqTemplate      string
+	TFTPRoot             string
+	NoSecure             bool
+	TLSCertFile          string
+	TLSKeyFile           string
+	HTTPPort             int
+	HTTPBindAddress      string
+	YochuPath            string
+	StaticHTMLPath       string
+	TemplateSnippets     string
+	LastStageCloudconfig string
+	FirstStageScript     string
+	ImagesCacheDir       string
+	Version              string
+}
+
 type pxeManagerT struct {
+	noSecure             bool
+	httpPort             int
+	httpBindAddress      string
+	tlsCertFile          string
+	tlsKeyFile           string
+	yochuPath            string
+	staticHTMLPath       string
+	templateSnippets     string
+	lastStageCloudconfig string
+	firstStageScript     string
+	imagesCacheDir       string
+	version              string
+
+	config  *configuration
 	cluster *hostmgr.Cluster
 	DNSmasq *DNSmasqInstance
 
@@ -23,24 +57,40 @@ type pxeManagerT struct {
 	router *mux.Router
 }
 
-const defaultEtcdQuorumSize = 3
-
-func defaultPXEManager(cluster *hostmgr.Cluster) (*pxeManagerT, error) {
-	dnsmasqConf := DNSmasqConfiguration{
-		Executable: globalFlags.dnsMasq,
-		TFTPRoot:   globalFlags.tFTPRoot,
-		NoSecure:   globalFlags.noSecure,
-		HTTPPort:   globalFlags.httpPort,
+func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManagerT, error) {
+	conf, err := loadConfig(c.ConfigFile)
+	if err != nil {
+		glog.Fatalln(err)
 	}
 
 	mgr := &pxeManagerT{
+		noSecure:             c.NoSecure,
+		httpPort:             c.HTTPPort,
+		httpBindAddress:      c.HTTPBindAddress,
+		tlsCertFile:          c.TLSCertFile,
+		tlsKeyFile:           c.TLSKeyFile,
+		yochuPath:            c.YochuPath,
+		staticHTMLPath:       c.StaticHTMLPath,
+		templateSnippets:     c.TemplateSnippets,
+		lastStageCloudconfig: c.LastStageCloudconfig,
+		firstStageScript:     c.FirstStageScript,
+		imagesCacheDir:       c.ImagesCacheDir,
+		version:              c.Version,
+
+		config:  &conf,
 		cluster: cluster,
-		DNSmasq: NewDNSmasq("/tmp/dnsmasq.mayu", dnsmasqConf),
-		mu:      new(sync.Mutex),
+		DNSmasq: NewDNSmasq("/tmp/dnsmasq.mayu", DNSmasqConfiguration{
+			Executable: c.DNSmasqExecutable,
+			Template:   c.DNSmasqTemplate,
+			TFTPRoot:   c.TFTPRoot,
+			NoSecure:   c.NoSecure,
+			HTTPPort:   c.HTTPPort,
+		}),
+		mu: new(sync.Mutex),
 	}
 
 	if mgr.cluster.Config.EtcdDiscoveryURL == "" {
-		mgr.cluster.GenerateEtcdDiscoveryURL(defaultEtcdQuorumSize)
+		mgr.cluster.GenerateEtcdDiscoveryURL(c.EtcdQuorumSize)
 		mgr.cluster.Commit("generated etcd discovery url")
 	}
 
@@ -58,7 +108,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router = mux.NewRouter()
 
 	// first stage ipxe boot script
-	mgr.router.Methods("GET").PathPrefix("/ipxebootscript").HandlerFunc(ipxeBootScript)
+	mgr.router.Methods("GET").PathPrefix("/ipxebootscript").HandlerFunc(mgr.ipxeBootScript)
 	mgr.router.Methods("GET").PathPrefix("/first-stage-script/{serial}").HandlerFunc(mgr.firstStageScriptGenerator)
 
 	// used by the first-stage-script:
@@ -75,29 +125,29 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 
 	// boring stuff
 	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
-	mgr.router.Methods("GET").PathPrefix("/images").HandlerFunc(imagesHandler)
+	mgr.router.Methods("GET").PathPrefix("/images").HandlerFunc(mgr.imagesHandler)
 
 	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
-	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(globalFlags.yochuPath))))
+	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(mgr.yochuPath))))
 
 	// add welcome handler for debugging
 	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
 
 	// serve static files like infopusher and mayuctl etc.
-	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(globalFlags.staticHTMLPath)))
+	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(mgr.staticHTMLPath)))
 
 	glogWrapper := logging.NewGlogWrapper(8)
 	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.router)
 
-	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", globalFlags.httpBindAddress, globalFlags.httpPort))
+	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.httpBindAddress, mgr.httpPort))
 
-	if globalFlags.noSecure {
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", globalFlags.httpBindAddress, globalFlags.httpPort), loggedRouter)
+	if mgr.noSecure {
+		err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.httpBindAddress, mgr.httpPort), loggedRouter)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", globalFlags.httpBindAddress, globalFlags.httpPort), globalFlags.tlsCertFile, globalFlags.tlsKeyFile, loggedRouter)
+		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", mgr.httpBindAddress, mgr.httpPort), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
 		if err != nil {
 			return err
 		}
@@ -114,8 +164,8 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
-	conf.Network.StaticHosts = []hostmgr.IPMac{}
-	conf.Network.IgnoredHosts = []string{}
+	mgr.config.Network.StaticHosts = []hostmgr.IPMac{}
+	mgr.config.Network.IgnoredHosts = []string{}
 
 	ignoredHostPredicate := func(host *hostmgr.Host) bool {
 		// ignore hosts that are installed or running
@@ -124,11 +174,11 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 
 	for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
 		for _, macAddr := range host.MacAddresses {
-			conf.Network.IgnoredHosts = append(conf.Network.IgnoredHosts, macAddr)
+			mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
 		}
 	}
 
-	err := mgr.DNSmasq.updateConf(conf.Network)
+	err := mgr.DNSmasq.updateConf(mgr.config.Network)
 	if err != nil {
 		return err
 	}
@@ -157,7 +207,7 @@ func (mgr *pxeManagerT) Start() error {
 func (mgr *pxeManagerT) getNextProfile() string {
 	profileCount := mgr.cluster.GetProfileCount()
 
-	for _, profile := range conf.Profiles {
+	for _, profile := range mgr.config.Profiles {
 		if profileCount[profile.Name] < profile.Quantity {
 			return profile.Name
 		}
@@ -176,8 +226,8 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 		return !exists
 	}
 
-	currentIP := net.ParseIP(conf.Network.IPRange.Start)
-	rangeEnd := net.ParseIP(conf.Network.IPRange.End)
+	currentIP := net.ParseIP(mgr.config.Network.IPRange.Start)
+	rangeEnd := net.ParseIP(mgr.config.Network.IPRange.End)
 
 	for ; ; ipLessThanOrEqual(currentIP, rangeEnd) {
 		if IPisAvailable(currentIP) {
@@ -188,4 +238,13 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 
 	panic(errors.New("unable to get a free ip"))
 	return net.IP{}
+}
+
+func (mgr *pxeManagerT) thisHost() string {
+	scheme := "https"
+	if mgr.noSecure {
+		scheme = "http"
+	}
+
+	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.httpPort)
 }

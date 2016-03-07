@@ -10,8 +10,10 @@ import (
 
 	"github.com/giantswarm/mayu/fs"
 	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/mayu/pxemgr"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -29,10 +31,11 @@ const (
 	DefaultTemplateSnippets     string = "./template_snippets"
 	DefaultDNSMasq              string = "/usr/sbin/dnsmasq"
 	DefaultImagesCacheDir       string = "./images"
-	DefaultHTTPPort             string = "4080"
+	DefaultHTTPPort             int    = 4080
 	DefaultHTTPBindAddress      string = "0.0.0.0"
 	DefaultTLSCertFile          string = ""
 	DefaultTLSKeyFile           string = ""
+	DefaultEtcdQuorumSize       int    = 3
 )
 
 type MayuFlags struct {
@@ -50,14 +53,15 @@ type MayuFlags struct {
 	staticHTMLPath       string
 	firstStageScript     string
 	lastStageCloudconfig string
-	dnsmasqTemplate      string
 	templateSnippets     string
-	dnsMasq              string
+	dnsmasq              string
+	dnsmasqTemplate      string
 	imagesCacheDir       string
-	httpPort             string
+	httpPort             int
 	httpBindAddress      string
 	tlsCertFile          string
 	tlsKeyFile           string
+	etcdQuorumSize       int
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
@@ -93,20 +97,18 @@ func init() {
 	mainCmd.PersistentFlags().StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
 	mainCmd.PersistentFlags().StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "dnsmasq config template")
 	mainCmd.PersistentFlags().StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.dnsMasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
+	mainCmd.PersistentFlags().StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
 	mainCmd.PersistentFlags().StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
+	mainCmd.PersistentFlags().IntVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
 	mainCmd.PersistentFlags().StringVar(&globalFlags.httpBindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
 	mainCmd.PersistentFlags().StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
 	mainCmd.PersistentFlags().StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
+	mainCmd.PersistentFlags().IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Quorum of the etcd cluster")
 
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
 
 var (
-	conf      configuration
-	tempFiles = make(chan string, 4096)
-
 	ErrNotAllCertFilesProvided = errors.New("please configure a key and cert files for TLS secured connections.")
 	ErrHTTPSCertFileNotRedable = errors.New("cannot open configured certificate file for TLS secured connections.")
 	ErrHTTPSKeyFileNotReadable = errors.New("cannot open configured key file for TLS secured connections.")
@@ -175,11 +177,6 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	hostmgr.DisableGit = globalFlags.noGit
 
-	conf, err = loadConfig(globalFlags.configFile)
-	if err != nil {
-		glog.Fatalln(err)
-	}
-
 	var cluster *hostmgr.Cluster
 
 	if fileExists(fmt.Sprintf("%s/cluster.json", globalFlags.clusterDir)) {
@@ -192,7 +189,25 @@ func mainRun(cmd *cobra.Command, args []string) {
 		glog.Fatalf("unable to get a cluster: %s\n", err)
 	}
 
-	pxeManager, err := defaultPXEManager(cluster)
+	pxeManager, err := pxemgr.PXEManager(pxemgr.PXEManagerConfiguration{
+		ConfigFile:           globalFlags.configFile,
+		EtcdQuorumSize:       globalFlags.etcdQuorumSize,
+		DNSmasqExecutable:    globalFlags.dnsmasq,
+		DNSmasqTemplate:      globalFlags.dnsmasqTemplate,
+		TFTPRoot:             globalFlags.tFTPRoot,
+		NoSecure:             globalFlags.noSecure,
+		HTTPPort:             globalFlags.httpPort,
+		HTTPBindAddress:      globalFlags.httpBindAddress,
+		TLSCertFile:          globalFlags.tlsCertFile,
+		TLSKeyFile:           globalFlags.tlsKeyFile,
+		YochuPath:            globalFlags.yochuPath,
+		StaticHTMLPath:       globalFlags.staticHTMLPath,
+		TemplateSnippets:     globalFlags.templateSnippets,
+		LastStageCloudconfig: globalFlags.lastStageCloudconfig,
+		FirstStageScript:     globalFlags.firstStageScript,
+		ImagesCacheDir:       globalFlags.imagesCacheDir,
+		Version:              projectVersion,
+	}, cluster)
 	if err != nil {
 		glog.Fatalf("unable to create a pxe manager: %s\n", err)
 	}
@@ -201,11 +216,11 @@ func mainRun(cmd *cobra.Command, args []string) {
 		placeholderHost := hostmgr.Host{}
 
 		os.Stdout.WriteString("last stage cloud config:\n")
-		pxeManager.writeLastStageCC(placeholderHost, os.Stdout)
+		pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
 
 		b := bytes.NewBuffer(nil)
-		pxeManager.writeLastStageCC(placeholderHost, b)
-		yamlErr := validateCC(b.Bytes())
+		pxeManager.WriteLastStageCC(placeholderHost, b)
+		yamlErr := validateYAML(b.Bytes())
 		if yamlErr != nil {
 			fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
 			os.Exit(1)
@@ -237,4 +252,9 @@ func fileExists(path string) bool {
 		return true
 	}
 	return false
+}
+
+func validateYAML(yml []byte) error {
+	y := map[string]interface{}{}
+	return yaml.Unmarshal(yml, &y)
 }
