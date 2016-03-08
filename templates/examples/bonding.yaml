@@ -5,6 +5,8 @@ coreos:
   - name: update-engine.service
     command: stop
     mask: true
+  - name: locksmithd.service
+    mask: true
   - name: systemd-modules-load.service
     command: restart
 {{template "quobyte" .}}
