@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/giantswarm/mayu/pxemgr"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 )
 
@@ -40,7 +42,6 @@ const (
 
 type MayuFlags struct {
 	debug   bool
-	verbose bool
 	version bool
 
 	configFile           string
@@ -81,29 +82,40 @@ var (
 )
 
 func init() {
-	mainCmd.PersistentFlags().BoolVarP(&globalFlags.debug, "debug", "d", false, "Print debug output")
-	mainCmd.PersistentFlags().BoolVarP(&globalFlags.verbose, "verbose", "v", false, "Print verbose output")
-	mainCmd.PersistentFlags().BoolVar(&globalFlags.version, "version", false, "Show the version of Mayu")
+	// make sure Mayu logs to stderr
+	if err := flag.Lookup("logtostderr").Value.Set("true"); err != nil {
+		panic(err)
+	}
 
-	mainCmd.PersistentFlags().StringVar(&globalFlags.configFile, "config", DefaultConfigFile, "Path to the configuration file")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.clusterDir, "cluster-directory", DefaultClusterDirectory, "Path to the cluster directory")
-	mainCmd.PersistentFlags().BoolVar(&globalFlags.showTemplates, "show-templates", DefaultShowTemplates, "Show the templates and quit")
-	mainCmd.PersistentFlags().BoolVar(&globalFlags.noGit, "no-git", DefaultNoGit, "Disable git operations")
-	mainCmd.PersistentFlags().BoolVar(&globalFlags.noSecure, "no-secure", DefaultNoSecure, "Disable tls")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "dnsmasq config template")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
-	mainCmd.PersistentFlags().IntVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.httpBindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
-	mainCmd.PersistentFlags().StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
-	mainCmd.PersistentFlags().IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Quorum of the etcd cluster")
+	// Map any flags registered in the standard "flag" package into the
+	// top-level mayu command (eg. log flags)
+	pf := mainCmd.PersistentFlags()
+	flag.VisitAll(func(f *flag.Flag) {
+		pf.AddFlag(pflag.PFlagFromGoFlag(f))
+	})
+
+	pf.BoolVarP(&globalFlags.debug, "debug", "d", false, "Print debug output")
+	pf.BoolVar(&globalFlags.version, "version", false, "Show the version of Mayu")
+
+	pf.StringVar(&globalFlags.configFile, "config", DefaultConfigFile, "Path to the configuration file")
+	pf.StringVar(&globalFlags.clusterDir, "cluster-directory", DefaultClusterDirectory, "Path to the cluster directory")
+	pf.BoolVar(&globalFlags.showTemplates, "show-templates", DefaultShowTemplates, "Show the templates and quit")
+	pf.BoolVar(&globalFlags.noGit, "no-git", DefaultNoGit, "Disable git operations")
+	pf.BoolVar(&globalFlags.noSecure, "no-secure", DefaultNoSecure, "Disable tls")
+	pf.StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
+	pf.StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
+	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
+	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
+	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
+	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "dnsmasq config template")
+	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
+	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
+	pf.StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
+	pf.IntVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
+	pf.StringVar(&globalFlags.httpBindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
+	pf.StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
+	pf.StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
+	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Quorum of the etcd cluster")
 
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
