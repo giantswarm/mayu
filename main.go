@@ -2,78 +2,237 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
+	"github.com/giantswarm/mayu/fs"
 	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/mayu/pxemgr"
 	"github.com/golang/glog"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v2"
 )
+
+const (
+	DefaultConfigFile           string = "/etc/mayu/config.yaml"
+	DefaultClusterDirectory     string = "cluster"
+	DefaultShowTemplates        bool   = false
+	DefaultNoGit                bool   = false
+	DefaultNoSecure             bool   = false
+	DefaultTFTPRoot             string = "./tftproot"
+	DefaultYochuPath            string = "./yochu"
+	DefaultStaticHTMLPath       string = "./static_html"
+	DefaultFirstStageScript     string = "./templates/first_stage_script.sh"
+	DefaultLastStageCloudconfig string = "./templates/last_stage_cloudconfig.yaml"
+	DefaultDnsmasqTemplate      string = "./templates/dnsmasq_template.conf"
+	DefaultTemplateSnippets     string = "./template_snippets"
+	DefaultDNSMasq              string = "/usr/sbin/dnsmasq"
+	DefaultImagesCacheDir       string = "./images"
+	DefaultHTTPPort             int    = 4080
+	DefaultHTTPBindAddress      string = "0.0.0.0"
+	DefaultTLSCertFile          string = ""
+	DefaultTLSKeyFile           string = ""
+	DefaultEtcdQuorumSize       int    = 3
+)
+
+type MayuFlags struct {
+	debug   bool
+	version bool
+
+	configFile           string
+	clusterDir           string
+	showTemplates        bool
+	noGit                bool
+	noSecure             bool
+	tFTPRoot             string
+	yochuPath            string
+	staticHTMLPath       string
+	firstStageScript     string
+	lastStageCloudconfig string
+	templateSnippets     string
+	dnsmasq              string
+	dnsmasqTemplate      string
+	imagesCacheDir       string
+	httpPort             int
+	httpBindAddress      string
+	tlsCertFile          string
+	tlsKeyFile           string
+	etcdQuorumSize       int
+
+	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
+}
 
 var (
-	confFile      = flag.String("config", "/etc/mayu/config.yaml", "path to the configuration file")
-	clusterDir    = flag.String("cluster-directory", "cluster", "path cluster directory")
-	showTemplates = flag.Bool("show-templates", false, "show the templates and quit")
-	noGit         = flag.Bool("no-git", false, "disable git operations")
-	showVersion   = flag.Bool("version", false, "show the version of mayu")
+	globalFlags = MayuFlags{}
 
-	conf      configuration
-	tempFiles = make(chan string, 4096)
-)
-
-func main() {
-	log.SetFlags(0)
-	log.SetPrefix("mayu: ")
-	flag.Set("logtostderr", "true")
-	flag.Parse()
-
-	if *showVersion {
-		printVersion()
-		os.Exit(0)
+	mainCmd = &cobra.Command{
+		Use:   "mayu",
+		Short: "Manage your bare metal machines",
+		Long:  "",
+		Run:   mainRun,
 	}
 
-	glog.V(8).Infoln(fmt.Sprintf("starting mayu version %s", projectVersion))
+	projectVersion string
+	projectBuild   string
+)
 
-	hostmgr.DisableGit = *noGit
+func init() {
+	// make sure Mayu logs to stderr
+	if err := flag.Lookup("logtostderr").Value.Set("true"); err != nil {
+		panic(err)
+	}
+
+	// Map any flags registered in the standard "flag" package into the
+	// top-level mayu command (eg. log flags)
+	pf := mainCmd.PersistentFlags()
+	flag.VisitAll(func(f *flag.Flag) {
+		pf.AddFlag(pflag.PFlagFromGoFlag(f))
+	})
+
+	pf.BoolVarP(&globalFlags.debug, "debug", "d", false, "Print debug output")
+	pf.BoolVar(&globalFlags.version, "version", false, "Show the version of Mayu")
+
+	pf.StringVar(&globalFlags.configFile, "config", DefaultConfigFile, "Path to the configuration file")
+	pf.StringVar(&globalFlags.clusterDir, "cluster-directory", DefaultClusterDirectory, "Path to the cluster directory")
+	pf.BoolVar(&globalFlags.showTemplates, "show-templates", DefaultShowTemplates, "Show the templates and quit")
+	pf.BoolVar(&globalFlags.noGit, "no-git", DefaultNoGit, "Disable git operations")
+	pf.BoolVar(&globalFlags.noSecure, "no-secure", DefaultNoSecure, "Disable tls")
+	pf.StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
+	pf.StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
+	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
+	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
+	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
+	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
+	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
+	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
+	pf.StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
+	pf.IntVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
+	pf.StringVar(&globalFlags.httpBindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
+	pf.StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
+	pf.StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
+	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Quorum of the etcd cluster")
+
+	globalFlags.filesystem = fs.DefaultFilesystem
+}
+
+var (
+	ErrNotAllCertFilesProvided = errors.New("Please configure a key and cert files for TLS secured connections.")
+	ErrHTTPSCertFileNotRedable = errors.New("Cannot open configured certificate file for TLS secured connections.")
+	ErrHTTPSKeyFileNotReadable = errors.New("Cannot open configured key file for TLS secured connections.")
+)
+
+// Validate checks the configuration based on all Validate* functions
+// attached to the configuration struct.
+func (g MayuFlags) Validate() (bool, error) {
+	if ok, err := g.ValidateHTTPCertificateUsage(); !ok {
+		return ok, err
+	}
+
+	if ok, err := g.ValidateHTTPCertificateFileExistance(); !ok {
+		return ok, err
+	}
+
+	return true, nil
+}
+
+// ValidateHTTPCertificateUsage checks if the fields HTTPSCertFile and HTTPSKeyFile
+// of the configuration struct are set whenever the NoSecure is set to false.
+// This makes sure that users are configuring the needed certificate files when
+// using TLS encrypted connections.
+func (g MayuFlags) ValidateHTTPCertificateUsage() (bool, error) {
+	if g.noSecure {
+		return true, nil
+	}
+
+	if !g.noSecure && g.tlsCertFile != "" && g.tlsKeyFile != "" {
+		return true, nil
+	}
+
+	return false, ErrNotAllCertFilesProvided
+}
+
+// ValidateHTTPCertificateFileExistance checks if the filenames configured
+// in the fields HTTPSCertFile and HTTPSKeyFile can be stat'ed to make sure
+// they actually exist.
+func (g MayuFlags) ValidateHTTPCertificateFileExistance() (bool, error) {
+	if g.noSecure {
+		return true, nil
+	}
+
+	if _, err := g.filesystem.Stat(g.tlsCertFile); err != nil {
+		return false, ErrHTTPSCertFileNotRedable
+	}
+
+	if _, err := g.filesystem.Stat(g.tlsKeyFile); err != nil {
+		return false, ErrHTTPSKeyFileNotReadable
+	}
+
+	return true, nil
+}
+
+func mainRun(cmd *cobra.Command, args []string) {
+	glog.V(8).Infoln(fmt.Sprintf("starting mayu version %s", projectVersion))
 
 	var err error
 
-	conf, err = loadConfig(*confFile)
-	if err != nil {
+	// hack to make some dnsmasq versions happy
+	globalFlags.tFTPRoot, err = filepath.Abs(globalFlags.tFTPRoot)
+
+	if ok, err := globalFlags.Validate(); !ok {
 		glog.Fatalln(err)
 	}
 
-	if ok, err := conf.Validate(); !ok {
-		glog.Fatalln(err)
-	}
+	hostmgr.DisableGit = globalFlags.noGit
 
 	var cluster *hostmgr.Cluster
 
-	if fileExists(fmt.Sprintf("%s/cluster.json", *clusterDir)) {
-		cluster, err = hostmgr.OpenCluster(*clusterDir)
+	if fileExists(fmt.Sprintf("%s/cluster.json", globalFlags.clusterDir)) {
+		cluster, err = hostmgr.OpenCluster(globalFlags.clusterDir)
 	} else {
-		cluster, err = hostmgr.NewCluster(*clusterDir, true)
+		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, true)
 	}
 
 	if err != nil {
 		glog.Fatalf("unable to get a cluster: %s\n", err)
 	}
 
-	pxeManager, err := defaultPXEManager(cluster)
+	pxeManager, err := pxemgr.PXEManager(pxemgr.PXEManagerConfiguration{
+		ConfigFile:           globalFlags.configFile,
+		EtcdQuorumSize:       globalFlags.etcdQuorumSize,
+		DNSmasqExecutable:    globalFlags.dnsmasq,
+		DNSmasqTemplate:      globalFlags.dnsmasqTemplate,
+		TFTPRoot:             globalFlags.tFTPRoot,
+		NoSecure:             globalFlags.noSecure,
+		HTTPPort:             globalFlags.httpPort,
+		HTTPBindAddress:      globalFlags.httpBindAddress,
+		TLSCertFile:          globalFlags.tlsCertFile,
+		TLSKeyFile:           globalFlags.tlsKeyFile,
+		YochuPath:            globalFlags.yochuPath,
+		StaticHTMLPath:       globalFlags.staticHTMLPath,
+		TemplateSnippets:     globalFlags.templateSnippets,
+		LastStageCloudconfig: globalFlags.lastStageCloudconfig,
+		FirstStageScript:     globalFlags.firstStageScript,
+		ImagesCacheDir:       globalFlags.imagesCacheDir,
+		Version:              projectVersion,
+	}, cluster)
 	if err != nil {
 		glog.Fatalf("unable to create a pxe manager: %s\n", err)
 	}
 
-	if *showTemplates {
+	if globalFlags.showTemplates {
 		placeholderHost := hostmgr.Host{}
 
 		os.Stdout.WriteString("last stage cloud config:\n")
-		pxeManager.writeLastStageCC(placeholderHost, os.Stdout)
+		pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
 
 		b := bytes.NewBuffer(nil)
-		pxeManager.writeLastStageCC(placeholderHost, b)
-		yamlErr := validateCC(b.Bytes())
+		pxeManager.WriteLastStageCC(placeholderHost, b)
+		yamlErr := validateYAML(b.Bytes())
 		if yamlErr != nil {
 			fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
 			os.Exit(1)
@@ -88,12 +247,16 @@ func main() {
 	}
 }
 
-func cleanTempFiles() {
-	close(tempFiles)
-	for fname := range tempFiles {
-		glog.V(5).Infoln("removing temporary file", fname)
-		os.RemoveAll(fname)
+func main() {
+	log.SetFlags(0)
+	log.SetPrefix("mayu: ")
+
+	if globalFlags.version {
+		printVersion()
+		os.Exit(0)
 	}
+
+	mainCmd.Execute()
 }
 
 func fileExists(path string) bool {
@@ -101,4 +264,9 @@ func fileExists(path string) bool {
 		return true
 	}
 	return false
+}
+
+func validateYAML(yml []byte) error {
+	y := map[string]interface{}{}
+	return yaml.Unmarshal(yml, &y)
 }

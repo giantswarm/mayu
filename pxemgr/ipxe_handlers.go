@@ -1,4 +1,4 @@
-package main
+package pxemgr
 
 import (
 	"bytes"
@@ -25,13 +25,13 @@ const (
 	installImageFile = "coreos_production_image.bin.bz2"
 )
 
-func ipxeBootScript(w http.ResponseWriter, r *http.Request) {
+func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString("#!ipxe\n")
-	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", thisHost(), thisHost(), thisHost()+"/first-stage-script/__SERIAL__"))
-	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", thisHost()))
+	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.thisHost(), mgr.thisHost(), mgr.thisHost()+"/first-stage-script/__SERIAL__"))
+	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.thisHost()))
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
@@ -42,10 +42,10 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 	serial := strings.ToLower(params["serial"])
 	glog.V(2).Infof("generating a first stage script for '%s'\n", serial)
 
-	infoHelperURL := thisHost() + "/hostinfo-helper"
-	cloudConfigURL := thisHost() + "/final-cloud-config.yaml"
-	setInstalledURL := thisHost() + "/admin/host/__SERIAL__/set_installed"
-	installImageURL := thisHost() + "/images/install_image.bin.bz2"
+	infoHelperURL := mgr.thisHost() + "/hostinfo-helper"
+	cloudConfigURL := mgr.thisHost() + "/final-cloud-config.yaml"
+	setInstalledURL := mgr.thisHost() + "/admin/host/__SERIAL__/set_installed"
+	installImageURL := mgr.thisHost() + "/images/install_image.bin.bz2"
 	host := mgr.maybeCreateHost(serial)
 
 	ctx := struct {
@@ -61,12 +61,12 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		CloudConfigURL:    cloudConfigURL,
 		InstallImageURL:   installImageURL,
 		SetInstalledURL:   setInstalledURL,
-		MayuURL:           thisHost(),
-		MayuVersion:       projectVersion,
+		MayuURL:           mgr.thisHost(),
+		MayuVersion:       mgr.version,
 		MachineID:         host.MachineID,
 	}
 
-	tmpl, err := template.ParseFiles(conf.FirstStageScript)
+	tmpl, err := template.ParseFiles(mgr.firstStageScript)
 	if err != nil {
 		glog.Fatalln(err)
 	}
@@ -95,9 +95,9 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()
 			if host.Profile != "" {
-				host.FleetMetadata = profileMetadata(host.Profile)
+				host.FleetMetadata = mgr.profileMetadata(host.Profile)
 			} else {
-				host.FleetMetadata = profileMetadata("default")
+				host.FleetMetadata = mgr.profileMetadata("default")
 			}
 			err = host.Commit("updated host profile and metadata")
 			if err != nil {
@@ -108,8 +108,8 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 	return host
 }
 
-func profileMetadata(profileName string) []string {
-	for _, v := range conf.Profiles {
+func (mgr *pxeManagerT) profileMetadata(profileName string) []string {
+	for _, v := range mgr.config.Profiles {
 		if v.Name == profileName {
 			return v.Tags
 		}
@@ -184,12 +184,12 @@ func (mgr *pxeManagerT) cloudConfigGenerator(w http.ResponseWriter, r *http.Requ
 	}
 	mgr.cluster.Update()
 
-	mgr.writeLastStageCC(*host, w)
+	mgr.WriteLastStageCC(*host, w)
 }
 
-func imagesHandler(w http.ResponseWriter, r *http.Request) {
+func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
-		vmlinuz, err := getKernelImage()
+		vmlinuz, err := mgr.getKernelImage()
 		if err != nil {
 			panic(err)
 		}
@@ -197,7 +197,7 @@ func imagesHandler(w http.ResponseWriter, r *http.Request) {
 		defer vmlinuz.Close()
 		io.Copy(w, vmlinuz)
 	} else if strings.HasSuffix(r.URL.Path, "/initrd.cpio.gz") {
-		initrd, err := getInitRD()
+		initrd, err := mgr.getInitRD()
 		if err != nil {
 			panic(err)
 		}
@@ -205,7 +205,7 @@ func imagesHandler(w http.ResponseWriter, r *http.Request) {
 		defer initrd.Close()
 		io.Copy(w, initrd)
 	} else if strings.HasSuffix(r.URL.Path, "/install_image.bin.bz2") {
-		img, err := getInstallImage()
+		img, err := mgr.getInstallImage()
 		if err != nil {
 			panic(err)
 		}
@@ -221,16 +221,16 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("got request", r.URL)
 }
 
-func getInstallImage() (*os.File, error) {
-	return os.Open(path.Join(conf.ImagesCacheDir, installImageFile))
+func (mgr *pxeManagerT) getInstallImage() (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir, installImageFile))
 }
 
-func getKernelImage() (*os.File, error) {
-	return os.Open(path.Join(conf.ImagesCacheDir, vmlinuzFile))
+func (mgr *pxeManagerT) getKernelImage() (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir, vmlinuzFile))
 }
 
-func getInitRD() (*os.File, error) {
-	return os.Open(path.Join(conf.ImagesCacheDir, initrdFile))
+func (mgr *pxeManagerT) getInitRD() (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir, initrdFile))
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
@@ -283,7 +283,7 @@ func (mgr *pxeManagerT) hostsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mgr *pxeManagerT) infoPusher(w http.ResponseWriter, r *http.Request) {
-	helper, err := os.Open(path.Join(conf.StaticHTMLPath, "infopusher"))
+	helper, err := os.Open(path.Join(mgr.staticHTMLPath, "infopusher"))
 	if err != nil {
 		glog.Warningln(err)
 	}
@@ -477,6 +477,6 @@ func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http
 
 func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-	w.Write([]byte("this is the iPXE server of mayu " + projectVersion))
+	w.Write([]byte("this is the iPXE server of mayu " + mgr.version))
 	return
 }
