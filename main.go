@@ -145,11 +145,11 @@ func (g MayuFlags) Validate() (bool, error) {
 // This makes sure that users are configuring the needed certificate files when
 // using TLS encrypted connections.
 func (g MayuFlags) ValidateHTTPCertificateUsage() (bool, error) {
-	if g.noSecure == true {
+	if g.noSecure {
 		return true, nil
 	}
 
-	if g.noSecure == false && g.tlsCertFile != "" && g.tlsKeyFile != "" {
+	if !g.noSecure && g.tlsCertFile != "" && g.tlsKeyFile != "" {
 		return true, nil
 	}
 
@@ -160,7 +160,7 @@ func (g MayuFlags) ValidateHTTPCertificateUsage() (bool, error) {
 // in the fields HTTPSCertFile and HTTPSKeyFile can be stat'ed to make sure
 // they actually exist.
 func (g MayuFlags) ValidateHTTPCertificateFileExistance() (bool, error) {
-	if g.noSecure == true {
+	if g.noSecure {
 		return true, nil
 	}
 
