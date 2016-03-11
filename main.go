@@ -107,7 +107,7 @@ func init() {
 	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
 	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
 	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
-	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "dnsmasq config template")
+	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
 	pf.StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
@@ -121,9 +121,9 @@ func init() {
 }
 
 var (
-	ErrNotAllCertFilesProvided = errors.New("please configure a key and cert files for TLS secured connections.")
-	ErrHTTPSCertFileNotRedable = errors.New("cannot open configured certificate file for TLS secured connections.")
-	ErrHTTPSKeyFileNotReadable = errors.New("cannot open configured key file for TLS secured connections.")
+	ErrNotAllCertFilesProvided = errors.New("Please configure a key and cert files for TLS secured connections.")
+	ErrHTTPSCertFileNotRedable = errors.New("Cannot open configured certificate file for TLS secured connections.")
+	ErrHTTPSKeyFileNotReadable = errors.New("Cannot open configured key file for TLS secured connections.")
 )
 
 // Validate checks the configuration based on all Validate* functions
