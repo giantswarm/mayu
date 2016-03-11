@@ -7,6 +7,7 @@ coreos:
     command: stop
     mask: true
   - name: locksmithd.service
+    command: stop
     mask: true
 {{template "quobyte" .}}
 {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
