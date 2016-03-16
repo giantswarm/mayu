@@ -48,7 +48,7 @@ func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error 
 		MayuPort         int
 		MayuURL          string
 		PostBootURL      string
-		NoSecure         bool
+		NoTLS            bool
 		TemplatesEnv     map[string]interface{}
 	}{
 		Host:             host,
@@ -58,7 +58,7 @@ func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error 
 		MayuPort:         mgr.httpPort,
 		MayuURL:          mgr.thisHost(),
 		PostBootURL:      mgr.thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
-		NoSecure:         mgr.noSecure,
+		NoTLS:            mgr.noTLS,
 		TemplatesEnv:     mgr.config.TemplatesEnv,
 	}
 

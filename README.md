@@ -68,7 +68,7 @@ Fetch docker, etcd, fleet versions you would like to provision on your CoreOS ma
 start mayu:
 ```
 make bin-dist
-./mayu -cluster-directory cluster -v=12 -no-git
+./mayu --cluster-directory cluster -v=12 --no-tls --no-git
 ```
 
 ### Run Mayu within a Docker container
@@ -82,7 +82,7 @@ docker run --rm -it \
   -v /usr/lib/mayu/images:/usr/lib/mayu/images \
   -v /usr/lib/mayu/yochu:/usr/lib/mayu/yochu \
   giantswarm/mayu \
-  -v=12 -no-git
+  -v=12 --no-git --no-tls
 ```
 
 Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.

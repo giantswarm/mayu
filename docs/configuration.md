@@ -3,9 +3,8 @@
 Here we provide more detailed documentation about configuring Mayu. By
 default TLS is enabled when communicating with `mayu` over network. If your
 setup does not provide or rely on TLS for whatever reasons, you can set
-`no_secure` to `true` within your `config.yaml`. The corresponding flag for
-`mayuctl` is `--no-secure`. Check [mayuctl](mayuctl.md) for more
-information about the client.
+`--no-tls`. The corresponding flag for `mayuctl` is `--no-tls`. 
+Check [mayuctl](mayuctl.md) for more information about the client.
 
 ## File Tree
 
@@ -13,12 +12,12 @@ information about the client.
 .
 |-- mayu                              - the mayu executable
 |-- config.yaml.dist                  - mayu configuration file template
-|-- images                            - directory containing the boot and installation images
-|   `-- ...
 |-- static_html
 |   `-- infopusher                    - small node info pusher used during the installation process
+|   `-- mayuctl                       - pushes information after each reboot of machines
 |-- templates
 |   |-- dnsmasq_template.conf         - template file used to generate the dnsmasq configuration
+|   |-- first_stage_cloudconfig.yaml  - template used to generate the first cloud-config to install the machine
 |   |-- first_stage_script.sh         - template used to generate the installation script
 |   |-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
 |-- template_snippets                 - directory containing some template snippets used by the final cloud-config
@@ -37,35 +36,8 @@ network snippets `net_bond.yaml` or `net_singlenic.yaml`.
 
 The very first thing to do is to copy `config.yaml.dist` to
 `/etc/mayu/config.yaml` and modify it regarding your needs. The initial
-section configures the paths to the templates, some binaries (ipxe and dnsmasq)
-and some directories. The default settings match the distributed mayu file
-tree.
-
-```yaml
-tftproot: ./tftproot
-static_html_path: ./static_html
-ipxe: undionly.kpxe
-first_stage_script: ./templates/first_stage_script.sh
-last_stage_cloudconfig: ./templates/last_stage_cloudconfig.yaml
-dnsmasq_template: ./templates/dnsmasq_template.conf
-template_snippets: ./template_snippets
-dnsmasq: ./dnsmasq
-images_cache_dir: ./images
-http_port: 4080
-```
-
-### Certificates
-
-Communication between `mayu` and `mayuctl` by default is TLS encrypted. For
-that you need to provide certificates as follows. To disable this security
-feature you can set `no_secure` to `true`. Then no certificate needs to be
-provided.
-
-```yaml
-no_secure: false
-https_cert_file: "./cert.pem"
-https_key_file: "./key.pem"
-```
+section configures the network, profiles for the machines and the versions
+of the software that should be installed via Yochu. 
 
 ### Network
 
@@ -115,7 +87,6 @@ means we have 3 nodes with the profile core), mayu will assign the profile
 "default" to the remaining nodes. Thus, profiles with a `quantity` set are of
 higher priority than the default profile.
 
-
 ### Template Variables For Cloudconfig
 
 ```yaml
@@ -130,6 +101,34 @@ templates_env:
 
 These variables are used by the templates (most of them are directly injected
 into the final cloudconfig file).
+
+## Commandline flags
+
+```
+--tftproot=./tftproot
+--static_html_path=./static_html
+--ipxe=undionly.kpxe
+--first_stage_script=./templates/first_stage_script.sh
+--last_stage_cloudconfig=./templates/last_stage_cloudconfig.yaml
+--dnsmasq_template=./templates/dnsmasq_template.conf
+--template_snippets=./template_snippets
+--dnsmasq=./dnsmasq
+--images_cache_dir=./images
+--http_port=4080
+```
+
+### Certificates
+
+Communication between `mayu` and `mayuctl` by default is TLS encrypted. For
+that you need to provide certificates as follows. To disable tls
+you can set `--no-tls` to `true`. Then no certificate needs to be
+provided.
+
+```
+--no-tls=false
+--tls-cert-file="./cert.pem"
+--tls_key-file="./key.pem"
+```
 
 ## `last_stage_cloudconfig.yaml`
 

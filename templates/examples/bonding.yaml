@@ -79,7 +79,7 @@ coreos:
       ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
       ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION}
       ExecStartPost=/bin/sh -c 'sleep 5'
-      ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoSecure}}--no-secure{{end}} --update-versions
+      ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls{{end}} --update-versions
       RemainAfterExit=yes
 
       [Install]

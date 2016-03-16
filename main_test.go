@@ -12,14 +12,14 @@ func TestHTTPSCertConfigValidation(t *testing.T) {
 		expectedResult bool
 		expectedError  error
 	}{
-		{MayuFlags{noSecure: true, tlsCertFile: "", tlsKeyFile: ""}, true, nil},
-		{MayuFlags{noSecure: true, tlsCertFile: "certfile", tlsKeyFile: ""}, true, nil},
-		{MayuFlags{noSecure: true, tlsCertFile: "", tlsKeyFile: "keyfile"}, true, nil},
-		{MayuFlags{noSecure: true, tlsCertFile: "certfile", tlsKeyFile: "keyfile"}, true, nil},
-		{MayuFlags{noSecure: false, tlsCertFile: "", tlsKeyFile: ""}, false, ErrNotAllCertFilesProvided},
-		{MayuFlags{noSecure: false, tlsCertFile: "certfile", tlsKeyFile: ""}, false, ErrNotAllCertFilesProvided},
-		{MayuFlags{noSecure: false, tlsCertFile: "", tlsKeyFile: "keyfile"}, false, ErrNotAllCertFilesProvided},
-		{MayuFlags{noSecure: false, tlsCertFile: "certfile", tlsKeyFile: "keyfile"}, true, nil},
+		{MayuFlags{noTLS: true, tlsCertFile: "", tlsKeyFile: ""}, true, nil},
+		{MayuFlags{noTLS: true, tlsCertFile: "certfile", tlsKeyFile: ""}, true, nil},
+		{MayuFlags{noTLS: true, tlsCertFile: "", tlsKeyFile: "keyfile"}, true, nil},
+		{MayuFlags{noTLS: true, tlsCertFile: "certfile", tlsKeyFile: "keyfile"}, true, nil},
+		{MayuFlags{noTLS: false, tlsCertFile: "", tlsKeyFile: ""}, false, ErrNotAllCertFilesProvided},
+		{MayuFlags{noTLS: false, tlsCertFile: "certfile", tlsKeyFile: ""}, false, ErrNotAllCertFilesProvided},
+		{MayuFlags{noTLS: false, tlsCertFile: "", tlsKeyFile: "keyfile"}, false, ErrNotAllCertFilesProvided},
+		{MayuFlags{noTLS: false, tlsCertFile: "certfile", tlsKeyFile: "keyfile"}, true, nil},
 	}
 
 	for _, c := range cases {
@@ -42,15 +42,15 @@ func TestHTTPCertConfigFileStatValidation(t *testing.T) {
 		expectedResult bool
 		expectedError  error
 	}{
-		{ // TLS secured connections are turned off, so no cert files should be needed.
+		{ // TLS connections are turned off, so no cert files should be needed.
 			MayuFlags{
 				filesystem: fs.FakeFilesystem{},
-				noSecure:   true,
+				noTLS:      true,
 			},
 			true,
 			nil,
 		},
-		{ // Both files are provided but TLS secured connections are turned off, which should be ok too.
+		{ // Both files are provided but TLS connections are turned off, which should be ok too.
 			MayuFlags{
 				filesystem: fs.NewFakeFilesystemWithFiles([]fs.FakeFile{
 					fs.NewFakeFile("cert.pem", "foobar"),
@@ -58,7 +58,7 @@ func TestHTTPCertConfigFileStatValidation(t *testing.T) {
 				}),
 				tlsCertFile: "cert.pem",
 				tlsKeyFile:  "key.pem",
-				noSecure:    true,
+				noTLS:       true,
 			},
 			true,
 			nil,

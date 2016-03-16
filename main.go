@@ -23,7 +23,7 @@ const (
 	DefaultClusterDirectory     string = "cluster"
 	DefaultShowTemplates        bool   = false
 	DefaultNoGit                bool   = false
-	DefaultNoSecure             bool   = false
+	DefaultNoTLS                bool   = false
 	DefaultTFTPRoot             string = "./tftproot"
 	DefaultYochuPath            string = "./yochu"
 	DefaultStaticHTMLPath       string = "./static_html"
@@ -48,7 +48,7 @@ type MayuFlags struct {
 	clusterDir           string
 	showTemplates        bool
 	noGit                bool
-	noSecure             bool
+	noTLS                bool
 	tFTPRoot             string
 	yochuPath            string
 	staticHTMLPath       string
@@ -101,7 +101,7 @@ func init() {
 	pf.StringVar(&globalFlags.clusterDir, "cluster-directory", DefaultClusterDirectory, "Path to the cluster directory")
 	pf.BoolVar(&globalFlags.showTemplates, "show-templates", DefaultShowTemplates, "Show the templates and quit")
 	pf.BoolVar(&globalFlags.noGit, "no-git", DefaultNoGit, "Disable git operations")
-	pf.BoolVar(&globalFlags.noSecure, "no-secure", DefaultNoSecure, "Disable tls")
+	pf.BoolVar(&globalFlags.noTLS, "no-tls", DefaultNoTLS, "Disable tls")
 	pf.StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
 	pf.StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
 	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
@@ -121,9 +121,9 @@ func init() {
 }
 
 var (
-	ErrNotAllCertFilesProvided = errors.New("Please configure a key and cert files for TLS secured connections.")
-	ErrHTTPSCertFileNotRedable = errors.New("Cannot open configured certificate file for TLS secured connections.")
-	ErrHTTPSKeyFileNotReadable = errors.New("Cannot open configured key file for TLS secured connections.")
+	ErrNotAllCertFilesProvided = errors.New("Please configure a key and cert files for TLS connections.")
+	ErrHTTPSCertFileNotRedable = errors.New("Cannot open configured certificate file for TLS connections.")
+	ErrHTTPSKeyFileNotReadable = errors.New("Cannot open configured key file for TLS connections.")
 )
 
 // Validate checks the configuration based on all Validate* functions
@@ -141,15 +141,15 @@ func (g MayuFlags) Validate() (bool, error) {
 }
 
 // ValidateHTTPCertificateUsage checks if the fields HTTPSCertFile and HTTPSKeyFile
-// of the configuration struct are set whenever the NoSecure is set to false.
+// of the configuration struct are set whenever the NoTLS is set to false.
 // This makes sure that users are configuring the needed certificate files when
 // using TLS encrypted connections.
 func (g MayuFlags) ValidateHTTPCertificateUsage() (bool, error) {
-	if g.noSecure {
+	if g.noTLS {
 		return true, nil
 	}
 
-	if !g.noSecure && g.tlsCertFile != "" && g.tlsKeyFile != "" {
+	if !g.noTLS && g.tlsCertFile != "" && g.tlsKeyFile != "" {
 		return true, nil
 	}
 
@@ -160,7 +160,7 @@ func (g MayuFlags) ValidateHTTPCertificateUsage() (bool, error) {
 // in the fields HTTPSCertFile and HTTPSKeyFile can be stat'ed to make sure
 // they actually exist.
 func (g MayuFlags) ValidateHTTPCertificateFileExistance() (bool, error) {
-	if g.noSecure {
+	if g.noTLS {
 		return true, nil
 	}
 
@@ -207,7 +207,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		DNSmasqExecutable:    globalFlags.dnsmasq,
 		DNSmasqTemplate:      globalFlags.dnsmasqTemplate,
 		TFTPRoot:             globalFlags.tFTPRoot,
-		NoSecure:             globalFlags.noSecure,
+		NoTLS:                globalFlags.noTLS,
 		HTTPPort:             globalFlags.httpPort,
 		HTTPBindAddress:      globalFlags.httpBindAddress,
 		TLSCertFile:          globalFlags.tlsCertFile,

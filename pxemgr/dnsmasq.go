@@ -14,7 +14,7 @@ type DNSmasqConfiguration struct {
 	Executable string
 	Template   string
 	TFTPRoot   string
-	NoSecure   bool
+	NoTLS      bool
 	HTTPPort   int
 }
 
