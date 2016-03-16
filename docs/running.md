@@ -4,7 +4,7 @@ Once Mayu is properly configured, it can be started:
 
 ```nohighlight
 make bin-dist
-./mayu -cluster-directory cluster -v=12 -no-git
+./mayu --cluster-directory cluster -v=12 --no-git --no-tls
 ```
 
 You can also run it within a Docker container:
@@ -16,7 +16,7 @@ docker run --rm -it \
   -v $(pwd)/bin-dist/cluster:/opt/mayu/cluster \
   -v /etc/mayu/config.yaml:/opt/mayu/config/config.yaml \
   giantswarm/mayu \
-  -v=12 -no-git
+  -v=12 --no-git --no-tls
 ```
 
 Or use the `mayu.service` unit file included in the `giantswarm/mayu` repository.

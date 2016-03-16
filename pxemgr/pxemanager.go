@@ -20,7 +20,7 @@ type PXEManagerConfiguration struct {
 	DNSmasqExecutable    string
 	DNSmasqTemplate      string
 	TFTPRoot             string
-	NoSecure             bool
+	NoTLS                bool
 	TLSCertFile          string
 	TLSKeyFile           string
 	HTTPPort             int
@@ -35,7 +35,7 @@ type PXEManagerConfiguration struct {
 }
 
 type pxeManagerT struct {
-	noSecure             bool
+	noTLS                bool
 	httpPort             int
 	httpBindAddress      string
 	tlsCertFile          string
@@ -64,7 +64,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 	}
 
 	mgr := &pxeManagerT{
-		noSecure:             c.NoSecure,
+		noTLS:                c.NoTLS,
 		httpPort:             c.HTTPPort,
 		httpBindAddress:      c.HTTPBindAddress,
 		tlsCertFile:          c.TLSCertFile,
@@ -83,7 +83,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			Executable: c.DNSmasqExecutable,
 			Template:   c.DNSmasqTemplate,
 			TFTPRoot:   c.TFTPRoot,
-			NoSecure:   c.NoSecure,
+			NoTLS:      c.NoTLS,
 			HTTPPort:   c.HTTPPort,
 		}),
 		mu: new(sync.Mutex),
@@ -141,7 +141,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 
 	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.httpBindAddress, mgr.httpPort))
 
-	if mgr.noSecure {
+	if mgr.noTLS {
 		err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.httpBindAddress, mgr.httpPort), loggedRouter)
 		if err != nil {
 			return err
@@ -242,7 +242,7 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 
 func (mgr *pxeManagerT) thisHost() string {
 	scheme := "https"
-	if mgr.noSecure {
+	if mgr.noTLS {
 		scheme = "http"
 	}
 
