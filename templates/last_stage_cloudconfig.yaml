@@ -78,14 +78,13 @@ coreos:
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001
 write_files:
-{{if .Host.FleetMetadata}}
 - path: /etc/systemd/system/fleet.service.d/30-giantswarm.conf
   permissions: 0644
   owner: root
   content: |
     [Service]
-    Environment="FLEET_METADATA={{.Host.FleetMetadata}}"
-{{end}}
+    {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
+    {{if .Host.FleetDisableEngine}}Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"{{end}}
 - path: /etc/hosts
   permissions: 0644
   owner: root

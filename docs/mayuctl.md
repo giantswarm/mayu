@@ -42,7 +42,7 @@ IP           Serial                                Profile  State      Last Boot
 172.17.8.31  004b27ed-692e-b32e-1f68-d89aff66c71b  core     "running"  2016-01-15 13:42:33.344687863 +0000 UTC
 ```
 
-You can also change the fields that should be listed. 
+You can also change the fields that should be listed.
 
 ```nohighlight
 $ mayuctl list -fields=ip,yochu,etcd
@@ -68,6 +68,7 @@ Hostname:            00007e267361d01f
 MachineID:           00007e267361d01f233a3ed4900dcebb
 ConnectedNIC:        enp0s3
 Profile:             core
+DisableEngine:       false
 State:               "running"
 Metadata:            role-core=true
 CoreOS:              835.13.0

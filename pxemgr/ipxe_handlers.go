@@ -95,6 +95,7 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()
 			if host.Profile != "" {
+				host.FleetDisableEngine = mgr.profileDisableEngine(host.Profile)
 				host.FleetMetadata = mgr.profileMetadata(host.Profile)
 			} else {
 				host.FleetMetadata = mgr.profileMetadata("default")
@@ -106,6 +107,15 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 		}
 	}
 	return host
+}
+
+func (mgr *pxeManagerT) profileDisableEngine(profileName string) bool {
+	for _, v := range mgr.config.Profiles {
+		if v.Name == profileName {
+			return v.DisableEngine
+		}
+	}
+	return false
 }
 
 func (mgr *pxeManagerT) profileMetadata(profileName string) []string {

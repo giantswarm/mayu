@@ -36,9 +36,10 @@ type configuration struct {
 }
 
 type profile struct {
-	Quantity int
-	Name     string
-	Tags     []string
+	Quantity      int
+	Name          string
+	Tags          []string
+	DisableEngine bool
 }
 
 type network struct {

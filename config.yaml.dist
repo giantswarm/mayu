@@ -18,6 +18,7 @@ profiles:
     tags:
       - "role-core=true"
   - name: default
+    disable_engine: true
     tags:
       - "role-worker=true"
       - "stack-compute=true"
