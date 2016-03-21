@@ -6,6 +6,7 @@ coreos:
     command: stop
     mask: true
   - name: locksmithd.service
+    command: stop
     mask: true
   - name: systemd-modules-load.service
     command: restart
