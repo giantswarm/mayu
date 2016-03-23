@@ -110,14 +110,13 @@ write_files:
   content: |
     #!/bin/bash
     for i in /sys/class/net/enp* ; do ip link set  $(basename $i) down ; done ; sleep 1 ; systemctl restart systemd-networkd ; sleep 5
-{{if .Host.FleetMetadata}}
 - path: /etc/systemd/system/fleet.service.d/30-giantswarm.conf
   permissions: 0644
   owner: root
   content: |
     [Service]
-    Environment="FLEET_METADATA={{.Host.FleetMetadata}}"
-{{end}}
+    {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
+    {{if .Host.FleetDisableEngine}}Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"{{end}}
 {{if eq .ClusterNetwork.NetworkModel "bond"}}
 - path: /etc/modprobe.d/bonding.conf
   permissions: 0644

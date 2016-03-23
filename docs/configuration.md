@@ -3,7 +3,7 @@
 Here we provide more detailed documentation about configuring Mayu. By
 default TLS is enabled when communicating with `mayu` over network. If your
 setup does not provide or rely on TLS for whatever reasons, you can set
-`--no-tls`. The corresponding flag for `mayuctl` is `--no-tls`. 
+`--no-tls`. The corresponding flag for `mayuctl` is `--no-tls`.
 Check [mayuctl](mayuctl.md) for more information about the client.
 
 ## File Tree
@@ -37,7 +37,7 @@ network snippets `net_bond.yaml` or `net_singlenic.yaml`.
 The very first thing to do is to copy `config.yaml.dist` to
 `/etc/mayu/config.yaml` and modify it regarding your needs. The initial
 section configures the network, profiles for the machines and the versions
-of the software that should be installed via Yochu. 
+of the software that should be installed via Yochu.
 
 ### Network
 
@@ -80,12 +80,13 @@ profiles:
 The final goal of a mayu-enabled deployment is a functional fleet cluster. To
 be able to assign different roles to the different nodes, mayu employs a
 mechanism of profile selection. Each profile has a `name`, a `quantity`
-(defines the number of cluster nodes that should have this profile) and a list
-of `tags` (the elements of this list will be directly mapped to fleet metadata
-tags). Once all the profiles' quantities are matched (in this example that
-means we have 3 nodes with the profile core), mayu will assign the profile
-"default" to the remaining nodes. Thus, profiles with a `quantity` set are of
-higher priority than the default profile.
+(defines the number of cluster nodes that should have this profile), a
+`disable_engine` (defines whether the cluster nodes can be elected as fleet
+leader) and a list of `tags` (the elements of this list will be directly mapped
+to fleet metadata tags). Once all the profiles' quantities are matched (in
+this example that means we have 3 nodes with the profile core), mayu will assign
+the profile "default" to the remaining nodes. Thus, profiles with a `quantity`
+set are of higher priority than the default profile.
 
 ### Template Variables For Cloudconfig
 

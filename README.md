@@ -1,11 +1,13 @@
 # Mayu
 
 [![Build Status](https://api.travis-ci.org/giantswarm/mayu.svg)](https://travis-ci.org/giantswarm/mayu)
-[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu) [![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
+[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu)
+[![Go Report Card](https://goreportcard.com/badge/github.com/giantswarm/mayu)](https://goreportcard.com/report/github.com/giantswarm/mayu)
+[![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
 
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
 that must follow a specific configuration with CoreOS. It sets up fleet
-meta-data, and patched versions of fleet, etcd, and docker when using 
+meta-data, and patched versions of fleet, etcd, and docker when using
 [Yochu](https://github.com/giantswarm/yochu).
 
 ## Prerequisites
