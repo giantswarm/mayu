@@ -84,7 +84,7 @@ write_files:
   content: |
     [Service]
     {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
-    {{if .Host.FleetDisableEngine}}Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"{{end}}
+    Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
 - path: /etc/hosts
   permissions: 0644
   owner: root

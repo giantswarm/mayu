@@ -23,6 +23,8 @@ const (
 	vmlinuzFile      = "coreos_production_pxe.vmlinuz"
 	initrdFile       = "coreos_production_pxe_image.cpio.gz"
 	installImageFile = "coreos_production_image.bin.bz2"
+
+	defaultProfileName = "default"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +100,8 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 				host.FleetDisableEngine = mgr.profileDisableEngine(host.Profile)
 				host.FleetMetadata = mgr.profileMetadata(host.Profile)
 			} else {
-				host.FleetMetadata = mgr.profileMetadata("default")
+				host.FleetMetadata = mgr.profileMetadata(defaultProfileName)
+				host.FleetDisableEngine = mgr.profileDisableEngine(defaultProfileName)
 			}
 			err = host.Commit("updated host profile and metadata")
 			if err != nil {
