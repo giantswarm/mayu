@@ -17,7 +17,7 @@ ifndef GOARCH
   GOARCH := $(shell go env GOARCH)
 endif
 
-.PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
+.PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update release386
 
 all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL)
 
@@ -96,7 +96,7 @@ bin-dist: all
 	cp -a template_snippets/* bin-dist/template_snippets
 	cp scripts/fetch-coreos-image bin-dist/fetch-coreos-image
 	cp scripts/fetch-yochu-assets bin-dist/fetch-yochu-assets
-	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
+	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-amd64.tar.gz *
 
 vendor-clean:
 	rm -rf vendor/
@@ -108,6 +108,13 @@ vendor-update: vendor-clean
 
 install: $(BINARY_SERVER) $(BINARY_CTL)
 	cp $(BINARY_SERVER) $(BINARY_CTL) /usr/local/bin/
+
+release386: bin-dist
+	rm -rf bin
+	@GOARCH=386 $(MAKE) $(BINARY_SERVER)
+	@GOARCH=386 $(MAKE) $(BINARY_CTL)
+	cp bin/mayu* bin-dist
+	cd bin-dist && rm -f $(PROJECT).*-linux-i386.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-i386.tar.gz --exclude='*.tar.gz' *
 
 godoc: all
 	@echo Opening godoc server at http://localhost:6060/pkg/github.com/$(ORGANIZATION)/$(PROJECT)/
