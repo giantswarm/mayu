@@ -29,6 +29,7 @@ const (
 	DefaultStaticHTMLPath       string = "./static_html"
 	DefaultFirstStageScript     string = "./templates/first_stage_script.sh"
 	DefaultLastStageCloudconfig string = "./templates/last_stage_cloudconfig.yaml"
+	DefaultIgnitionConfig       string = "./templates/ignition/gs_install.yaml"
 	DefaultDnsmasqTemplate      string = "./templates/dnsmasq_template.conf"
 	DefaultTemplateSnippets     string = "./template_snippets"
 	DefaultDNSMasq              string = "/usr/sbin/dnsmasq"
@@ -54,6 +55,7 @@ type MayuFlags struct {
 	staticHTMLPath       string
 	firstStageScript     string
 	lastStageCloudconfig string
+	ignitionConfig       string
 	templateSnippets     string
 	dnsmasq              string
 	dnsmasqTemplate      string
@@ -107,6 +109,7 @@ func init() {
 	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
 	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
 	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
+	pf.StringVar(&globalFlags.ignitionConfig, "ignition-config", DefaultIgnitionConfig, "Final ignition config file that is used to boot the machine")
 	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
@@ -216,6 +219,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		StaticHTMLPath:       globalFlags.staticHTMLPath,
 		TemplateSnippets:     globalFlags.templateSnippets,
 		LastStageCloudconfig: globalFlags.lastStageCloudconfig,
+		IgnitionConfig:       globalFlags.ignitionConfig,
 		FirstStageScript:     globalFlags.firstStageScript,
 		ImagesCacheDir:       globalFlags.imagesCacheDir,
 		Version:              projectVersion,

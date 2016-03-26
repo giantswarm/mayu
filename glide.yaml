@@ -8,3 +8,4 @@ import:
 - package: github.com/ryanuber/columnize
 - package: github.com/spf13/cobra
 - package: github.com/joho/godotenv
+- package: github.com/coreos/ignition/config

@@ -29,6 +29,7 @@ type PXEManagerConfiguration struct {
 	StaticHTMLPath       string
 	TemplateSnippets     string
 	LastStageCloudconfig string
+	IgnitionConfig       string
 	FirstStageScript     string
 	ImagesCacheDir       string
 	Version              string
@@ -45,6 +46,7 @@ type pxeManagerT struct {
 	templateSnippets     string
 	lastStageCloudconfig string
 	firstStageScript     string
+	ignitionConfing      string
 	imagesCacheDir       string
 	version              string
 
@@ -73,6 +75,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		staticHTMLPath:       c.StaticHTMLPath,
 		templateSnippets:     c.TemplateSnippets,
 		lastStageCloudconfig: c.LastStageCloudconfig,
+		ignitionConfig:       c.IgnitionConfig,
 		firstStageScript:     c.FirstStageScript,
 		imagesCacheDir:       c.ImagesCacheDir,
 		version:              c.Version,
