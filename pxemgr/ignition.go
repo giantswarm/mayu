@@ -1,45 +1,18 @@
 package pxemgr
 
 import (
+	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
-	"os"
+	"io"
 	"reflect"
-	"strings"
 
-	"github.com/coreos/ignition/config"
+	"github.com/coreos/ignition/config/types"
+	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
+
+	"github.com/giantswarm/mayu/hostmgr"
 )
-
-var snippetsFiles []string
-
-func maybeInitSnippets(snippets string) {
-	if snippetsFiles != nil {
-		return
-	}
-	snippetsFiles = []string{}
-
-	if len(snippets) > 0 {
-		if _, err := os.Stat(snippets); err == nil {
-			if fis, err := ioutil.ReadDir(snippets); err == nil {
-				for _, fi := range fis {
-					snippetsFiles = append(snippetsFiles, path.Join(snippets, fi.Name()))
-				}
-			}
-		}
-	}
-}
-
-func getTemplate(path, snippets string) (*template.Template, error) {
-	maybeInitSnippets(snippets)
-	templates := []string{path}
-	templates = append(templates, snippetsFiles...)
-	glog.V(10).Infof("templates: %+v\n", templates)
-
-	return template.ParseFiles(templates...)
-}
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {
 	ctx := struct {
@@ -70,17 +43,19 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		return err
 	}
 
-	if err = tmpl.Execute(wr, ctx); err != nil {
+	var data bytes.Buffer
+	if err = tmpl.Execute(&data, ctx); err != nil {
 		glog.Fatalln(err)
 		return err
 	}
-	ignitionJSON, e := convertTemplatetoJSON(wr, false)
+	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
 	if e != nil {
 		glog.Fatalln(e)
 		return e
 	}
-	glog.Info(ignitionJSON)
+	glog.Infof("%v", string(ignitionJSON[:]))
 
+	fmt.Fprintln(wr, ignitionJSON)
 	return nil
 }
 
@@ -106,7 +81,7 @@ func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool
 				}
 			}
 
-			stderr("Unrecognized keyword: %v", key)
+			glog.Errorf("Unrecognized keyword: %v", key)
 			warnings = true
 		}
 	case []interface{}:
@@ -121,35 +96,42 @@ func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool
 	return
 }
 
-func convertTemplatetoJSON(dataIn string, pretty bool) (string, error) {
-	cfg := config.Config{}
+func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
+	cfg := types.Config{}
 	//dataIn, err := ioutil.ReadFile(filePath)
 	//if err != nil {
 	//	return "", fmt.Errorf("Failed to read: %v", err)
 	//}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
-		return "", fmt.Errorf("Failed to unmarshal input: %v", err)
+		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
 	}
 
 	var inCfg interface{}
 	if err := yaml.Unmarshal(dataIn, &inCfg); err != nil {
-		return "", fmt.Errorf("Failed to unmarshal input: %v", err)
+		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
 	}
 
 	if hasUnrecognizedKeys(inCfg, reflect.TypeOf(cfg)) {
-		return "", fmt.Errorf("Unrecognized keys in input, aborting.")
+		return nil, fmt.Errorf("Unrecognized keys in input, aborting.")
 	}
 
-	var dataOut []byte
+	var (
+		dataOut []byte
+		err     error
+	)
+
 	if pretty {
 		dataOut, err = json.MarshalIndent(&cfg, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+		}
 		dataOut = append(dataOut, '\n')
 	} else {
 		dataOut, err = json.Marshal(&cfg)
-	}
-	if err != nil {
-		return "", fmt.Errorf("Failed to marshal output: %v", err)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+		}
 	}
 
 	return dataOut, nil

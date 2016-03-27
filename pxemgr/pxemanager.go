@@ -46,7 +46,7 @@ type pxeManagerT struct {
 	templateSnippets     string
 	lastStageCloudconfig string
 	firstStageScript     string
-	ignitionConfing      string
+	ignitionConfig       string
 	imagesCacheDir       string
 	version              string
 

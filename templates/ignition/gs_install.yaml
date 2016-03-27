@@ -8,8 +8,6 @@ systemd:
       enable: false
       mask: true
     {{template "quobyte" .}}
-    {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
-    {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
     - name: systemd-networkd-wait-online.service
       enable: true
     - name: set-giantswarm-environment.service
@@ -76,7 +74,6 @@ systemd:
       enable: true
 
 storage:
-  {{ if .pxe }}
   disks:
     - device: /dev/sda
       wipe_table: true
@@ -89,11 +86,6 @@ storage:
         force: true
         options:
           - "-LROOT"
-  {{else}}
-  filesystems:
-    - device: /dev/disk/by-label/ROOT
-      format: ext4
-  {{end}}
       files:
         {{if index .TemplatesEnv "yochu_version"}}
         - path: /etc/yochu-env
@@ -121,6 +113,9 @@ storage:
             127.0.0.1 localhost
             127.0.0.1 {{.Host.Hostname}}
             127.0.0.1 etcd.giantswarm
+
+{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
 
 passwd:
   users:

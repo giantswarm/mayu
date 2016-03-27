@@ -56,6 +56,7 @@ type MayuFlags struct {
 	firstStageScript     string
 	lastStageCloudconfig string
 	ignitionConfig       string
+	useIgnition          bool
 	templateSnippets     string
 	dnsmasq              string
 	dnsmasqTemplate      string
@@ -110,6 +111,7 @@ func init() {
 	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
 	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
 	pf.StringVar(&globalFlags.ignitionConfig, "ignition-config", DefaultIgnitionConfig, "Final ignition config file that is used to boot the machine")
+	pf.StringVar(&globalFlags.useIgnition, "use-ignition", true, "Use ignition configuration")
 	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
@@ -231,15 +233,28 @@ func mainRun(cmd *cobra.Command, args []string) {
 	if globalFlags.showTemplates {
 		placeholderHost := hostmgr.Host{}
 
-		os.Stdout.WriteString("last stage cloud config:\n")
-		pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
+		if globalFlags.useIgnition {
+			os.Stdout.WriteString("ignition config:\n")
+			pxeManager.WriteIgnitionConfig(placeholderHost, os.Stdout)
 
-		b := bytes.NewBuffer(nil)
-		pxeManager.WriteLastStageCC(placeholderHost, b)
-		yamlErr := validateYAML(b.Bytes())
-		if yamlErr != nil {
-			fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
-			os.Exit(1)
+			b := bytes.NewBuffer(nil)
+			pxeManager.WriteIgnitionConfig(placeholderHost, b)
+			//yamlErr := validateYAML(b.Bytes())
+			//if yamlErr != nil {
+			//	fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
+			//	os.Exit(1)
+			//}
+		} else {
+			os.Stdout.WriteString("last stage cloud config:\n")
+			pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
+
+			b := bytes.NewBuffer(nil)
+			pxeManager.WriteLastStageCC(placeholderHost, b)
+			yamlErr := validateYAML(b.Bytes())
+			if yamlErr != nil {
+				fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
+				os.Exit(1)
+			}
 		}
 
 		os.Exit(0)
