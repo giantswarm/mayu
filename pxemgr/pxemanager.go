@@ -30,6 +30,7 @@ type PXEManagerConfiguration struct {
 	TemplateSnippets     string
 	LastStageCloudconfig string
 	IgnitionConfig       string
+	UseIgnition          bool
 	FirstStageScript     string
 	ImagesCacheDir       string
 	Version              string
@@ -47,6 +48,7 @@ type pxeManagerT struct {
 	lastStageCloudconfig string
 	firstStageScript     string
 	ignitionConfig       string
+	useIgnition          bool
 	imagesCacheDir       string
 	version              string
 
@@ -76,6 +78,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		templateSnippets:     c.TemplateSnippets,
 		lastStageCloudconfig: c.LastStageCloudconfig,
 		ignitionConfig:       c.IgnitionConfig,
+		useIgnition:          c.UseIgnition,
 		firstStageScript:     c.FirstStageScript,
 		imagesCacheDir:       c.ImagesCacheDir,
 		version:              c.Version,
@@ -116,7 +119,9 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 
 	// used by the first-stage-script:
 	mgr.router.Methods("GET").PathPrefix("/hostinfo-helper").HandlerFunc(mgr.infoPusher)
-	mgr.router.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.cloudConfigGenerator)
+
+	mgr.router.Methods("POST").PathPrefix("/final-ignition-config.json").HandlerFunc(mgr.configGenerator)
+	mgr.router.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/boot_complete").HandlerFunc(withSerialParam(mgr.bootComplete))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_installed").HandlerFunc(withSerialParam(mgr.setInstalled))

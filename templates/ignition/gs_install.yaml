@@ -76,11 +76,25 @@ systemd:
 storage:
   disks:
     - device: /dev/sda
-      wipe_table: true
+      wipe_table: false
       partitions:
         - label: ROOT
   filesystems:
-    - device: "/dev/sda1"
+    - device: "/dev/sda3"
+      format: "ext4"
+      create:
+        force: true
+        options:
+          - "-LUSR-A"
+          - "-M/usr"
+    - device: "/dev/sda6"
+      format: "ext4"
+      create:
+        force: true
+        options:
+          - "-LOEM"
+          - "-M/usr/share/oem"
+    - device: "/dev/sda9"
       format: "ext4"
       create:
         force: true
@@ -91,7 +105,6 @@ storage:
         - path: /etc/yochu-env
           mode: 0644
           uid: 0
-          gid: 0
           contents: |
             YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
             DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}

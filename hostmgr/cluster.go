@@ -128,7 +128,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 			newHost.FleetMetadata = strings.Split(s, ",")
 		}
 	} else {
-		glog.V(2).Infof("no predefined predefined values for '%s'", serial)
+		glog.V(2).Infof("no predefined values for '%s'", serial)
 	}
 
 	machineID := genMachineID(cabinet, machineOnCabinet)

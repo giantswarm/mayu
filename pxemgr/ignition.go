@@ -53,9 +53,8 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		glog.Fatalln(e)
 		return e
 	}
-	glog.Infof("%v", string(ignitionJSON[:]))
 
-	fmt.Fprintln(wr, ignitionJSON)
+	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
 }
 
@@ -98,10 +97,6 @@ func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool
 
 func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	cfg := types.Config{}
-	//dataIn, err := ioutil.ReadFile(filePath)
-	//if err != nil {
-	//	return "", fmt.Errorf("Failed to read: %v", err)
-	//}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
