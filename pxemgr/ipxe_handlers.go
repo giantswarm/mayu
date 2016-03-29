@@ -46,10 +46,16 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 
 	infoHelperURL := mgr.thisHost() + "/hostinfo-helper"
 	cloudConfigURL := mgr.thisHost() + "/final-cloud-config.yaml"
-	ignitionConfigURL := mgr.thisHost() + "/final-ignition-config.json"
+	ignitionConfigURL := ""
 	setInstalledURL := mgr.thisHost() + "/admin/host/__SERIAL__/set_installed"
 	installImageURL := mgr.thisHost() + "/images/install_image.bin.bz2"
 	host := mgr.maybeCreateHost(serial)
+
+	if mgr.useIgnition {
+		glog.V(2).Infof("passing Ignition parameter to kernel '%s'\n", mgr.thisHost()+"/final-ignition-config.json")
+		cloudConfigURL = ""
+		ignitionConfigURL = mgr.thisHost() + "/final-ignition-config.json"
+	}
 
 	ctx := struct {
 		HostInfoHelperURL string
