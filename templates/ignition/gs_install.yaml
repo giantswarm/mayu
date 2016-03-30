@@ -3,21 +3,6 @@ systemd:
   units:
     - name: systemd-modules-load.service
       enable: true
-    - name: run-installer-script.service
-      enable: true
-      contents: |
-        [Unit]
-        Description=Wait for network connectivity and run installer script
-        Wants=network.target
-        After=network.target
-
-        [Service]
-        Type=oneshot
-        ExecStartPre=/bin/sh -c "while [[ -z $(curl -s $(cat /proc/cmdline | tr ' ' '\n' | awk -F= 'match($1, /mayu/) {print $2}')) ]] ; do sleep 1 ; done"
-        ExecStart=/tmp/maybe-install-coreos.sh
-
-        [Install]
-        WantedBy=multi-user.target
     - name: update-engine.service
       enable: false
       mask: true
