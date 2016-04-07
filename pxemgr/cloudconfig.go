@@ -40,6 +40,19 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 }
 
 func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error {
+	etcdDiscoveryURL := mgr.cluster.Config.EtcdDiscoveryURL
+
+	if hostDiscoveryURL, exists := host.Overrides["EtcdDiscoveryURL"]; exists {
+		etcdDiscoveryURL = hostDiscoveryURL.(string)
+	}
+
+	mergedTemplatesEnv := mgr.config.TemplatesEnv
+	for k, v := range host.Overrides {
+		if k != "EtcdDiscoveryUrl" {
+			mergedTemplatesEnv[k] = v
+		}
+	}
+
 	ctx := struct {
 		Host             hostmgr.Host
 		EtcdDiscoveryUrl string
@@ -53,13 +66,13 @@ func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error 
 	}{
 		Host:             host,
 		ClusterNetwork:   mgr.config.Network,
-		EtcdDiscoveryUrl: mgr.cluster.Config.EtcdDiscoveryURL,
+		EtcdDiscoveryUrl: etcdDiscoveryURL,
 		MayuHost:         mgr.config.Network.BindAddr,
 		MayuPort:         mgr.httpPort,
 		MayuURL:          mgr.thisHost(),
 		PostBootURL:      mgr.thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
 		NoTLS:            mgr.noTLS,
-		TemplatesEnv:     mgr.config.TemplatesEnv,
+		TemplatesEnv:     mergedTemplatesEnv,
 	}
 
 	tmpl, err := getTemplate(mgr.lastStageCloudconfig, mgr.templateSnippets)

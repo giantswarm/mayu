@@ -133,6 +133,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_provider_id").HandlerFunc(withSerialParam(mgr.setProviderId))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_ipmi_addr").HandlerFunc(withSerialParam(mgr.setIPMIAddr))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_cabinet").HandlerFunc(withSerialParam(mgr.setCabinet))
+	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
 
 	// boring stuff
 	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)

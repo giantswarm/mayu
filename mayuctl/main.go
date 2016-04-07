@@ -113,6 +113,7 @@ func main() {
 	mainCmd.AddCommand(statusCmd)
 	mainCmd.AddCommand(setCmd)
 	mainCmd.AddCommand(bootCompleteCmd)
+	mainCmd.AddCommand(overrideCmd)
 
 	mainCmd.Execute()
 }

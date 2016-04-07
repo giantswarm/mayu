@@ -475,6 +475,45 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	w.WriteHeader(202)
 }
 
+func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.Request) {
+	host, exists := mgr.cluster.HostWithSerial(serial)
+	if !exists {
+		w.WriteHeader(400)
+		w.Write([]byte("host doesn't exist"))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	payload := hostmgr.Host{}
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("unable to parse json data in request"))
+		return
+	}
+
+	if len(payload.Overrides) == 0 {
+		w.WriteHeader(400)
+		w.Write([]byte("nothing to override"))
+		return
+	}
+
+	updatedVars := []string{}
+	for k, v := range payload.Overrides {
+		host.Overrides[k] = v
+		updatedVars = append(updatedVars, k)
+	}
+
+	err = host.Commit("updated host overrides: " + strings.Join(updatedVars, ", "))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host cabinet failed"))
+		return
+	}
+	mgr.cluster.Update()
+	w.WriteHeader(202)
+}
+
 func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http.Request) {
 	host, exists := mgr.cluster.HostWithSerial(serial)
 	if !exists {

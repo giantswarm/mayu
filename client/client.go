@@ -141,6 +141,26 @@ func (c *Client) SetCabinet(serial, value string) error {
 	return nil
 }
 
+// Override overrides a globally defined variable: EtcdDiscoveryURL, docker_version, yochu_version, etc
+func (c *Client) Override(serial, variable, value string) error {
+	data, err := json.Marshal(hostmgr.Host{
+		Overrides: map[string]interface{}{variable: value},
+	})
+	if err != nil {
+		return err
+	}
+
+	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/override", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 399 {
+		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 // List fetches a list of node information within the current cluster.
 func (c *Client) List() ([]hostmgr.Host, error) {
 	list := []hostmgr.Host{}
