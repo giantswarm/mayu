@@ -365,7 +365,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in boot_complete request"))
 		return
 	}
 
@@ -404,7 +404,7 @@ func (mgr *pxeManagerT) setMetadata(serial string, w http.ResponseWriter, r *htt
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_metadata request"))
 		return
 	}
 
@@ -432,7 +432,7 @@ func (mgr *pxeManagerT) setProviderId(serial string, w http.ResponseWriter, r *h
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_provider_id request"))
 		return
 	}
 
@@ -460,7 +460,7 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_ipmi_addr request"))
 		return
 	}
 
@@ -488,7 +488,7 @@ func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.R
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in override request"))
 		return
 	}
 
@@ -507,7 +507,7 @@ func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.R
 	err = host.Commit("updated host overrides: " + strings.Join(updatedVars, ", "))
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte("committing updated host cabinet failed"))
+		w.Write([]byte("committing updated host overrides failed"))
 		return
 	}
 	mgr.cluster.Update()
@@ -527,7 +527,7 @@ func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_cabinet request"))
 		return
 	}
 

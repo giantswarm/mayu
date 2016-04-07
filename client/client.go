@@ -141,10 +141,10 @@ func (c *Client) SetCabinet(serial, value string) error {
 	return nil
 }
 
-// Override overrides a globally defined variable: EtcdDiscoveryURL, docker_version, yochu_version, etc
-func (c *Client) Override(serial, variable, value string) error {
+// Override overrides a globally defined property such as EtcdDiscoveryURL, docker_version, yochu_version, etc
+func (c *Client) Override(serial, property, value string) error {
 	data, err := json.Marshal(hostmgr.Host{
-		Overrides: map[string]interface{}{variable: value},
+		Overrides: map[string]interface{}{property: value},
 	})
 	if err != nil {
 		return err
