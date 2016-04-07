@@ -168,7 +168,7 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 	}
 	host.MacAddresses = macAddresses
 
-	err = host.Commit("updated host macAddress")
+	err = host.Commit("collected host mac addresses")
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host macAddress failed"))
