@@ -89,6 +89,12 @@ storage:
         options:
           - "-LROOT"
       files:
+        - path: /etc/mayu-env
+          mode: 0644
+          uid: 0
+          contents: |
+            MAYU_VERSION={{.Host.MayuVersion}}
+            SERIAL={{.Host.Serial}}
         {{if index .TemplatesEnv "yochu_version"}}
         - path: /etc/yochu-env
           mode: 0644

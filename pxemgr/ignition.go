@@ -37,6 +37,8 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		TemplatesEnv:     mgr.config.TemplatesEnv,
 	}
 
+	ctx.Host.MayuVersion = mgr.version
+
 	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
 	if err != nil {
 		glog.Fatalln(err)
