@@ -499,6 +499,9 @@ func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.R
 	}
 
 	updatedVars := []string{}
+	if host.Overrides == nil {
+		host.Overrides = make(map[string]interface{})
+	}
 	for k, v := range payload.Overrides {
 		host.Overrides[k] = v
 		updatedVars = append(updatedVars, k)
