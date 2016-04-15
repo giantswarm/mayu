@@ -46,13 +46,21 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 
 	infoHelperURL := mgr.thisHost() + "/hostinfo-helper"
 	cloudConfigURL := mgr.thisHost() + "/final-cloud-config.yaml"
+	ignitionConfigURL := ""
 	setInstalledURL := mgr.thisHost() + "/admin/host/__SERIAL__/set_installed"
 	installImageURL := mgr.thisHost() + "/images/install_image.bin.bz2"
 	host := mgr.maybeCreateHost(serial)
 
+	if mgr.useIgnition {
+		glog.V(2).Infof("passing Ignition parameter to kernel '%s'\n", mgr.thisHost()+"/final-ignition-config.json")
+		cloudConfigURL = ""
+		ignitionConfigURL = mgr.thisHost() + "/final-ignition-config.json"
+	}
+
 	ctx := struct {
 		HostInfoHelperURL string
 		CloudConfigURL    string
+		IgnitionConfigURL string
 		InstallImageURL   string
 		SetInstalledURL   string
 		MayuURL           string
@@ -61,6 +69,7 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 	}{
 		HostInfoHelperURL: infoHelperURL,
 		CloudConfigURL:    cloudConfigURL,
+		IgnitionConfigURL: ignitionConfigURL,
 		InstallImageURL:   installImageURL,
 		SetInstalledURL:   setInstalledURL,
 		MayuURL:           mgr.thisHost(),
@@ -130,8 +139,8 @@ func (mgr *pxeManagerT) profileMetadata(profileName string) []string {
 	return []string{}
 }
 
-func (mgr *pxeManagerT) cloudConfigGenerator(w http.ResponseWriter, r *http.Request) {
-	glog.V(2).Infoln("generating a final stage cloudConfig")
+func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) {
+	glog.V(2).Infoln("generating a final stage config file")
 
 	hostData := &machinedata.HostData{}
 
@@ -197,7 +206,13 @@ func (mgr *pxeManagerT) cloudConfigGenerator(w http.ResponseWriter, r *http.Requ
 	}
 	mgr.cluster.Update()
 
-	mgr.WriteLastStageCC(*host, w)
+	if mgr.useIgnition {
+		glog.V(2).Infoln("generating a final stage ignitionConfig")
+		mgr.WriteIgnitionConfig(*host, w)
+	} else {
+		glog.V(2).Infoln("generating a final stage cloudConfig")
+		mgr.WriteLastStageCC(*host, w)
+	}
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {

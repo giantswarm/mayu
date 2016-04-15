@@ -5,6 +5,8 @@ imports:
   version: dcfedd50ed5334f96adee43fc88518a4f095e15c
 - name: github.com/BurntSushi/toml
   version: 5c4df71dfe9ac89ef6287afc05e4c1b16ae65a1e
+- name: github.com/coreos/ignition
+  version: b5b155b5233668633b42d46671d2b9d14fec52c3
 - name: github.com/coreos/go-etcd
   version: 003851be7bb0694fe3cc457a49529a19388ee7cf
   subpackages:

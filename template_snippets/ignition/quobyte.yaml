@@ -1,0 +1,29 @@
+{{define "quobyte"}}
+{{if (.Host.FleetMetadata.Has "quobyte-services-data=true")}}
+  - name: var-lib-quobyte-data.mount
+    enable: true
+    contents: |
+      [Mount]
+      What=/dev/sdb1
+      Where=/var/lib/quobyte/data
+      Type=ext4
+{{end}}
+{{if (.Host.FleetMetadata.Has "quobyte-metadata=true")}}
+  - name: var-lib-quobyte-metadata.mount
+    enable: true
+    contents: |
+      [Mount]
+      What=/dev/sdb1
+      Where=/var/lib/quobyte/metadata
+      Type=ext4
+{{end}}
+{{if (.Host.FleetMetadata.Has "quobyte-registry=true")}}
+  - name: var-lib-quobyte-registry.mount
+    enable: true
+    contents: |
+      [Mount]
+      What=/dev/sdc1
+      Where=/var/lib/quobyte/registry
+      Type=ext4
+{{end}}
+{{end}}

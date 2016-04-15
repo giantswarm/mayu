@@ -19,25 +19,27 @@ import (
 )
 
 const (
-	DefaultConfigFile           string = "/etc/mayu/config.yaml"
-	DefaultClusterDirectory     string = "cluster"
-	DefaultShowTemplates        bool   = false
-	DefaultNoGit                bool   = false
-	DefaultNoTLS                bool   = false
-	DefaultTFTPRoot             string = "./tftproot"
-	DefaultYochuPath            string = "./yochu"
-	DefaultStaticHTMLPath       string = "./static_html"
-	DefaultFirstStageScript     string = "./templates/first_stage_script.sh"
-	DefaultLastStageCloudconfig string = "./templates/last_stage_cloudconfig.yaml"
-	DefaultDnsmasqTemplate      string = "./templates/dnsmasq_template.conf"
-	DefaultTemplateSnippets     string = "./template_snippets"
-	DefaultDNSMasq              string = "/usr/sbin/dnsmasq"
-	DefaultImagesCacheDir       string = "./images"
-	DefaultHTTPPort             int    = 4080
-	DefaultHTTPBindAddress      string = "0.0.0.0"
-	DefaultTLSCertFile          string = ""
-	DefaultTLSKeyFile           string = ""
-	DefaultEtcdQuorumSize       int    = 3
+	DefaultConfigFile               string = "/etc/mayu/config.yaml"
+	DefaultClusterDirectory         string = "cluster"
+	DefaultShowTemplates            bool   = false
+	DefaultNoGit                    bool   = false
+	DefaultNoTLS                    bool   = false
+	DefaultTFTPRoot                 string = "./tftproot"
+	DefaultYochuPath                string = "./yochu"
+	DefaultStaticHTMLPath           string = "./static_html"
+	DefaultFirstStageScript         string = "./templates/first_stage_script.sh"
+	DefaultLastStageCloudconfig     string = "./templates/last_stage_cloudconfig.yaml"
+	DefaultIgnitionConfig           string = "./templates/ignition/gs_install.yaml"
+	DefaultDnsmasqTemplate          string = "./templates/dnsmasq_template.conf"
+	DefaultTemplateSnippets         string = "./template_snippets/cloudconfig"
+	DefaultIgnitionTemplateSnippets string = "./template_snippets/ignition"
+	DefaultDNSMasq                  string = "/usr/sbin/dnsmasq"
+	DefaultImagesCacheDir           string = "./images"
+	DefaultHTTPPort                 int    = 4080
+	DefaultHTTPBindAddress          string = "0.0.0.0"
+	DefaultTLSCertFile              string = ""
+	DefaultTLSKeyFile               string = ""
+	DefaultEtcdQuorumSize           int    = 3
 )
 
 type MayuFlags struct {
@@ -54,6 +56,8 @@ type MayuFlags struct {
 	staticHTMLPath       string
 	firstStageScript     string
 	lastStageCloudconfig string
+	ignitionConfig       string
+	useIgnition          bool
 	templateSnippets     string
 	dnsmasq              string
 	dnsmasqTemplate      string
@@ -107,8 +111,10 @@ func init() {
 	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
 	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
 	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
+	pf.StringVar(&globalFlags.ignitionConfig, "ignition-config", DefaultIgnitionConfig, "Final ignition config file that is used to boot the machine")
+	pf.BoolVar(&globalFlags.useIgnition, "use-ignition", false, "Use ignition configuration setup")
 	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
-	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig template snippets (eg storage or network configuration)")
+	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig or Ignition template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
 	pf.StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
 	pf.IntVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
@@ -200,6 +206,9 @@ func mainRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		glog.Fatalf("unable to get a cluster: %s\n", err)
 	}
+	if globalFlags.useIgnition && globalFlags.templateSnippets == DefaultTemplateSnippets {
+		globalFlags.templateSnippets = DefaultIgnitionTemplateSnippets
+	}
 
 	pxeManager, err := pxemgr.PXEManager(pxemgr.PXEManagerConfiguration{
 		ConfigFile:           globalFlags.configFile,
@@ -216,6 +225,8 @@ func mainRun(cmd *cobra.Command, args []string) {
 		StaticHTMLPath:       globalFlags.staticHTMLPath,
 		TemplateSnippets:     globalFlags.templateSnippets,
 		LastStageCloudconfig: globalFlags.lastStageCloudconfig,
+		IgnitionConfig:       globalFlags.ignitionConfig,
+		UseIgnition:          globalFlags.useIgnition,
 		FirstStageScript:     globalFlags.firstStageScript,
 		ImagesCacheDir:       globalFlags.imagesCacheDir,
 		Version:              projectVersion,
@@ -227,15 +238,25 @@ func mainRun(cmd *cobra.Command, args []string) {
 	if globalFlags.showTemplates {
 		placeholderHost := hostmgr.Host{}
 
-		os.Stdout.WriteString("last stage cloud config:\n")
-		pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
+		if globalFlags.useIgnition {
+			b := bytes.NewBuffer(nil)
+			if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
+				fmt.Errorf("error found while checking generated ignition config: %+v", err)
+				os.Exit(1)
+			}
+			os.Stdout.WriteString("ignition config:\n")
+			os.Stdout.WriteString(b.String())
+		} else {
+			os.Stdout.WriteString("last stage cloud config:\n")
+			pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
 
-		b := bytes.NewBuffer(nil)
-		pxeManager.WriteLastStageCC(placeholderHost, b)
-		yamlErr := validateYAML(b.Bytes())
-		if yamlErr != nil {
-			fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
-			os.Exit(1)
+			b := bytes.NewBuffer(nil)
+			pxeManager.WriteLastStageCC(placeholderHost, b)
+			yamlErr := validateYAML(b.Bytes())
+			if yamlErr != nil {
+				fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
+				os.Exit(1)
+			}
 		}
 
 		os.Exit(0)
