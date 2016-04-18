@@ -143,6 +143,9 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
 	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(mgr.yochuPath))))
 
+	// reconfigure all hosts with a state distinct to running/installed
+	mgr.router.Methods("POST").PathPrefix("/reconfigure").HandlerFunc(mgr.reconfigureHosts)
+
 	// add welcome handler for debugging
 	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
 
