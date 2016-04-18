@@ -512,6 +512,16 @@ func (mgr *pxeManagerT) setState(serial string, w http.ResponseWriter, r *http.R
 		w.Write([]byte("committing updated host state failed"))
 		return
 	}
+
+	mgr.cluster.Update()
+
+	err = mgr.updateDNSmasqs()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("updated host state failed in update DNSmasq"))
+		return
+	}
+
 	mgr.cluster.Update()
 	w.WriteHeader(202)
 }
@@ -560,13 +570,6 @@ func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.R
 
 func (mgr *pxeManagerT) reconfigureHosts(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infoln("Starting hosts reconfiguration...")
-
-	err := mgr.updateDNSmasqs()
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("reconfiguring hosts failed in update DNSmasq"))
-		return
-	}
 
 	mgr.cluster.Update()
 	w.WriteHeader(202)

@@ -56,15 +56,6 @@ func (c *Client) BootComplete(serial string, host hostmgr.Host) error {
 	return nil
 }
 
-func (c *Client) Reconfigure() error {
-	resp, err := http.Post(fmt.Sprintf("%s://%s:%d/reconfigure", c.Scheme, c.Host, c.Port), "", nil)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
 // SetMetadata sets fleet metadata given by value for a node given by serial.
 func (c *Client) SetMetadata(serial, value string) error {
 	data, err := json.Marshal(hostmgr.Host{
