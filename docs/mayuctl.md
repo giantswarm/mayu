@@ -17,9 +17,12 @@ Usage:
   mayuctl [command]
 
 Available Commands:
-  version     Show cli version
-  list        List machines.
-  status      Status of a host.
+  version       Show cli version
+  list          List machines.
+  status        Status of a host.
+  set           Set metadata of machines (metadata, providerid, ipmiaddr, cabinet, state).
+  boot-complete Change the state of a host to 'running' (only run on provisioned machines).
+  override      Overrides globally defined properties for a host: EtcdDiscoveryURL, docker_version, yochu_version, etc
 
 Flags:
   -d, --debug[=false]: Print debug output
@@ -81,4 +84,44 @@ Rkt:                 v1.1.0
 K8s:                 v1.1.8
 LastBoot:            2016-01-15 13:42:33.344687863 +0000 UTC
 Enabled:             true
+```
+
+## Set Metadata to the Machines
+
+To set the value of properties for a machine such as the ip address, state, the
+fleet Metadata and more. You can use the command `set` by specifying its serial
+number.
+
+```nohighlight
+$ mayuctl set 004b27ed-692e-b32e-1f68-d89aff66c71b state configured
+
+...
+
+$ mayuctl set 004b27ed-692e-b32e-1f68-d89aff66c71b cabinet 1
+```
+
+
+## Override properties in the Machines
+
+You can use the command `override` to override the value of properties for a
+specific machine by using its serial number. You can override the value of properties
+such as the `yochu_version`, `EtcdDiscoveryURL`, `CoreOSVersion`, etc...
+
+```nohighlight
+$ mayuctl override 004b27ed-692e-b32e-1f68-d89aff66c71b CoreOSVersion 899.13.0
+
+...
+
+$ mayuctl override 004b27ed-692e-b32e-1f68-d89aff66c71b yochu_version v0.19.1
+```
+
+## Upgrade installed software versions in the Machines
+
+To upgrade the versions of the software installed in the machines, you can use
+the command `boot-complete`. This command enables to change the versions of
+`Yochu`, `Fleet`, `etcd`, among others that were initially installed in our machines.
+
+```nohighlight
+$ mayuctl boot-complete --update-versions
+
 ```
