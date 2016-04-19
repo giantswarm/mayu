@@ -568,15 +568,6 @@ func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.R
 	w.WriteHeader(202)
 }
 
-func (mgr *pxeManagerT) reconfigureHosts(w http.ResponseWriter, r *http.Request) {
-	glog.V(2).Infoln("Starting hosts reconfiguration...")
-
-	mgr.cluster.Update()
-	w.WriteHeader(202)
-	glog.V(2).Infoln("Host reconfigured terminated!")
-
-}
-
 func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http.Request) {
 	host, exists := mgr.cluster.HostWithSerial(serial)
 	if !exists {
