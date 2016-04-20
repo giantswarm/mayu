@@ -35,6 +35,8 @@ type Host struct {
 	LastBoot           time.Time `json:",omitempty"`
 	Profile            string    `json:",omitempty"`
 
+	Overrides map[string]interface{} `json:",omitempty"`
+
 	State hostState
 
 	CoreOSVersion string `json:",omitempty"`

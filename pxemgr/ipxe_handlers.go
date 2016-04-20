@@ -25,6 +25,8 @@ const (
 	installImageFile = "coreos_production_image.bin.bz2"
 
 	defaultProfileName = "default"
+
+	defaultCoreOSVersion = "835.13.0"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +50,7 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 	cloudConfigURL := mgr.thisHost() + "/final-cloud-config.yaml"
 	ignitionConfigURL := ""
 	setInstalledURL := mgr.thisHost() + "/admin/host/__SERIAL__/set_installed"
-	installImageURL := mgr.thisHost() + "/images/install_image.bin.bz2"
+	installImageURL := mgr.thisHost() + "/images/" + serial + "/install_image.bin.bz2"
 	host := mgr.maybeCreateHost(serial)
 
 	if mgr.useIgnition {
@@ -168,7 +170,7 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 	}
 	host.MacAddresses = macAddresses
 
-	err = host.Commit("updated host macAddress")
+	err = host.Commit("collected host mac addresses")
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host macAddress failed"))
@@ -216,8 +218,10 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
+	coreOSversion := mgr.hostCoreOSVersion(r)
+
 	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
-		vmlinuz, err := mgr.getKernelImage()
+		vmlinuz, err := mgr.getKernelImage(coreOSversion)
 		if err != nil {
 			panic(err)
 		}
@@ -225,7 +229,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		defer vmlinuz.Close()
 		io.Copy(w, vmlinuz)
 	} else if strings.HasSuffix(r.URL.Path, "/initrd.cpio.gz") {
-		initrd, err := mgr.getInitRD()
+		initrd, err := mgr.getInitRD(coreOSversion)
 		if err != nil {
 			panic(err)
 		}
@@ -233,7 +237,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		defer initrd.Close()
 		io.Copy(w, initrd)
 	} else if strings.HasSuffix(r.URL.Path, "/install_image.bin.bz2") {
-		img, err := mgr.getInstallImage()
+		img, err := mgr.getInstallImage(coreOSversion)
 		if err != nil {
 			panic(err)
 		}
@@ -249,16 +253,16 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("got request", r.URL)
 }
 
-func (mgr *pxeManagerT) getInstallImage() (*os.File, error) {
-	return os.Open(path.Join(mgr.imagesCacheDir, installImageFile))
+func (mgr *pxeManagerT) getInstallImage(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, installImageFile))
 }
 
-func (mgr *pxeManagerT) getKernelImage() (*os.File, error) {
-	return os.Open(path.Join(mgr.imagesCacheDir, vmlinuzFile))
+func (mgr *pxeManagerT) getKernelImage(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, vmlinuzFile))
 }
 
-func (mgr *pxeManagerT) getInitRD() (*os.File, error) {
-	return os.Open(path.Join(mgr.imagesCacheDir, initrdFile))
+func (mgr *pxeManagerT) getInitRD(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, initrdFile))
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
@@ -365,7 +369,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in boot_complete request"))
 		return
 	}
 
@@ -404,7 +408,7 @@ func (mgr *pxeManagerT) setMetadata(serial string, w http.ResponseWriter, r *htt
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_metadata request"))
 		return
 	}
 
@@ -432,7 +436,7 @@ func (mgr *pxeManagerT) setProviderId(serial string, w http.ResponseWriter, r *h
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_provider_id request"))
 		return
 	}
 
@@ -460,7 +464,7 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_ipmi_addr request"))
 		return
 	}
 
@@ -469,6 +473,95 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host ipmi address failed"))
+		return
+	}
+	mgr.cluster.Update()
+	w.WriteHeader(202)
+}
+
+func (mgr *pxeManagerT) setState(serial string, w http.ResponseWriter, r *http.Request) {
+	host, exists := mgr.cluster.HostWithSerial(serial)
+	if !exists {
+		w.WriteHeader(400)
+		w.Write([]byte("host doesn't exist"))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	payload := hostmgr.Host{}
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("unable to parse json data in set_state request"))
+		return
+	}
+
+	host.State = payload.State
+	switch payload.State {
+	case hostmgr.Configured:
+		host.State = hostmgr.Configured
+		host.KeepDiskData = true
+	case hostmgr.Running:
+		host.State = hostmgr.Configured
+		host.KeepDiskData = false
+	}
+
+	err = host.Commit("updated host state")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host state failed"))
+		return
+	}
+
+	mgr.cluster.Update()
+
+	err = mgr.updateDNSmasqs()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("updated host state failed in update DNSmasq"))
+		return
+	}
+
+	mgr.cluster.Update()
+	w.WriteHeader(202)
+}
+
+func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.Request) {
+	host, exists := mgr.cluster.HostWithSerial(serial)
+	if !exists {
+		w.WriteHeader(400)
+		w.Write([]byte("host doesn't exist"))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	payload := hostmgr.Host{}
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("unable to parse json data in override request"))
+		return
+	}
+
+	if len(payload.Overrides) == 0 {
+		w.WriteHeader(400)
+		w.Write([]byte("nothing to override"))
+		return
+	}
+
+	updatedVars := []string{}
+	if host.Overrides == nil {
+		host.Overrides = make(map[string]interface{})
+	}
+	for k, v := range payload.Overrides {
+		host.Overrides[k] = v
+		updatedVars = append(updatedVars, k)
+	}
+
+	err = host.Commit("updated host overrides: " + strings.Join(updatedVars, ", "))
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host overrides failed"))
 		return
 	}
 	mgr.cluster.Update()
@@ -488,7 +581,7 @@ func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in request"))
+		w.Write([]byte("unable to parse json data in set_cabinet request"))
 		return
 	}
 
@@ -507,4 +600,22 @@ func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("this is the iPXE server of mayu " + mgr.version))
 	return
+}
+
+func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
+	coreOSversion := defaultCoreOSVersion
+
+	host, exists := mgr.hostFromSerialVar(r)
+	if exists {
+		if host.CoreOSVersion == "" {
+			if version, exist := host.Overrides["CoreOSVersion"]; exist {
+				coreOSversion = version.(string)
+			}
+		} else if version, exist := host.Overrides["CoreOSVersion"]; exist {
+			coreOSversion = version.(string)
+		}
+		glog.V(2).Infof("using CoreOS images with version %s for '%s'\n", coreOSversion, host.Serial)
+	}
+
+	return coreOSversion
 }
