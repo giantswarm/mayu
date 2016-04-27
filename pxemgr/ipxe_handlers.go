@@ -110,10 +110,15 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 			if host.Profile != "" {
 				host.FleetDisableEngine = mgr.profileDisableEngine(host.Profile)
 				host.FleetMetadata = mgr.profileMetadata(host.Profile)
+
+				host.CoreOSVersion = mgr.profileCoreOSVersion(host.Profile)
 			} else {
 				host.FleetMetadata = mgr.profileMetadata(defaultProfileName)
 				host.FleetDisableEngine = mgr.profileDisableEngine(defaultProfileName)
+
+				host.CoreOSVersion = mgr.profileCoreOSVersion(defaultProfileName)
 			}
+
 			err = host.Commit("updated host profile and metadata")
 			if err != nil {
 				glog.Fatalln(err)
@@ -130,6 +135,15 @@ func (mgr *pxeManagerT) profileDisableEngine(profileName string) bool {
 		}
 	}
 	return false
+}
+
+func (mgr *pxeManagerT) profileCoreOSVersion(profileName string) string {
+	for _, v := range mgr.config.Profiles {
+		if v.Name == profileName {
+			return v.CoreOSVersion
+		}
+	}
+	return defaultCoreOSVersion
 }
 
 func (mgr *pxeManagerT) profileMetadata(profileName string) []string {
@@ -609,12 +623,15 @@ func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
 	if exists {
 		if host.CoreOSVersion == "" {
 			if version, exist := host.Overrides["CoreOSVersion"]; exist {
-				coreOSversion = version.(string)
+				return version.(string)
 			}
-		} else if version, exist := host.Overrides["CoreOSVersion"]; exist {
-			coreOSversion = version.(string)
+			return defaultCoreOSVersion
+		} else {
+			if version, exist := host.Overrides["CoreOSVersion"]; exist {
+				return version.(string)
+			}
+			return host.CoreOSVersion
 		}
-		glog.V(2).Infof("using CoreOS images with version %s for '%s'\n", coreOSversion, host.Serial)
 	}
 
 	return coreOSversion

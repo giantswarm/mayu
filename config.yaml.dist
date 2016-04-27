@@ -17,8 +17,10 @@ profiles:
     quantity: 3
     tags:
       - "role-core=true"
+    coreos_version: "835.13.0"
   - name: default
     disable_engine: true
+    coreos_version: "835.13.0"
     tags:
       - "role-worker=true"
       - "stack-compute=true"
