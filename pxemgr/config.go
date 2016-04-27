@@ -39,7 +39,8 @@ type profile struct {
 	Quantity      int
 	Name          string
 	Tags          []string
-	DisableEngine bool `yaml:"disable_engine"`
+	DisableEngine bool   `yaml:"disable_engine"`
+	CoreOSVersion string `yaml:"coreos_version"`
 }
 
 type network struct {
