@@ -20,9 +20,17 @@ Check [mayuctl](mayuctl.md) for more information about the client.
 |   |-- first_stage_cloudconfig.yaml  - template used to generate the first cloud-config to install the machine
 |   |-- first_stage_script.sh         - template used to generate the installation script
 |   |-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
-|-- template_snippets                 - directory containing some template snippets used by the final cloud-config
-|   |-- net_bond.yaml
-|   `-- net_singlenic.yaml
+|   `-- ignition
+|       `--gs_install.yaml            - template used to generate the ignition config used to install CoreOS
+|-- template_snippets                 - directory containing some template snippets used in the cloudconfig or ignition
+|   |-- cloudconfig
+|   |   |-- net_bond.yaml
+|   |   |-- net_singlenic.yaml
+|   |   `-- quobyte.yaml
+|   `-- ignition
+|       |-- net_bond.yaml
+|       |-- net_singlenic.yaml
+|       `-- quobyte.yaml
 `-- tftproot
     `-- undionly.kpxe                 - ipxe pxe image
 ```
@@ -69,9 +77,12 @@ template snippet will be used.
 profiles:
   - name: core
     quantity: 3
+    coreos_version: "835.13.0"
     tags:
       - "rule-core=true"
   - name: default
+    disable_engine: true
+    coreos_version: "835.13.0"
     tags:
       - "rule-worker=true"
       - "stack-compute=true"
