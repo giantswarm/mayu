@@ -112,11 +112,13 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 				host.FleetMetadata = mgr.profileMetadata(host.Profile)
 
 				host.CoreOSVersion = mgr.profileCoreOSVersion(host.Profile)
+				host.KubernetesSetup = mgr.profileKubernetesSetup(host.Profile)
 			} else {
 				host.FleetMetadata = mgr.profileMetadata(defaultProfileName)
 				host.FleetDisableEngine = mgr.profileDisableEngine(defaultProfileName)
 
 				host.CoreOSVersion = mgr.profileCoreOSVersion(defaultProfileName)
+				host.KubernetesSetup = mgr.profileKubernetesSetup(defaultProfileName)
 			}
 
 			err = host.Commit("updated host profile and metadata")
@@ -132,6 +134,15 @@ func (mgr *pxeManagerT) profileDisableEngine(profileName string) bool {
 	for _, v := range mgr.config.Profiles {
 		if v.Name == profileName {
 			return v.DisableEngine
+		}
+	}
+	return false
+}
+
+func (mgr *pxeManagerT) profileKubernetesSetup(profileName string) bool {
+	for _, v := range mgr.config.Profiles {
+		if v.Name == profileName {
+			return v.KubernetesSetup
 		}
 	}
 	return false

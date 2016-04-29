@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 
 	"github.com/coreos/ignition/config/types"
 	"github.com/golang/glog"
@@ -52,7 +53,18 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 
 	ctx.Host.MayuVersion = mgr.version
 
-	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
+  ignitionTemplate := mgr.ignitionConfig
+  if host.KubernetesSetup {
+		for _, metadata := range host.FleetMetadata {
+			if strings.Contains(metadata, "core") {
+ 				ignitionTemplate = "./templates/ignition/k8s_master.yaml"
+				break
+			}
+			ignitionTemplate = "./templates/ignition/k8s_worker.yaml"
+		}
+	}
+
+	tmpl, err := getTemplate(ignitionTemplate, mgr.templateSnippets)
 	if err != nil {
 		glog.Fatalln(err)
 		return err

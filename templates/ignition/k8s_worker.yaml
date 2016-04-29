@@ -1,0 +1,229 @@
+ignition_version: 1
+systemd:
+  units:
+    - name: systemd-modules-load.service
+      enable: true
+    - name: update-engine.service
+      enable: false
+      mask: true
+    - name: locksmithd.service
+      enable: false
+      mask: true
+    - name: systemd-networkd-wait-online.service
+      enable: true
+    - name: set-giantswarm-environment.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=Configures giantswarm environment
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh -c 'echo "COREOS_PRIVATE_IPV4={{.Host.InternalAddr}}" > /etc/environment'
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: flanneld.service
+      dropins:
+        - name: 40-ExecStartPre-symlink.conf
+          contents: |
+            [Service]
+            ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
+    - name: docker.service
+      enable: true
+      dropins:
+        - name: 40-flannel.conf
+          contents: |
+            [Unit]
+            Requires=flanneld.service
+            After=flanneld.service
+    - name: etcd2.service
+      enable: true
+      dropins:
+       - name: 30-etcd2-giantswarm.conf
+         contents: |
+            [Service]
+            {{if .EtcdDiscoveryUrl}}Environment="ETCD_DISCOVERY={{.EtcdDiscoveryUrl}}"{{end}}
+            Environment="ETCD_ADVERTISE_CLIENT_URLS=http://{{.Host.InternalAddr}}:2379"
+            Environment="ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{.Host.InternalAddr}}:2380"
+            Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379,http://0.0.0.0:4001"
+            Environment="ETCD_LISTEN_PEER_URLS=http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001"
+    - name: fleet.service
+      enable: true
+      dropins:
+        - name: 30-fleet-giantswarm.conf
+          contents: |
+            [Service]
+            Environment="FLEET_ETCD_SERVERS=http://{{.Host.InternalAddr}}:2379"
+            {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
+            Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
+
+    - name: k8s-setup-network-env.service
+      enable: true
+      contents: |
+            [Unit]
+            Description=k8s-setup-network-env Service
+            Wants=network-online.target
+            After=fleet.service
+            After=docker.service
+
+            [Service]
+            Type=oneshot
+            RemainAfterExit=yes
+            TimeoutStartSec=0
+            EnvironmentFile=/etc/environment
+            Environment="IMAGE=giantswarm/setup-network-env:0.1"
+            Environment="NAME=%p.service"
+            Environment="NETWORK_CONFIG_CONTAINER="
+            ExecStartPre=/usr/bin/docker pull $IMAGE
+            ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+            ExecStartPre=-/usr/bin/docker rm -f $NAME
+            ExecStart=/usr/bin/docker run --rm --net=host -v /etc:/etc --name $NAME $IMAGE
+            ExecStop=-/usr/bin/docker stop -t 10 $NAME
+            ExecStopPost=-/usr/bin/docker rm -f $NAME
+
+    - name: k8s-proxy.service
+      enable: true
+      contents: |
+            [Unit]
+            Description=k8s-proxy
+            Requires=k8s-kubelet.service
+            After=k8s-setup-network-env.service
+
+            [Service]
+            EnvironmentFile=/etc/environment
+            Restart=on-failure
+            RestartSec=1
+            StartLimitInterval=300s
+            StartLimitBurst=3
+            TimeoutStartSec=0
+            EnvironmentFile=/etc/network-environment
+            Environment="IMAGE=giantswarm/k8s-proxy:1.2.3"
+            Environment="NAME=%p-%i.service"
+            Environment="NETWORK_CONFIG_CONTAINER="
+            ExecStartPre=/usr/bin/docker pull $IMAGE
+            ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+            ExecStartPre=-/usr/bin/docker rm -f $NAME
+            ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(fleetctl list-machines | awk '{print $2}' | grep -v IP | grep master):8080; do sleep 1 && echo -n .; done"
+            ExecStart=/bin/sh -c "/usr/bin/docker run --rm --net=host --privileged=true -v /usr/share/ca-certificates:/etc/ssl/certs $IMAGE \
+            --master=$(etcdctl get /giantswarm.io/k8s-master-ip):8080 \
+            --logtostderr=true --v=2"
+            ExecStop=-/usr/bin/docker stop -t 10 $NAME
+            ExecStopPost=-/usr/bin/docker rm -f $NAME
+
+    - name: k8s-kubelet.service
+      enable: true
+      contents: |
+            [Unit]
+            Description=k8s-kubelet
+            Requires=k8s-proxy.service
+            After=k8s-proxy.service
+
+            [Service]
+            EnvironmentFile=/etc/environment
+            Restart=on-failure
+            RestartSec=1
+            StartLimitInterval=300s
+            StartLimitBurst=3
+            TimeoutStartSec=0
+            EnvironmentFile=/etc/network-environment
+            Environment="IMAGE=giantswarm/k8s-kubelet:1.2.3"
+            Environment="NAME=%p.service"
+            Environment="NETWORK_CONFIG_CONTAINER="
+            ExecStartPre=/usr/bin/docker pull $IMAGE
+            ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+            ExecStartPre=-/usr/bin/docker rm -f $NAME
+            ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-master-ip):8080; do sleep 1 && echo -n .; done"
+            ExecStart=/bin/sh -c "/usr/bin/docker run --rm --pid=host --net=host --privileged=true \
+            -v /usr/bin/nsenter:/nsenter \
+            -v /usr:/usr \
+            -v /:/rootfs:ro \
+            -v /etc/os-release:/etc/os-release \
+            -v /usr/share/ca-certificates/:/etc/ssl/certs \
+            -v /sys:/sys:ro \
+            -v /var/lib/docker/:/var/lib/docker:rw \
+            -v /var/lib/kubelet/:/var/lib/kubelet:rw \
+            -v /var/run:/var/run:rw \
+            $IMAGE \
+            --address={{.Host.InternalAddr}} \
+            --port=10250 \
+            --hostname_override={{.Host.InternalAddr}} \
+            --api_servers=$(fleetctl list-machines | awk '{print $2}' | grep -v IP | grep master):8080 \
+            --containerized \
+            --enable-server \
+            --logtostderr=true \
+            --machine-id-file=/rootfs/etc/machine-id \
+            --cadvisor_port=4194 \
+            --healthz_bind_address={{.Host.InternalAddr}} \
+            --healthz_port=10248 \
+            --register-node=true \
+            --allow-privileged=true \
+            --config=/etc/kubernetes/manifests \
+            --hostname-override={{.Host.InternalAddr}} \
+            --cluster-dns=10.16.0.3 \
+            --cluster-domain=kube.local \
+            --v=2"
+            ExecStop=-/usr/bin/docker stop -t 10 $NAME
+            ExecStopPost=-/usr/bin/docker rm -f $NAME
+
+storage:
+  disks:
+    - device: /dev/sda
+      wipe_table: false
+      partitions:
+        - label: ROOT
+  filesystems:
+    - device: "/dev/sda9"
+      format: "ext4"
+      create:
+        force: false
+        options:
+          - "-LROOT"
+      files:
+        - path: /etc/flannel/options.env
+          contents: |
+            FLANNELD_IFACE={{.Host.InternalAddr}}
+            FLANNELD_ETCD_ENDPOINTS=http://{{.Host.InternalAddr}}:2379
+        - path: /etc/mayu-env
+          mode: 0644
+          uid: 0
+          contents: |
+            MAYU_VERSION={{.Host.MayuVersion}}
+            SERIAL={{.Host.Serial}}
+        {{if index .TemplatesEnv "yochu_version"}}
+        - path: /etc/yochu-env
+          mode: 0644
+          uid: 0
+          contents: |
+            YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
+            DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
+            ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
+            FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+            RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
+            K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
+        {{end}}
+        - path: /etc/resolv.conf
+          mode: 0644
+          uid: 0
+          contents: |
+            {{range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+            {{end}}
+        - path: /etc/hosts
+          mode: 0644
+          uid: 0
+          contents: |
+            127.0.0.1 localhost
+            127.0.0.1 {{.Host.Hostname}}
+            127.0.0.1 etcd.giantswarm
+
+{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        {{range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}- {{ $pubkey }}
+        {{end}}
