@@ -1,7 +1,7 @@
 # Machine State Transitions
 
-In Mayu, the machines have a state which can vary depending on the operations that
-are performed over them. The list of available states in Mayu are:
+In Mayu, the machines have a state, which can vary depending on the operations that
+are performed on them. The list of available states in Mayu is:
 
 - `unknown`
 - `installed`
@@ -10,6 +10,6 @@ are performed over them. The list of available states in Mayu are:
 - `running`
 
 In the following, we show an image that illustrates the allowed transitions from
-a state origin to a state destination.
+a origin state to a destination state.
 
 ![](./image/statesMayu.jpg)
