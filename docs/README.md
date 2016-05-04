@@ -8,6 +8,7 @@ Here we provide more detailed documentation about Mayu.
 - [Flags of the Mayu binary](flags.md)
 - [Running Mayu](running.md)
 - [Mayu Cluster Insides](inside.md)
+- [Machine State Transitions](machine_state_transition.md)
 - [Mayuctl](mayuctl.md)
 - [Release A New Mayu Version](release.md)
 - [Templates Env](templates.md)
