@@ -66,9 +66,9 @@ coreos:
         ExecStartPre=/usr/bin/docker pull $IMAGE
         ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
         ExecStartPre=-/usr/bin/docker rm -f $NAME
-        ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"'); do sleep 1 && echo -n .; done"
+        ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-leader | tr -d '\"' | tr -d '{|}' | awk '{print $2}'); do sleep 1 && echo -n .; done"
         ExecStart=/bin/sh -c "/usr/bin/docker run --rm --net=host --privileged=true -v /usr/share/ca-certificates:/etc/ssl/certs $IMAGE \
-        --master=$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"') \
+        --master=$(etcdctl get /giantswarm.io/k8s-leader | tr -d '\"' | tr -d '{|}' | awk '{print $2}') \
         --proxy-mode=iptables \
         --logtostderr=true --v=2"
         ExecStop=-/usr/bin/docker stop -t 10 $NAME
@@ -96,7 +96,7 @@ coreos:
         ExecStartPre=/usr/bin/docker pull $IMAGE
         ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
         ExecStartPre=-/usr/bin/docker rm -f $NAME
-        ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"'); do sleep 1 && echo -n .; done"
+        ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-leader | tr -d '\"' | tr -d '{|}' | awk '{print $2}'); do sleep 1 && echo -n .; done"
         ExecStart=/bin/sh -c "/usr/bin/docker run --rm --pid=host --net=host --privileged=true \
         -v /usr/bin/nsenter:/nsenter \
         -v /usr:/usr \
@@ -111,7 +111,7 @@ coreos:
         --address={{.Host.InternalAddr}} \
         --port=10250 \
         --hostname_override={{.Host.InternalAddr}} \
-        --api_servers=$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"') \
+        --api_servers=$(etcdctl get /giantswarm.io/k8s-leader | tr -d '\"' | tr -d '{|}' | awk '{print $2}') \
         --containerized \
         --enable-server \
         --logtostderr=true \
