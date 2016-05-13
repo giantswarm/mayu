@@ -1,0 +1,479 @@
+#cloud-config
+hostname: {{.Host.Hostname}}
+coreos:
+  units:
+  - name: update-engine.service
+    enable: false
+    command: stop
+    mask: true
+  - name: locksmithd.service
+    command: stop
+    mask: true
+{{template "quobyte" .}}
+{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+  - name: systemd-networkd-wait-online.service
+    enable: true
+    command: start
+  - name: set-giantswarm-environment.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Configures giantswarm environment
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'echo "COREOS_PRIVATE_IPV4={{.Host.InternalAddr}}" > /etc/environment'
+
+      [Install]
+      WantedBy=multi-user.target
+  - name: flanneld.service
+    dropins:
+      - name: 40-ExecStartPre-symlink.conf
+        content: |
+          [Service]
+          ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
+          ExecStartPre=/opt/init-flannel
+  - name: k8s-api-server.service
+    enable: true
+    command: start
+    content: |
+          [Unit]
+          Description=k8s-api-server
+          Requires=k8s-controller-manager.service
+          After=k8s-network-setup-env.service
+
+          [Service]
+          EnvironmentFile=/etc/environment
+          Restart=on-failure
+          RestartSec=1
+          StartLimitInterval=300s
+          StartLimitBurst=3
+          TimeoutStartSec=0
+          EnvironmentFile=/etc/network-environment
+          EnvironmentFile=/etc/environment
+          Environment="IMAGE=giantswarm/k8s-api-server:{{index .TemplatesEnv "k8s_version"}}"
+          Environment="NAME=%p.service"
+          Environment="NETWORK_CONFIG_CONTAINER="
+          ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+          ExecStartPre=/usr/bin/docker pull $IMAGE
+          ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+          ExecStartPre=-/usr/bin/docker rm -f $NAME
+          ExecStart=/usr/bin/docker run --rm --name $NAME --net=host $IMAGE \
+          --service_account_key_file=/opt/bin/kube-serviceaccount.key \
+          --service_account_lookup=false \
+          --allow_privileged=true \
+          --runtime_config=api/v1 \
+          --insecure_bind_address=0.0.0.0 \
+          --insecure_port=8080 \
+          --kubelet_https=true \
+          --secure_port=6443 \
+          --address={{.Host.InternalAddr}} \
+          --port=8080 \
+          --service-cluster-ip-range={{index .TemplatesEnv "k8s_service_ip_range"}} \
+          --etcd_servers=http://{{.Host.InternalAddr}}:2379 \
+          --advertise-address={{.Host.InternalAddr}} \
+          --public_address_override={{.Host.InternalAddr}} \
+          --logtostderr=true
+          ExecStartPost=/usr/bin/etcdctl set /giantswarm.io/k8s-leader '{"leader": "{.Host.InternalAddr}}:8080"}'
+          ExecStop=-/usr/bin/docker stop -t 10 $NAME
+          ExecStopPost=-/usr/bin/docker rm -f $NAME
+  - name: k8s-controller-manager.service
+    enable: true
+    command: start
+    content: |
+          [Unit]
+          Description=k8s-controller-manager Service
+          Wants=k8s-api-server.service
+          Requires=k8s-api-server.service
+          Requires=k8s-scheduler.service
+          After=k8s-api-server.service
+
+          [Service]
+          Restart=on-failure
+          RestartSec=1
+          StartLimitInterval=300s
+          StartLimitBurst=3
+          TimeoutStartSec=0
+          EnvironmentFile=/etc/environment
+          Environment="IMAGE=giantswarm/k8s-controller-manager:{{index .TemplatesEnv "k8s_version"}}"
+          Environment="NAME=%p.service"
+          Environment="NETWORK_CONFIG_CONTAINER="
+          ExecStartPre=/usr/bin/docker pull $IMAGE
+          ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+          ExecStartPre=-/usr/bin/docker rm -f $NAME
+          ExecStart=/usr/bin/docker run --rm --net=host --name $NAME $IMAGE --service_account_private_key_file=/opt/bin/kube-serviceaccount.key --master={{.Host.InternalAddr}}:8080 --leader-elect=true --logtostderr=true
+          ExecStop=-/usr/bin/docker stop -t 10 $NAME
+          ExecStopPost=-/usr/bin/docker rm -f $NAME
+  - name: k8s-scheduler.service
+    enable: true
+    command: start
+    content: |
+          [Unit]
+          Description=k8s-scheduler Service
+          Wants=k8s-api-server.service
+          Requires=k8s-controller-manager.service
+          After=k8s-controller-manager.service
+
+          [Service]
+          Restart=on-failure
+          RestartSec=1
+          StartLimitInterval=300s
+          StartLimitBurst=3
+          TimeoutStartSec=0
+          EnvironmentFile=/etc/environment
+          Environment="IMAGE=giantswarm/k8s-scheduler:{{index .TemplatesEnv "k8s_version"}}"
+          Environment="NAME=%p.service"
+          Environment="NETWORK_CONFIG_CONTAINER="
+          ExecStartPre=/usr/bin/docker pull $IMAGE
+          ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+          ExecStartPre=-/usr/bin/docker rm -f $NAME
+          ExecStart=/usr/bin/docker run --rm --net=host --name $NAME $IMAGE --master={{.Host.InternalAddr}}:8080 --leader-elect=true --logtostderr=true --v=2
+          ExecStop=-/usr/bin/docker stop -t 10 $NAME
+          ExecStopPost=-/usr/bin/docker rm -f $NAME
+  - name: k8s-addons.service
+    enable: true
+    command: start
+    content: |
+        [Unit]
+        Description=Kubernetes Addons
+        Requires=k8s-kubelet.service
+        After=k8s-kubelet.service
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/k8s-addons
+        [Install]
+        WantedBy=multi-user.target
+  - name: k8s-proxy.service
+    enable: true
+    command: start
+    content: |
+        [Unit]
+        Description=k8s-proxy
+        Requires=k8s-kubelet.service
+        After=k8s-setup-network-env.service
+
+        [Service]
+        EnvironmentFile=/etc/environment
+        Restart=on-failure
+        RestartSec=1
+        StartLimitInterval=300s
+        StartLimitBurst=3
+        TimeoutStartSec=0
+        EnvironmentFile=/etc/network-environment
+        Environment="IMAGE=giantswarm/k8s-proxy:{{index .TemplatesEnv "k8s_version"}}"
+        Environment="NAME=%p-%i.service"
+        Environment="NETWORK_CONFIG_CONTAINER="
+        ExecStartPre=/usr/bin/docker pull $IMAGE
+        ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+        ExecStartPre=-/usr/bin/docker rm -f $NAME
+        ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://{{.Host.InternalAddr}}:8080; do sleep 1 && echo -n .; done"
+        ExecStart=/bin/sh -c "/usr/bin/docker run --rm --net=host --privileged=true -v /usr/share/ca-certificates:/etc/ssl/certs $IMAGE \
+        --master={{.Host.InternalAddr}}:8080 \
+        --proxy-mode=iptables \
+        --logtostderr=true --v=2"
+        ExecStop=-/usr/bin/docker stop -t 10 $NAME
+        ExecStopPost=-/usr/bin/docker rm -f $NAME
+
+  - name: k8s-kubelet.service
+    enable: true
+    command: start4043
+    content: |
+        [Unit]
+        Description=k8s-kubelet
+        Requires=k8s-proxy.service
+        After=k8s-proxy.service
+
+        [Service]
+        EnvironmentFile=/etc/environment
+        Restart=on-failure
+        RestartSec=1
+        StartLimitInterval=300s
+        StartLimitBurst=3
+        TimeoutStartSec=0
+        EnvironmentFile=/etc/network-environment
+        Environment="IMAGE=giantswarm/k8s-kubelet:{{index .TemplatesEnv "k8s_version"}}"
+        Environment="NAME=%p.service"
+        Environment="NETWORK_CONFIG_CONTAINER="
+        ExecStartPre=/usr/bin/docker pull $IMAGE
+        ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+        ExecStartPre=-/usr/bin/docker rm -f $NAME
+        ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://{{.Host.InternalAddr}}:8080; do sleep 1 && echo -n .; done"
+        ExecStart=/bin/sh -c "/usr/bin/docker run --rm --pid=host --net=host --privileged=true \
+        -v /usr/bin/nsenter:/nsenter \
+        -v /usr:/usr \
+        -v /:/rootfs:ro \
+        -v /etc/os-release:/etc/os-release \
+        -v /usr/share/ca-certificates/:/etc/ssl/certs \
+        -v /sys:/sys:ro \
+        -v /var/lib/docker/:/var/lib/docker:rw \
+        -v /var/lib/kubelet/:/var/lib/kubelet:rw \
+        -v /var/run:/var/run:rw \
+        $IMAGE \
+        --address={{.Host.InternalAddr}} \
+        --port=10250 \
+        --hostname_override={{.Host.InternalAddr}} \
+        --api_servers={{.Host.InternalAddr}}:8080 \
+        --containerized \
+        --enable-server \
+        --logtostderr=true \
+        --machine-id-file=/rootfs/etc/machine-id \
+        --cadvisor_port=4194 \
+        --healthz_bind_address={{.Host.InternalAddr}} \
+        --healthz_port=10248 \
+        --v=2"
+        ExecStop=-/usr/bin/docker stop -t 10 $NAME
+        ExecStopPost=-/usr/bin/docker rm -f $NAME
+  {{if index .TemplatesEnv "yochu_version"}}
+  - name: yochu.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Giant Swarm yochu
+      Wants=network-online.target
+      After=network-online.target
+      Before=etcd2.service fleet.service docker.service
+
+      [Service]
+      Type=oneshot
+      EnvironmentFile=/etc/yochu-env
+      ExecStartPre=/usr/bin/mkdir -p /home/core/bin
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
+      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
+      ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
+      ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
+      ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION} --docker-version=${DOCKER_VERSION} --rkt-version=${RKT_VERSION} --k8s-version=${K8S_VERSION}
+      ExecStartPost=/bin/sh -c 'sleep 5'
+      ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls {{end}}--update-versions
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  {{end}}
+  - name: etcd2.service
+    enable: true
+    command: start
+  - name: fleet.service
+    enable: true
+    command: start
+  - name: docker.service
+    enable: true
+    command: start
+  update:
+    reboot-strategy: off
+  fleet:
+    etcd_servers: http://{{.Host.InternalAddr}}:2379
+{{if .Host.FleetMetadata}}    metadata: {{.Host.FleetMetadata}}{{end}}
+  etcd2:
+{{if .EtcdDiscoveryUrl}}    discovery: {{.EtcdDiscoveryUrl}}{{end}}
+    advertise-client-urls: http://{{.Host.InternalAddr}}:2379
+    initial-advertise-peer-urls: http://{{.Host.InternalAddr}}:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001
+write_files:
+- path: /etc/systemd/system/fleet.service.d/30-giantswarm.conf
+  permissions: 0644
+  owner: root
+  content: |
+    [Service]
+    {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
+    Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
+- path: /etc/hosts
+  permissions: 0644
+  owner: root
+  content: |
+    127.0.0.1 localhost
+    127.0.0.1 {{.Host.Hostname}}
+    127.0.0.1 etcd.giantswarm
+- path: /etc/flannel/options.env
+  contents: |
+    FLANNELD_IFACE={{.Host.InternalAddr}}
+    FLANNELD_ETCD_ENDPOINTS=http://{{.Host.InternalAddr}}:2379
+- path: /etc/resolv.conf
+  permissions: 0644
+  owner: root
+  content: |
+    {{range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+    {{end}}
+{{if index .TemplatesEnv "yochu_version"}}
+- path: /etc/yochu-env
+  permissions: 0644
+  owner: root
+  content: |
+    YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
+    DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
+    ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
+    FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+    RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
+    K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
+{{end}}
+- path: /etc/kubernetes/manifest/skydns-rc.yaml
+  owner: root
+  permissions: 0644
+  content: |
+    apiVersion: v1
+    kind: ReplicationController
+    metadata:
+      name: kube-dns-v8
+      namespace: kube-system
+      labels:
+        k8s-app: kube-dns
+        version: v8
+        kubernetes.io/cluster-service: "true"
+    spec:
+      replicas: 3
+      selector:
+        k8s-app: kube-dns
+        version: v8
+      template:
+        metadata:
+          labels:
+            k8s-app: kube-dns
+            version: v8
+            kubernetes.io/cluster-service: "true"
+        spec:
+          containers:
+          - name: etcd
+            image: gcr.io/google_containers/etcd:2.0.9
+            #resources:
+            #  limits:
+            #    cpu: 100m
+            #    memory: 50Mi
+            command:
+            - /usr/local/bin/etcd
+            - -data-dir
+            - /var/etcd/data
+            - -listen-client-urls
+            - http://127.0.0.1:2379,http://127.0.0.1:4001
+            - -advertise-client-urls
+            - http://127.0.0.1:2379,http://127.0.0.1:4001
+            - -initial-cluster-token
+            - skydns-etcd
+            volumeMounts:
+            - name: etcd-storage
+              mountPath: /var/etcd/data
+          - name: kube2sky
+            image: gcr.io/google_containers/kube2sky:1.11
+            #resources:
+            #  limits:
+            #    cpu: 100m
+            #    memory: 50Mi
+            args:
+            # command = "/kube2sky"
+            - -domain={{index .TemplatesEnv "k8s_domain"}}
+            - -kube_master_url=http://172.17.8.101:8080
+          - name: skydns
+            image: gcr.io/google_containers/skydns:2015-03-11-001
+            #resources:
+            #  limits:
+            #    cpu: 100m
+            #    memory: 50Mi
+            args:
+            # command = "/skydns"
+            - -machines=http://localhost:4001
+            - -addr=0.0.0.0:53
+            - -domain={{index .TemplatesEnv "k8s_domain"}}
+            ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            livenessProbe:
+              httpGet:
+                path: /healthz
+                port: 8080
+                scheme: HTTP
+              initialDelaySeconds: 30
+              timeoutSeconds: 5
+          - name: healthz
+            image: gcr.io/google_containers/exechealthz:1.0
+            #resources:
+            #  limits:
+            #    cpu: 10m
+            #    memory: 20Mi
+            args:
+            - -cmd=nslookup kubernetes.default.svc.{{index .TemplatesEnv "k8s_domain"}} localhost >/dev/null
+            - -port=8080
+            ports:
+            - containerPort: 8080
+              protocol: TCP
+          volumes:
+          - name: etcd-storage
+            emptyDir: {}
+          dnsPolicy: Default  # Don't use cluster DNS.
+- path: /etc/kubernetes/manifest/skydns-svc.yaml
+  owner: root
+  permissions: 0644
+  content: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: kube-dns
+      namespace: kube-system
+      labels:
+        k8s-app: kube-dns
+        kubernetes.io/cluster-service: "true"
+        kubernetes.io/name: "KubeDNS"
+    spec:
+      selector:
+        k8s-app: kube-dns
+      clusterIP: {{index .TemplatesEnv "k8s_dns_ip"}}
+      ports:
+      - name: dns
+        port: 53
+        protocol: UDP
+      - name: dns-tcp
+        port: 53
+        protocol: TCP
+- path: /opt/k8s-addons
+  permissions: 0544
+  content: |
+      #!/bin/bash
+      echo "Waiting for Kubernetes API..."
+      until curl --silent "http://{{.Host.InternalAddr}}:8080/version"
+      do
+        sleep 5
+      done
+      echo "K8S: kube-system namespace"
+      curl --silent -H "Content-Type: application/json" -XPOST -d"$(cat /etc/kubernetes/manifests/kube-system.json)" "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces" > /dev/null
+      echo "K8S: DNS addon"
+      curl --silent -H "Content-Type: application/yaml" -XPOST -d"$(cat /etc/kubernetes/manifests/skydns-rc.yaml)" "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces/kube-system/replicationcontrollers" > /dev/null
+      curl --silent -H "Content-Type: application/yaml" -XPOST -d"$(cat /etc/kubernetes/manifests/skydns-svc.yaml)" "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces/kube-system/services" > /dev/null
+- path: /opt/init-flannel
+  permissions: 0544
+  content: |
+    #!/bin/bash
+    function init_flannel {
+      echo "Waiting for etcd..."
+      while true
+      do
+          IFS=',' read -ra ES <<< "http://{{.Host.InternalAddr}}:2379"
+          for ETCD in "${ES[@]}"; do
+              echo "Trying: $ETCD"
+              if [ -n "$(curl --silent "$ETCD/v2/machines")" ]; then
+                  local ACTIVE_ETCD=$ETCD
+                  break
+              fi
+              sleep 1
+          done
+          if [ -n "$ACTIVE_ETCD" ]; then
+              break
+          fi
+      done
+      RES=$(curl --silent -X PUT -d "value={\"Network\":\"{{index .TemplatesEnv "k8s_pods_network"}}\",\"Backend\":{\"Type\":\"vxlan\"}}" "$ACTIVE_ETCD/v2/keys/coreos.com/network/config?prevExist=false")
+      if [ -z "$(echo $RES | grep '"action":"create"')" ] && [ -z "$(echo $RES | grep 'Key already exists')" ]; then
+          echo "Unexpected error configuring flannel pod network: $RES"
+      fi
+    }
+    init_flannel
+
+
+ssh_authorized_keys:
+{{range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}- {{ $pubkey }}
+{{end}}

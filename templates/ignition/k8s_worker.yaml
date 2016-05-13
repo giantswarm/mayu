@@ -59,7 +59,6 @@ systemd:
             Environment="FLEET_ETCD_SERVERS=http://{{.Host.InternalAddr}}:2379"
             {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
             Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
-
     - name: k8s-setup-network-env.service
       enable: true
       contents: |
@@ -83,7 +82,6 @@ systemd:
             ExecStart=/usr/bin/docker run --rm --net=host -v /etc:/etc --name $NAME $IMAGE
             ExecStop=-/usr/bin/docker stop -t 10 $NAME
             ExecStopPost=-/usr/bin/docker rm -f $NAME
-
     - name: k8s-proxy.service
       enable: true
       contents: |
@@ -100,19 +98,18 @@ systemd:
             StartLimitBurst=3
             TimeoutStartSec=0
             EnvironmentFile=/etc/network-environment
-            Environment="IMAGE=giantswarm/k8s-proxy:1.2.3"
+            Environment="IMAGE=giantswarm/k8s-proxy:{{index .TemplatesEnv "k8s_version"}}"
             Environment="NAME=%p-%i.service"
             Environment="NETWORK_CONFIG_CONTAINER="
             ExecStartPre=/usr/bin/docker pull $IMAGE
             ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
             ExecStartPre=-/usr/bin/docker rm -f $NAME
-            ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(fleetctl list-machines | awk '{print $2}' | grep -v IP | grep master):8080; do sleep 1 && echo -n .; done"
+            ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"'); do sleep 1 && echo -n .; done"
             ExecStart=/bin/sh -c "/usr/bin/docker run --rm --net=host --privileged=true -v /usr/share/ca-certificates:/etc/ssl/certs $IMAGE \
-            --master=$(etcdctl get /giantswarm.io/k8s-master-ip):8080 \
+            --master=$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"') \
             --logtostderr=true --v=2"
             ExecStop=-/usr/bin/docker stop -t 10 $NAME
             ExecStopPost=-/usr/bin/docker rm -f $NAME
-
     - name: k8s-kubelet.service
       enable: true
       contents: |
@@ -129,13 +126,13 @@ systemd:
             StartLimitBurst=3
             TimeoutStartSec=0
             EnvironmentFile=/etc/network-environment
-            Environment="IMAGE=giantswarm/k8s-kubelet:1.2.3"
+            Environment="IMAGE=giantswarm/k8s-kubelet:{{index .TemplatesEnv "k8s_version"}}"
             Environment="NAME=%p.service"
             Environment="NETWORK_CONFIG_CONTAINER="
             ExecStartPre=/usr/bin/docker pull $IMAGE
             ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
             ExecStartPre=-/usr/bin/docker rm -f $NAME
-            ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-master-ip):8080; do sleep 1 && echo -n .; done"
+            ExecStartPre=/bin/sh -c "while ! curl --output /dev/null --silent --head --fail http://$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"'); do sleep 1 && echo -n .; done"
             ExecStart=/bin/sh -c "/usr/bin/docker run --rm --pid=host --net=host --privileged=true \
             -v /usr/bin/nsenter:/nsenter \
             -v /usr:/usr \
@@ -150,7 +147,7 @@ systemd:
             --address={{.Host.InternalAddr}} \
             --port=10250 \
             --hostname_override={{.Host.InternalAddr}} \
-            --api_servers=$(fleetctl list-machines | awk '{print $2}' | grep -v IP | grep master):8080 \
+            --api_servers=$(etcdctl get /giantswarm.io/k8s-leader | jq .'leader' | tr -d '\"') \
             --containerized \
             --enable-server \
             --logtostderr=true \

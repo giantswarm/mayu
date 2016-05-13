@@ -41,4 +41,8 @@ templates_env:
   fleet_version: v0.11.5-gs-grpc-1
   docker_version: 1.10.3
   rkt_version: v1.3.0
-  k8s_version: v1.2.2
+  k8s_version: v1.2.4
+  k8s_domain: "kube.local"
+  k8s_dns_ip: "10.0.3.10"
+  k8s_service_ip_range: "10.0.3.0/24"
+  k8s_pods_network: "10.0.2.0/16"

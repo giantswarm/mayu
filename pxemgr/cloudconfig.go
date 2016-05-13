@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"text/template"
 
 	"github.com/giantswarm/mayu/hostmgr"
@@ -75,7 +76,19 @@ func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error 
 		TemplatesEnv:     mergedTemplatesEnv,
 	}
 
-	tmpl, err := getTemplate(mgr.lastStageCloudconfig, mgr.templateSnippets)
+	cloudConfigTemplate := mgr.lastStageCloudconfig
+	if host.KubernetesSetup {
+		for _, metadata := range host.FleetMetadata {
+			if strings.Contains(metadata, "core") {
+				cloudConfigTemplate = "./templates/last_stage_k8s_master_cloudconfig.yaml"
+				break
+			} else {
+				cloudConfigTemplate = "./templates/last_stage_k8s_worker_cloudconfig.yaml"
+			}
+		}
+	}
+
+	tmpl, err := getTemplate(cloudConfigTemplate, mgr.templateSnippets)
 	if err != nil {
 		glog.Fatalln(err)
 		return err
