@@ -159,8 +159,8 @@ systemd:
             --allow-privileged=true \
             --config=/etc/kubernetes/manifests \
             --hostname-override={{.Host.InternalAddr}} \
-            --cluster-dns=10.16.0.3 \
-            --cluster-domain=kube.local \
+            --cluster-dns={{index .TemplatesEnv "k8s_dns_ip"}} \
+            --cluster-domain={{index .TemplatesEnv "k8s_domain"}} \
             --v=2"
             ExecStop=-/usr/bin/docker stop -t 10 $NAME
             ExecStopPost=-/usr/bin/docker rm -f $NAME

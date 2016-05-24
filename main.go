@@ -26,6 +26,7 @@ const (
 	DefaultNoTLS                    bool   = false
 	DefaultTFTPRoot                 string = "./tftproot"
 	DefaultYochuPath                string = "./yochu"
+	DefaultK8sTLSPath                string = "./k8s-tls"
 	DefaultStaticHTMLPath           string = "./static_html"
 	DefaultFirstStageScript         string = "./templates/first_stage_script.sh"
 	DefaultLastStageCloudconfig     string = "./templates/last_stage_cloudconfig.yaml"
@@ -53,6 +54,7 @@ type MayuFlags struct {
 	noTLS                bool
 	tFTPRoot             string
 	yochuPath            string
+	k8sTLSPath           string
 	staticHTMLPath       string
 	firstStageScript     string
 	lastStageCloudconfig string
@@ -108,6 +110,7 @@ func init() {
 	pf.BoolVar(&globalFlags.noTLS, "no-tls", DefaultNoTLS, "Disable tls")
 	pf.StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
 	pf.StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
+	pf.StringVar(&globalFlags.k8sTLSPath, "yochu-path", DefaultK8sTLSPath, "Path to k8s tls assets of each cluster (eg neofonie, giantswarm)")
 	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
 	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install CoreOS on disk in the first stage.")
 	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
@@ -222,6 +225,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		TLSCertFile:          globalFlags.tlsCertFile,
 		TLSKeyFile:           globalFlags.tlsKeyFile,
 		YochuPath:            globalFlags.yochuPath,
+		K8sTLSPath:            globalFlags.k8sTLSPath,
 		StaticHTMLPath:       globalFlags.staticHTMLPath,
 		TemplateSnippets:     globalFlags.templateSnippets,
 		LastStageCloudconfig: globalFlags.lastStageCloudconfig,

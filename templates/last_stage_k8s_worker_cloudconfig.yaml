@@ -119,6 +119,8 @@ coreos:
         --cadvisor_port=4194 \
         --healthz_bind_address={{.Host.InternalAddr}} \
         --healthz_port=10248 \
+        --cluster-dns={{index .TemplatesEnv "k8s_dns_ip"}} \
+        --cluster-domain={{index .TemplatesEnv "k8s_domain"}} \
         --v=2"
         ExecStop=-/usr/bin/docker stop -t 10 $NAME
         ExecStopPost=-/usr/bin/docker rm -f $NAME
