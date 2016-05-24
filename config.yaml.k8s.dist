@@ -1,0 +1,48 @@
+network:
+  pxe: true
+  interface: bond0
+  bind_addr: 10.0.3.251
+  bootstrap_range:
+    start: 10.0.3.10
+    end: 10.0.3.30
+  ip_range:
+    start: 10.0.3.31
+    end: 10.0.3.70
+  dns: [8.8.8.8, 8.8.4.4]
+  router: 10.0.3.251
+  network_model: singlenic
+
+profiles:
+  - name: core
+    quantity: 3
+    tags:
+      - "role-core=true"
+      - "role-master=true"
+    coreos_version: "899.13.0"
+    k8s_setup: true
+  - name: default
+    disable_engine: true
+    k8s_setup: true
+    coreos_version: "899.13.0"
+    tags:
+      - "role-worker=true"
+      - "stack-compute=true"
+
+templates_env:
+  ssh_authorized_keys:
+    - "<your public key>"
+  mayu_http_endpoint: "http://10.0.3.251:4080"
+  yochu_localsubnet: "10.0.3.0/24"
+  yochu_gateway: "10.0.3.251/32"
+  yochu_private_registry: "registry.private.tiny.swarm"
+  yochu_http_endpoint: "http://10.0.3.251:4080/yochu"
+  yochu_version: 0.19.1
+  etcd_version: v2.2.5-gs-1
+  fleet_version: v0.11.5-gs-grpc-1
+  docker_version: 1.10.3
+  rkt_version: v1.3.0
+  k8s_version: v1.2.4
+  k8s_domain: "kube.local"
+  k8s_dns_ip: "10.0.3.10"
+  k8s_service_ip_range: "10.0.3.0/24"
+  k8s_pods_network: "10.0.2.0/16"

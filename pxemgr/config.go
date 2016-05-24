@@ -39,8 +39,9 @@ type profile struct {
 	Quantity      int
 	Name          string
 	Tags          []string
-	DisableEngine bool   `yaml:"disable_engine"`
+	DisableEngine bool `yaml:"disable_engine"`
 	CoreOSVersion string `yaml:"coreos_version"`
+	KubernetesSetup bool `yaml:"k8s_setup"`
 }
 
 type network struct {

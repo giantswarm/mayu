@@ -50,6 +50,8 @@ type Host struct {
 
 	hostDir     *os.File
 	lastModTime time.Time
+
+	KubernetesSetup bool `json:",omitempty"`
 }
 
 type FleetMeta []string

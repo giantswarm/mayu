@@ -26,6 +26,7 @@ type PXEManagerConfiguration struct {
 	HTTPPort             int
 	HTTPBindAddress      string
 	YochuPath            string
+	K8sTLSPath           string
 	StaticHTMLPath       string
 	TemplateSnippets     string
 	LastStageCloudconfig string
@@ -43,6 +44,7 @@ type pxeManagerT struct {
 	tlsCertFile          string
 	tlsKeyFile           string
 	yochuPath            string
+	k8sTLSPath           string
 	staticHTMLPath       string
 	templateSnippets     string
 	lastStageCloudconfig string
@@ -74,6 +76,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		tlsCertFile:          c.TLSCertFile,
 		tlsKeyFile:           c.TLSKeyFile,
 		yochuPath:            c.YochuPath,
+		k8sTLSPath            c.K8sTLSPath,
 		staticHTMLPath:       c.StaticHTMLPath,
 		templateSnippets:     c.TemplateSnippets,
 		lastStageCloudconfig: c.LastStageCloudconfig,
@@ -142,6 +145,9 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 
 	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
 	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(mgr.yochuPath))))
+
+	mgr.router.PathPrefix("/k8s-tls").Handler(http.StripPrefix("/k8s-tls", http.FileServer(http.Dir(mgr.k8sTLSPath))))
+
 
 	// add welcome handler for debugging
 	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
