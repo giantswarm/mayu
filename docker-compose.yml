@@ -1,0 +1,71 @@
+version: "2"
+
+services:
+  mayu:
+    # image: giantswarm/mayu:0.10.1
+    build: .
+    command: >
+      -v 12
+      --no-tls
+      --no-git
+      --alsologtostderr
+    cap_add:
+      - NET_ADMIN
+        # needed for "ARP-cache injection"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+        # needed for `docker network inspect`
+      - /etc/qemu/bridge.conf:/etc/qemu/bridge.conf
+        # needed for `echo "allow $bridge_ifs" >> /etc/qemu/bridge.conf`
+      # - ./config.yaml.tmpl:/etc/mayu/config.yaml.tmpl
+      - ./templates:/usr/lib/mayu/templates
+      - ./template_snippets:/usr/lib/mayu/template_snippets
+      - ./images:/usr/lib/mayu/images
+      - ./yochu:/usr/lib/mayu/yochu
+      # FIXME add volume for dhcp leases, if possible?
+      # -> /tmp/dnsmasq.mayu.lease
+
+  redis:
+    image: redis:3.0-alpine
+    # ports:
+    #   - "6379"
+
+  registry:
+    image: registry:2
+    environment:
+      - REGISTRY_STORAGE=filesystem
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/tmp/registry
+      # - REGISTRY_HTTP_TLS_CERTIFICATE=/go/src/github.com/docker/distribution/cmd/registry/registry.local.giantswarm.io.pem
+      # - REGISTRY_HTTP_TLS_KEY=/go/src/github.com/docker/distribution/cmd/registry/registry.local.giantswarm.io.key
+      - REGISTRY_HTTP_SECRET=foo
+      - REGISTRY_HTTP_ADDR=:443
+      - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
+      - REGISTRY_REDIS_ADDR=redis:6379
+      - REGISTRY_REDIS_DB=2
+      - REGISTRY_HTTP_DEBUG_ADDR=:5001
+      - REGISTRY_LOG_LEVEL=warn
+    links:
+      - redis
+    # ports:
+    #   - "443"
+    volumes:
+      - local_registry:/tmp/registry
+    networks:
+      default:
+        aliases:
+          - registry.local.giantswarm.io
+
+  # yochu:
+  #   image: teemow/http-serve
+  #   volumes:
+  #     - /usr/local/lib/mayu:/static
+  #   ports:
+  #     - "8080:8080"
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  local_registry:

@@ -1,0 +1,45 @@
+network:
+  pxe: true
+  interface: eth0
+  bind_addr: {{ $ip_addr_mayu }}
+  bootstrap_range:
+    start: {{ $subnet | replace ".0/16" ".10" }}
+    end: {{ $subnet | replace ".0/16" ".30" }}
+  ip_range:
+    start: {{ $subnet | replace ".0/16" ".31" }}
+    end: {{ $subnet | replace ".0/16" ".70" }}
+  dns:
+    - {{ $ip_addr_mayu }}
+  router: {{ $ip_addr_mayu }}
+  # gateway: {{ $ip_addr_gateway }}
+  # network_model: singlenic
+  network_model: bridge
+
+profiles:
+  - name: core
+    quantity: 3
+    tags:
+      - "role-core=true"
+    coreos_version: "835.13.0"
+  - name: default
+    disable_engine: true
+    coreos_version: "835.13.0"
+    # coreos_version: "1032.1.0"
+    tags:
+      - "role-worker=true"
+      - "stack-compute=true"
+
+templates_env:
+  ssh_authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCS/thnoYaUYmuDxwQF9ES3Jsq6KltO+QU/8PVo1tUr5vlEfEY1Q9JYHiPKJW+U0cMH3a/Jv2IDTaH629djoNdtTottaYGDINBoVIlAdR+vwm3JzVUB02mb+QXTzhzLc58fdwhHN0PS82/BcSSFpQzI7PedRGMtzS6Qxcx4YfrzC16vsdF8wMw+tVbtI2fDLwfd9NcpCDr582NrX/qOR22zeck3VVgppnuC5mGAC+XvHCRbp+4pZJ0W4fpEIGwG1cPbktvdA0wYcn7GJo7fU11066PMGMXplV+DEnQTpBUbP+NFXRuY7RzTeuTGSZHXsWO11cmpLPVVB7LdAaQuSPi1"
+  mayu_http_endpoint: "http://{{ $ip_addr_mayu }}:4080"
+  yochu_localsubnet: "{{ $subnet | replace ".0/16" ".0/24" }}"
+  yochu_gateway: "{{ $ip_addr_gateway }}/32"
+  yochu_private_registry: "registry.localonsho_default"
+  yochu_http_endpoint: "http://{{ $ip_addr_mayu }}:4080/yochu"
+  yochu_version: 0.19.1
+  etcd_version: v2.2.5-gs-1
+  fleet_version: v0.11.5-gs-grpc-1
+  docker_version: 1.10.3
+  rkt_version: v1.3.0
+  k8s_version: v1.2.2
