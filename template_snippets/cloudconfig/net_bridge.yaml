@@ -1,19 +1,29 @@
 {{define "net_bridge"}}
-  - name: 10-br0.netdev
-    runtime: true
+  - name: 10-nodhcp.network
+    runtime: false
     content: |
-      [NetDev]
-      Name=br0
-      Kind=bridge
+      [Match]
+      Name=*
 
-  - name: 20-{{.Host.ConnectedNIC}}.network
-    runtime: true
+      [Network]
+      DHCP=no
+  - name: 00-{{.Host.ConnectedNIC}}.network
+    runtime: false
     content: |
       [Match]
       Name={{.Host.ConnectedNIC}}
 
       [Network]
-      Bridge=br0
+      Address={{.Host.InternalAddr}}/22
+      Gateway={{.ClusterNetwork.Router}}
+      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+      {{ end }}
+  - name: 00-br0.netdev
+    runtime: true
+    content: |
+      [NetDev]
+      Name=br0
+      Kind=bridge
 
   - name: 30-br0.network
     runtime: true
@@ -22,8 +32,8 @@
       Name=br0
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
-      Gateway={{.ClusterNetwork.Router}}
-      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
-      {{ end }}
+      Address=192.168.10.1/24
+      DHCPServer=yes
+      DNS=8.8.8.8
+      IPMasquerade=yes
 {{end}}
