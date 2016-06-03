@@ -3,7 +3,7 @@
 ## Prerequisites
 
 ```bash
-./scripts/fetch-coreos-image 835.13.0
+./scripts/fetch-coreos-image 1010.5.0
 
 mkdir -p ./onsho/ipxe
 curl https://github.com/giantswarm/onsho/raw/master/ipxe/ipxe.iso -o ./onsho/ipxe/ipxe.iso

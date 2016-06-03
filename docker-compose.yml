@@ -17,7 +17,7 @@ services:
         # needed for `docker network inspect`
       - /etc/qemu/bridge.conf:/etc/qemu/bridge.conf
         # needed for `echo "allow $bridge_ifs" >> /etc/qemu/bridge.conf`
-      # - ./config.yaml.tmpl:/etc/mayu/config.yaml.tmpl
+      - ./config.yaml.tmpl:/etc/mayu/config.yaml.tmpl
       - ./templates:/usr/lib/mayu/templates
       - ./template_snippets:/usr/lib/mayu/template_snippets
       - ./images:/usr/lib/mayu/images

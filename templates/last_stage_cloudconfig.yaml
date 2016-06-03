@@ -1,25 +1,108 @@
 #cloud-config
+---
+
 hostname: {{.Host.Hostname}}
 
-# # for debugging purposes
-# users:
-#   - name: "elroy"
-#     passwd: "$6$SALT$3MUMz4cNIRjQ/Knnc3gXjJLV1vdwFs2nLvh//nGtEh/.li04NodZJSfnc4jeCVHd7kKHGnq5MsenN.tO6Z.Cj/"
-#     # 'password'
-#     groups:
-#       - "sudo"
-#       - "docker"
+ssh_authorized_keys:
+{{range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys") }}
+  - {{ $pubkey }}
+{{ end}}
+
+write_files:
+  - path: "/etc/systemd/system/fleet.service.d/30-giantswarm.conf"
+    permissions: 420
+    owner: root
+    content: |
+      [Service]
+      {{if .Host.FleetMetadata }}
+      Environment="FLEET_METADATA={{.Host.FleetMetadata}}"
+      {{ end}}
+      Environment="FLEET_DISABLE_ENGINE=false"
+
+  - path: "/etc/systemd/system/flanneld.service"
+    permissions: 356
+    content: |
+      [Unit]
+      Description=Network fabric for containers
+      Documentation=https://github.com/coreos/flannel
+      Requires=early-docker.service
+      After=etcd.service etcd2.service early-docker.service
+      Before=early-docker.target
+
+      [Service]
+      Type=notify
+      Restart=always
+      RestartSec=5
+      Environment="TMPDIR=/var/tmp/"
+      Environment="DOCKER_HOST=unix:///var/run/early-docker.sock"
+      Environment="FLANNEL_VER=0.5.5"
+      Environment="FLANNEL_IMG=quay.io/coreos/flannel"
+      Environment="ETCD_SSL_DIR=/etc/ssl/etcd"
+      Environment="FLANNEL_ENV_FILE=/run/flannel/options.env"
+      LimitNOFILE=40000
+      LimitNPROC=1048576
+      ExecStartPre=/sbin/modprobe ip_tables
+      ExecStartPre=/usr/bin/mkdir -p /run/flannel
+      ExecStartPre=/usr/bin/mkdir -p ${ETCD_SSL_DIR}
+      ExecStartPre=-/usr/bin/touch ${FLANNEL_ENV_FILE}
+
+      ExecStart=/usr/libexec/sdnotify-proxy /run/flannel/sd.sock \
+        /usr/bin/docker run --net=host --privileged=true --rm \
+        --volume=/run/flannel:/run/flannel \
+        --env=NOTIFY_SOCKET=/run/flannel/sd.sock \
+        --env=AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+        --env=AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+        --env-file=${FLANNEL_ENV_FILE} \
+        --volume=/usr/share/ca-certificates:/etc/ssl/certs:ro \
+        --volume=${ETCD_SSL_DIR}:${ETCD_SSL_DIR}:ro \
+        ${FLANNEL_IMG}:${FLANNEL_VER} /opt/bin/flanneld --listen=0.0.0.0:8889 --ip-masq=true
+
+      # Update docker options
+      ExecStartPost=/usr/bin/docker run --net=host --rm --volume=/run:/run \
+        ${FLANNEL_IMG}:${FLANNEL_VER} \
+        /opt/bin/mk-docker-opts.sh -d /run/flannel_docker_opts.env -i
+
+      [Install]
+      WantedBy=multi-user.target
+
+# {{/*
+#   - path: /etc/hosts
+#     permissions: 0644
+#     owner: root
+#     content: |
+#       127.0.0.1 localhost
+#       127.0.0.1 {{.Host.Hostname}}
+#       127.0.0.1 etcd.giantswarm
+# */}}
+
+  - path: /etc/resolv.conf
+    permissions: 0644
+    owner: root
+    content: |
+      {{range $server := .ClusterNetwork.DNS }}
+      nameserver {{ $server }}
+      {{ end}}
+
+# {{/*
+#   {{if index .TemplatesEnv "yochu_version" }}
+#   - path: /etc/yochu-env
+#     permissions: 0644
+#     owner: root
+#     content: |
+#       YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
+#       DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
+#       ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
+#       FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+#       RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
+#       K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
+#   {{ end}}
+# */}}
 
 coreos:
   update:
     reboot-strategy: off
 
   etcd2:
-    # discovery: https://discovery.etcd.io/1db39b6923573a0cf42ecdc3460a894e
-    # advertise-client-urls: http://$public_ipv4:2379
-    # initial-advertise-peer-urls: http://$private_ipv4:2380
-    # listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    # listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
     {{if .EtcdDiscoveryUrl }}
     discovery: {{.EtcdDiscoveryUrl}}
     {{ end}}
@@ -29,14 +112,9 @@ coreos:
     listen-peer-urls: http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001
 
   fleet:
-    etcd_servers: http://{{.Host.InternalAddr}}:2379
-    {{if .Host.FleetMetadata }}
-    metadata: {{.Host.FleetMetadata}}
-    {{ end}}
-    # public-ip: $public_ipv4
+    public-ip: {{.Host.InternalAddr}}
 
   flannel:
-    # interface: $public_ipv4
     interface: {{.Host.InternalAddr}}
 
   units:
@@ -49,8 +127,27 @@ coreos:
 {{if eq .ClusterNetwork.NetworkModel "bridge"}}{{template "net_bridge" .}}{{end}}
 {{if eq .ClusterNetwork.NetworkModel "bridge_dhcp"}}{{template "net_bridge_dhcp" .}}{{end}}
 
+# {{/*
+#     - name: 15-br0.netdev
+#       runtime: true
+#       content: |
+#         [NetDev]
+#         Name=br0
+#         Kind=bridge
+#
+#     - name: 15-br0.network
+#       runtime: true
+#       content: |
+#         [Match]
+#         Name=br0
+#         [Network]
+#         Address=172.17.11.1/24
+#         DHCPServer=yes
+#         DNS=8.8.8.8
+#         IPMasquerade=yes
+# */}}
+
     - name: update-engine.service
-      # enable: false
       command: stop
       mask: true
 
@@ -62,34 +159,59 @@ coreos:
       command: restart
 
     - name: etcd2.service
-      enable: true
       command: start
 
     - name: fleet.service
-      enable: true
       command: start
 
-    - name: docker.service
-      # enable: true
-      # command: start
-      drop-ins:
-        - name: 40-docker.conf
-          content: |
-            [Service]
-            EnvironmentFile=/run/flannel/options.env
-            [Unit]
-            Requires=flanneld.service
-            After=flanneld.service
+    - name: flanneld-client.service
+      enable: true
+      command: start
+      content: |
+        [Unit]
+        Description=Flanneld client
+        Requires=early-docker.service
+        After=etcd.service etcd2.service early-docker.service flanneld.service
+        Before=early-docker.target
+
+        [Service]
+        Type=notify
+        Restart=always
+        RestartSec=5
+        Environment="TMPDIR=/var/tmp/"
+        Environment="DOCKER_HOST=unix:///var/run/early-docker.sock"
+        Environment="FLANNEL_VER=0.5.5"
+        Environment="FLANNEL_IMG=quay.io/coreos/flannel"
+        Environment="ETCD_SSL_DIR=/etc/ssl/etcd"
+        Environment="FLANNEL_ENV_FILE=/run/flannel/options.env"
+        LimitNOFILE=40000
+        LimitNPROC=1048576
+        ExecStartPre=/sbin/modprobe ip_tables
+        ExecStartPre=/usr/bin/mkdir -p /run/flannel
+        ExecStartPre=/usr/bin/mkdir -p ${ETCD_SSL_DIR}
+        ExecStartPre=-/usr/bin/touch ${FLANNEL_ENV_FILE}
+
+        ExecStart=/usr/libexec/sdnotify-proxy /run/flannel/sd.sock \
+          /usr/bin/docker run --net=host --privileged=true --rm \
+          --volume=/run/flannel:/run/flannel \
+          --env=NOTIFY_SOCKET=/run/flannel/sd.sock \
+          --env=AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+          --env=AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+          --env-file=${FLANNEL_ENV_FILE} \
+          --volume=/usr/share/ca-certificates:/etc/ssl/certs:ro \
+          --volume=${ETCD_SSL_DIR}:${ETCD_SSL_DIR}:ro \
+          ${FLANNEL_IMG}:${FLANNEL_VER} /opt/bin/flanneld --remote={{.Host.InternalAddr}}:8889 --ip-masq=true
+
+        # Update docker options
+        ExecStartPost=/usr/bin/docker run --net=host --rm --volume=/run:/run \
+          ${FLANNEL_IMG}:${FLANNEL_VER} \
+          /opt/bin/mk-docker-opts.sh -d /run/flannel_docker_opts.env -i
+
+        [Install]
+        WantedBy=multi-user.target
 
     - name: flanneld.service
       command: start
-      # dropins:
-      drop-ins:
-         - name: 40-ExecStartPre-symlink.conf
-           content: |
-             [Service]
-             ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
-             ExecStartPre=/opt/init-flannel
 
     - name: set-flannel-etcd-config.service
       command: start
@@ -102,6 +224,16 @@ coreos:
 
         [Service]
         ExecStart=-/usr/bin/etcdctl mk /coreos.com/network/config '{"Network":"10.0.3.0/16","Backend":{"Type":"vxlan"}}'
+
+    - name: docker.service
+      drop-ins:
+      - name: 40-docker.conf
+        content: |
+          [Service]
+          EnvironmentFile=/run/flannel/options.env
+          [Unit]
+          Requires=flanneld-client.service
+          After=flanneld-client.service
 
     - name: set-giantswarm-environment.service
       command: start
@@ -137,118 +269,3 @@ coreos:
 
         [Install]
         WantedBy=multi-user.target
-
-
-# {{/*
-# {{template "quobyte" .}}
-# {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
-# {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
-#
-#   {{if index .TemplatesEnv "yochu_version"}}
-#   - name: yochu.service
-#     command: start
-#     enable: true
-#     content: |
-#       [Unit]
-#       Description=Giant Swarm yochu
-#       Wants=network-online.target
-#       After=network-online.target
-#       Before=etcd2.service fleet.service docker.service
-#
-#       [Service]
-#       Type=oneshot
-#       EnvironmentFile=/etc/yochu-env
-#       ExecStartPre=/usr/bin/mkdir -p /home/core/bin
-#       ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
-#       ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
-#       ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
-#       ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
-#       ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION} --docker-version=${DOCKER_VERSION} --rkt-version=${RKT_VERSION} --k8s-version=${K8S_VERSION}
-#       ExecStartPost=/bin/sh -c 'sleep 5'
-#       ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls {{end}}--update-versions
-#       RemainAfterExit=yes
-#
-#       [Install]
-#       WantedBy=multi-user.target
-#   {{end}}
-# */}}
-
-write_files:
-  - path: /etc/systemd/system/fleet.service.d/30-giantswarm.conf
-    permissions: 0644
-    owner: root
-    content: |
-      [Service]
-      {{if .Host.FleetMetadata }}
-      Environment="FLEET_METADATA={{.Host.FleetMetadata}}"
-      {{ end}}
-      Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
-
-  - path: /etc/flannel/options.env
-    content: |
-       FLANNELD_IFACE=$public_ipv4
-       FLANNELD_ETCD_ENDPOINTS=http://$public_ipv4:2379
-
-  - path: /opt/init-flannel
-    permissions: 0644
-    content: |
-      #!/bin/bash
-      function init_flannel {
-        echo "Waiting for etcd..."
-        while true
-        do
-          IFS=',' read -ra ES <<< "http://$public_ipv4:2379"
-          for ETCD in "${ES[@]}"; do
-            echo "Trying: $ETCD"
-            if [ -n "$(curl --silent "$ETCD/v2/machines")" ]; then
-              local ACTIVE_ETCD=$ETCD
-              break
-            fi
-            sleep 1
-          done
-          if [ -n "$ACTIVE_ETCD" ]; then
-            break
-          fi
-        done
-        RES=$(curl --silent -X PUT -d "value={\"Network\":\"10.0.3.0/16\",\"Backend\":{\"Type\":\"vxlan\"}}" "$ACTIVE_ETCD/v2/keys/coreos.com/network/config?prevExist=false")
-        if [ -z "$(echo $RES | grep '"action":"create"')" ] && [ -z "$(echo $RES | grep 'Key already exists')" ]; then
-          echo "Unexpected error configuring flannel pod network: $RES"
-        fi
-      }
-      init_flannel
-
-# following was not in https://github.com/giantswarm/gs-vagrant/blob/setup_coreos_cluster/user-data
-
-  - path: /etc/hosts
-    permissions: 0644
-    owner: root
-    content: |
-      127.0.0.1 localhost
-      127.0.0.1 {{.Host.Hostname}}
-      127.0.0.1 etcd.giantswarm
-
-  - path: /etc/resolv.conf
-    permissions: 0644
-    owner: root
-    content: |
-      {{range $server := .ClusterNetwork.DNS }}
-      nameserver {{ $server }}
-      {{ end}}
-
-  {{if index .TemplatesEnv "yochu_version" }}
-  - path: /etc/yochu-env
-    permissions: 0644
-    owner: root
-    content: |
-      YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
-      DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
-      ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
-      FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
-      RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
-      K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
-  {{ end}}
-
-ssh_authorized_keys:
-{{range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys") }}
-  - {{ $pubkey }}
-{{ end}}
