@@ -1,0 +1,30 @@
+{{define "net_bridge"}}
+    - name: 10-br0.netdev
+      runtime: true
+      content: |
+        [NetDev]
+        Name=br0
+        Kind=bridge
+
+    - name: 20-{{.Host.ConnectedNIC}}.network
+      # runtime: false
+      runtime: true
+      content: |
+        [Match]
+        Name={{.Host.ConnectedNIC}}
+
+        [Network]
+        Bridge=br0
+
+    - name: 30-br0.network
+      runtime: true
+      content: |
+        [Match]
+        Name=br0
+
+        [Network]
+        Address={{.Host.InternalAddr}}/22
+        Gateway=172.18.0.1
+        {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+        {{ end }}
+{{end}}
