@@ -1,12 +1,4 @@
 {{define "net_bridge"}}
-  - name: 10-nodhcp.network
-    runtime: false
-    content: |
-      [Match]
-      Name=*
-
-      [Network]
-      DHCP=no
   - name: 00-{{.Host.ConnectedNIC}}.network
     runtime: false
     content: |
@@ -36,4 +28,12 @@
       DHCPServer=yes
       DNS=8.8.8.8
       IPMasquerade=yes
+  - name: 30-nodhcp.network
+    runtime: false
+    content: |
+      [Match]
+      Name=*
+
+      [Network]
+      DHCP=no
 {{end}}
