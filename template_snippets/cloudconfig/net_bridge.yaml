@@ -10,6 +10,7 @@
       Gateway={{.ClusterNetwork.Router}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
+
   - name: 00-br0.netdev
     runtime: true
     content: |
@@ -28,7 +29,8 @@
       DHCPServer=yes
       DNS=8.8.8.8
       IPMasquerade=yes
-  - name: 30-nodhcp.network
+
+  - name: 99-nodhcp.network
     runtime: false
     content: |
       [Match]
