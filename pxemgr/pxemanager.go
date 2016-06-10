@@ -253,6 +253,31 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 	return net.IP{}
 }
 
+func (mgr *pxeManagerT) getNextBridgeIP() net.IP {
+	assignedIPs := map[string]struct{}{}
+	for _, host := range mgr.cluster.GetAllHosts() {
+		assignedIPs[host.BridgeIP.String()] = struct{}{}
+	}
+
+	IPisAvailable := func(ip net.IP) bool {
+		_, exists := assignedIPs[ip.String()]
+		return !exists
+	}
+
+	currentIP := net.ParseIP(mgr.config.Network.BridgeIPRange.Start)
+	rangeEnd := net.ParseIP(mgr.config.Network.BridgeIPRange.End)
+
+	for ; ; ipLessThanOrEqual(currentIP, rangeEnd) {
+		if IPisAvailable(currentIP) {
+			return currentIP
+		}
+		currentIP = incIP(currentIP)
+	}
+
+	panic(errors.New("unable to get a free bridge ip"))
+	return net.IP{}
+}
+
 func (mgr *pxeManagerT) thisHost() string {
 	scheme := "https"
 	if mgr.noTLS {

@@ -22,6 +22,7 @@ type Host struct {
 	Serial             string    `json:",omitempty"`
 	MacAddresses       []string  `json:",omitempty"`
 	InternalAddr       net.IP    `json:",omitempty"`
+	BridgeIP           net.IP    `json:",omitempty"`
 	BondInterfaces     []string  `json:",omitempty"`
 	Cabinet            uint      `json:",omitempty"`
 	MachineOnCabinet   uint      `json:",omitempty"`

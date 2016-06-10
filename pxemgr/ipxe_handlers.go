@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path"
@@ -100,6 +101,14 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 		if host.InternalAddr == nil {
 			host.InternalAddr = mgr.getNextInternalIP()
 			err = host.Commit("updated host InternalAddr")
+			if err != nil {
+				glog.Fatalln(err)
+			}
+		}
+
+		if mgr.config.Network.NetworkModel == "bridge" || mgr.config.Network.NetworkModel == "bond_bridge" {
+			host.BridgeIP = mgr.getNextBridgeIP()
+			err = host.Commit("updated host BridgeIP")
 			if err != nil {
 				glog.Fatalln(err)
 			}

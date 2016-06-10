@@ -54,6 +54,10 @@ type network struct {
 		Start string
 		End   string
 	} `yaml:"ip_range"`
+	BridgeIPRange struct {
+		Start string
+		End   string
+	} `yaml:"bridge_ip_range"`
 	Router       string
 	DNS          []string
 	PXE          bool

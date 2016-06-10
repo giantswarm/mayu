@@ -37,6 +37,7 @@ func statusRun(cmd *cobra.Command, args []string) {
 	lines := []string{}
 	lines = append(lines, fmt.Sprintf(statusScheme, "Serial:", host.Serial))
 	lines = append(lines, fmt.Sprintf(statusScheme, "IP:", host.InternalAddr))
+	lines = append(lines, fmt.Sprintf(statusScheme, "Bridge IP:", host.BridgeIP))
 	lines = append(lines, fmt.Sprintf(statusScheme, "IPMI:", host.IPMIAddr))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Provider ID:", host.ProviderId))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Macs:", macs))
