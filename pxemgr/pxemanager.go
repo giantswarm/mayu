@@ -67,6 +67,10 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		glog.Fatalln(err)
 	}
 
+	if conf.DefaultCoreOSVersion == "" {
+		glog.Fatalf("No default_coreos_version specified in %s\n", c.ConfigFile)
+	}
+
 	mgr := &pxeManagerT{
 		noTLS:                c.NoTLS,
 		httpPort:             c.HTTPPort,

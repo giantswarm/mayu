@@ -25,8 +25,6 @@ const (
 	installImageFile = "coreos_production_image.bin.bz2"
 
 	defaultProfileName = "default"
-
-	defaultCoreOSVersion = "835.13.0"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +141,7 @@ func (mgr *pxeManagerT) profileCoreOSVersion(profileName string) string {
 			return v.CoreOSVersion
 		}
 	}
-	return defaultCoreOSVersion
+	return mgr.config.DefaultCoreOSVersion
 }
 
 func (mgr *pxeManagerT) profileMetadata(profileName string) []string {
@@ -617,19 +615,23 @@ func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
-	coreOSversion := defaultCoreOSVersion
+	coreOSversion := mgr.config.DefaultCoreOSVersion
+	fmt.Println("default: ", coreOSversion)
 
 	host, exists := mgr.hostFromSerialVar(r)
 	if exists {
+		fmt.Println("host from serial: ", host.CoreOSVersion)
+
+		if version, exist := host.Overrides["CoreOSVersion"]; exist {
+			fmt.Println("send host override: ", version.(string))
+			return version.(string)
+		}
+
 		if host.CoreOSVersion == "" {
-			if version, exist := host.Overrides["CoreOSVersion"]; exist {
-				return version.(string)
-			}
-			return defaultCoreOSVersion
+			fmt.Println("send default: ", coreOSversion)
+			return mgr.config.DefaultCoreOSVersion
 		} else {
-			if version, exist := host.Overrides["CoreOSVersion"]; exist {
-				return version.(string)
-			}
+			fmt.Println("send host: ", host.CoreOSVersion)
 			return host.CoreOSVersion
 		}
 	}
