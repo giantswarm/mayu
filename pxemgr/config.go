@@ -28,11 +28,10 @@ func loadConfig(filePath string) (configuration, error) {
 }
 
 type configuration struct {
-	TemplatesEnv map[string]interface{} `yaml:"templates_env"`
-
-	Profiles []profile
-
-	Network network
+	DefaultCoreOSVersion string `yaml:"default_coreos_version"`
+	Network              network
+	Profiles             []profile
+	TemplatesEnv         map[string]interface{} `yaml:"templates_env"`
 }
 
 type profile struct {

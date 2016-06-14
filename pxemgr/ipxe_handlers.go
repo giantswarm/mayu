@@ -25,8 +25,6 @@ const (
 	installImageFile = "coreos_production_image.bin.bz2"
 
 	defaultProfileName = "default"
-
-	defaultCoreOSVersion = "835.13.0"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +141,7 @@ func (mgr *pxeManagerT) profileCoreOSVersion(profileName string) string {
 			return v.CoreOSVersion
 		}
 	}
-	return defaultCoreOSVersion
+	return mgr.config.DefaultCoreOSVersion
 }
 
 func (mgr *pxeManagerT) profileMetadata(profileName string) []string {
@@ -233,6 +231,7 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
+	glog.V(3).Infof("sending CoreOS %s image", coreOSversion)
 
 	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
 		vmlinuz, err := mgr.getKernelImage(coreOSversion)
@@ -617,19 +616,17 @@ func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
-	coreOSversion := defaultCoreOSVersion
+	coreOSversion := mgr.config.DefaultCoreOSVersion
 
 	host, exists := mgr.hostFromSerialVar(r)
 	if exists {
+		if version, exist := host.Overrides["CoreOSVersion"]; exist {
+			return version.(string)
+		}
+
 		if host.CoreOSVersion == "" {
-			if version, exist := host.Overrides["CoreOSVersion"]; exist {
-				return version.(string)
-			}
-			return defaultCoreOSVersion
+			return mgr.config.DefaultCoreOSVersion
 		} else {
-			if version, exist := host.Overrides["CoreOSVersion"]; exist {
-				return version.(string)
-			}
 			return host.CoreOSVersion
 		}
 	}

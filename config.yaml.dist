@@ -1,3 +1,7 @@
+# used to install machines and if no coreos 
+# version is given in the profile
+default_coreos_version: 1010.5.0
+
 network:
   pxe: true
   interface: bond0
