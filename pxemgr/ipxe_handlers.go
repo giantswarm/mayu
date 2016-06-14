@@ -231,6 +231,7 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
+	glog.V(3).Infof("sending CoreOS %s image", coreOSversion)
 
 	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
 		vmlinuz, err := mgr.getKernelImage(coreOSversion)
@@ -616,22 +617,16 @@ func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 
 func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
 	coreOSversion := mgr.config.DefaultCoreOSVersion
-	fmt.Println("default: ", coreOSversion)
 
 	host, exists := mgr.hostFromSerialVar(r)
 	if exists {
-		fmt.Println("host from serial: ", host.CoreOSVersion)
-
 		if version, exist := host.Overrides["CoreOSVersion"]; exist {
-			fmt.Println("send host override: ", version.(string))
 			return version.(string)
 		}
 
 		if host.CoreOSVersion == "" {
-			fmt.Println("send default: ", coreOSversion)
 			return mgr.config.DefaultCoreOSVersion
 		} else {
-			fmt.Println("send host: ", host.CoreOSVersion)
 			return host.CoreOSVersion
 		}
 	}
