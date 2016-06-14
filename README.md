@@ -45,56 +45,8 @@ Get the latest docker image from here: https://hub.docker.com/r/giantswarm/mayu/
 
 ## Running Mayu
 
-### Preparing configuration
-
-Copy the default configuration and apply changes regarding your needs.
-
-```
-cp config.yaml.dist config.yaml
-```
-
-Fetch a CoreOS image that you want to provision on your machines:
-
-```
-./fetch-coreos-image 835.13.0
-```
-
-Fetch docker, etcd, fleet versions you would like to provision on your CoreOS machines via Yochu:
-
-```
-./fetch-yochu-assets
-```
-
-### Run Mayu from source
-
-start mayu:
-```
-make bin-dist
-./mayu --cluster-directory cluster -v=12 --no-tls --no-git
-```
-
-### Run Mayu within a Docker container
-
-```
-docker run --rm -it \
-  --cap-add=NET_ADMIN \
-  --net=host \
-  --name=mayu \
-  -v /var/lib/mayu:/var/lib/mayu \
-  -v /usr/lib/mayu/images:/usr/lib/mayu/images \
-  -v /usr/lib/mayu/yochu:/usr/lib/mayu/yochu \
-  giantswarm/mayu \
-  -v=12 --no-git --no-tls
-```
-
-Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.
-
-For running `mayu` in a local VM you might want to add two more volumes, to
-enable DNS resultion by the `dnsmasq` included in `mayu`:
-
-```
--v /etc/hosts:/etc/hosts -v /etc/resolv.conf:/etc/resolv.conf
-```
+Configuring Mayu is explained in [docs/configuration.md](docs/configuration.md). After configuration have
+a look at [docs/running.md](docs/running.md) on how to start Mayu.
 
 ## Further Steps
 

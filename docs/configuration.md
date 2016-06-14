@@ -47,6 +47,19 @@ The very first thing to do is to copy `config.yaml.dist` to
 section configures the network, profiles for the machines and the versions
 of the software that should be installed via Yochu.
 
+### Default CoreOS Version
+
+To successfully run Mayu you need to specify a default CoreOS version. This version is used to bootstrap
+machine. So whenever a new machine starts this CoreOS version is used to install CoreOS on the disk of
+the machine. You can also specify other CoreOS versions within profiles or single machines that overwrite
+this default value.
+
+Most importantly you also need to fetch the CoreOS image version. This is explained in the (Running Mayu)[running.md] section.
+
+```yaml
+default_coreos_version: 1010.5.0
+```
+
 ### Network
 
 ```yaml
