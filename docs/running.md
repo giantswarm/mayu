@@ -12,7 +12,7 @@ default CoreOS version. But you might also define different CoreOS versions with
 ./fetch-coreos-image 1010.5.0
 ```
 
-If you like to distribute your own binaries for docker, etcd or fleet have a look at (Yochu)[https://github.com/giantswarm/yochu].
+If you like to distribute your own binaries for docker, etcd or fleet have a look at [Yochu](https://github.com/giantswarm/yochu).
 There is also a script to fetch Giant Swarms binaries as an example.
 
 ```
