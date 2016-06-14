@@ -54,7 +54,7 @@ machine. So whenever a new machine starts this CoreOS version is used to install
 the machine. You can also specify other CoreOS versions within profiles or single machines that overwrite
 this default value.
 
-Most importantly you also need to fetch the CoreOS image version. This is explained in the (Running Mayu)[running.md] section.
+Most importantly you also need to fetch the CoreOS image version. This is explained in the [Running Mayu](running.md) section.
 
 ```yaml
 default_coreos_version: 1010.5.0
