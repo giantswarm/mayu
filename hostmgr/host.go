@@ -34,6 +34,7 @@ type Host struct {
 	KeepDiskData       bool      `json:",omitempty"`
 	LastBoot           time.Time `json:",omitempty"`
 	Profile            string    `json:",omitempty"`
+	EtcdClusterToken   string    `json:",omitempty"`
 
 	Overrides map[string]interface{} `json:",omitempty"`
 

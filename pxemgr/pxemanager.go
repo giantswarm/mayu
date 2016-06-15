@@ -99,9 +99,13 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		mu: new(sync.Mutex),
 	}
 
-	if mgr.cluster.Config.EtcdDiscoveryURL == "" {
-		mgr.cluster.GenerateEtcdDiscoveryURL(c.EtcdQuorumSize)
-		mgr.cluster.Commit("generated etcd discovery url")
+	if mgr.cluster.Config.DefaultEtcdClusterToken == "" {
+		token, err := mgr.cluster.GenerateEtcdCluster(c.EtcdQuorumSize)
+		if err != nil {
+			glog.Fatalf("Failed to generate etcd cluster token: %s", err)
+		}
+		mgr.cluster.Config.DefaultEtcdClusterToken = token
+		mgr.cluster.Commit("generated etcd cluster")
 	}
 
 	return mgr, nil
@@ -138,7 +142,12 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_ipmi_addr").HandlerFunc(withSerialParam(mgr.setIPMIAddr))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_cabinet").HandlerFunc(withSerialParam(mgr.setCabinet))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
+	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
+
+	// etcd discovery
+	etcdRouter := mgr.router.PathPrefix("/etcd").Subrouter()
+	mgr.defineEtcdDiscoveryRoutes(etcdRouter)
 
 	// boring stuff
 	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)

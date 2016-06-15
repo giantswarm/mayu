@@ -15,17 +15,15 @@ import (
 )
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {
-	etcdDiscoveryURL := mgr.cluster.Config.EtcdDiscoveryURL
+	etcdClusterToken := mgr.cluster.Config.DefaultEtcdClusterToken
 
-	if hostDiscoveryURL, exists := host.Overrides["EtcdDiscoveryURL"]; exists {
-		etcdDiscoveryURL = hostDiscoveryURL.(string)
+	if host.EtcdClusterToken != "" {
+		etcdClusterToken = host.EtcdClusterToken
 	}
 
 	mergedTemplatesEnv := mgr.config.TemplatesEnv
 	for k, v := range host.Overrides {
-		if k != "EtcdDiscoveryUrl" {
-			mergedTemplatesEnv[k] = v
-		}
+		mergedTemplatesEnv[k] = v
 	}
 
 	ctx := struct {
@@ -41,7 +39,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	}{
 		Host:             host,
 		ClusterNetwork:   mgr.config.Network,
-		EtcdDiscoveryUrl: etcdDiscoveryURL,
+		EtcdDiscoveryUrl: mgr.thisHost() + "/etcd/" + etcdClusterToken,
 		MayuHost:         mgr.config.Network.BindAddr,
 		MayuPort:         mgr.httpPort,
 		MayuURL:          mgr.thisHost(),

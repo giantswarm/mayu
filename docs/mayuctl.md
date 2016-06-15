@@ -22,6 +22,7 @@ Available Commands:
   status        Status of a host.
   set           Set metadata of machines (metadata, providerid, ipmiaddr, cabinet, state).
   boot-complete Change the state of a host to 'running' (only run on provisioned machines).
+  etcd-clusters Manage etcd clusters
   override      Overrides globally defined properties for a host: EtcdDiscoveryURL, docker_version, yochu_version, etc
 
 Flags:
@@ -105,7 +106,7 @@ $ mayuctl set 004b27ed-692e-b32e-1f68-d89aff66c71b cabinet 1
 
 You can use the command `override` to override the value of properties for a
 specific machine by using its serial number. You can override the value of properties
-such as the `yochu_version`, `EtcdDiscoveryURL`, `CoreOSVersion`, etc...
+such as the `yochu_version`, `EtcdClusterToken`, `CoreOSVersion`, etc...
 
 ```nohighlight
 $ mayuctl override 004b27ed-692e-b32e-1f68-d89aff66c71b CoreOSVersion 899.13.0
@@ -125,3 +126,38 @@ the command `boot-complete`. This command enables to change the versions of
 $ mayuctl boot-complete --update-versions
 
 ```
+
+## Manage etcd clusters
+
+Mayu contains an etcd discovery to setup and manage your etcd clusters.
+
+```
+$ mayuctl etcd-clusters
+```
+
+### Usage
+
+```nohighlight
+Manage etcd clusters
+
+Usage:
+  mayuctl etcd-clusters [flags]
+  mayuctl etcd-clusters [command]
+
+Available Commands:
+  list          List machines.
+  status        Status of a cluster.
+  add           Add a machine to the cluster
+  delete        Delete a machine from the cluster
+
+Flags:
+  -d, --debug[=false]: Print debug output
+      --host="localhost": Host name to connect to mayu service
+      --no-tls[=false]: Do not use TLS communication
+      --port=4080: Port to connect to mayu service
+  -v, --verbose[=false]: Print verbose output
+
+Use "mayuctl etcd-clusters [command] --help" for more information about a command.
+```
+
+

@@ -1,10 +1,11 @@
 package hostmgr
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"path"
 	"strconv"
@@ -36,8 +37,19 @@ type Cluster struct {
 	predefinedVals map[string]map[string]string
 }
 
+type EtcdMachine struct {
+	Name    string
+	PeerURL string
+}
+
+type EtcdCluster struct {
+	Size     int
+	Machines map[string]*EtcdMachine
+}
+
 type ClusterConfig struct {
-	EtcdDiscoveryURL string
+	EtcdClusters            map[string]*EtcdCluster
+	DefaultEtcdClusterToken string
 }
 
 type cachedHost struct {
@@ -79,9 +91,12 @@ func NewCluster(baseDir string, gitStore bool) (*Cluster, error) {
 	}
 
 	c := &Cluster{
-		baseDir:        baseDir,
-		GitStore:       gitStore,
-		mu:             new(sync.Mutex),
+		baseDir:  baseDir,
+		GitStore: gitStore,
+		mu:       new(sync.Mutex),
+		Config: ClusterConfig{
+			EtcdClusters: map[string]*EtcdCluster{},
+		},
 		predefinedVals: map[string]map[string]string{},
 		hostsCache:     map[string]*cachedHost{},
 	}
@@ -277,19 +292,20 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	return ch
 }
 
-// GenerateEtcdDiscoveryURL calls out for the etcd discovery and configures the
-// cluster with the newly generated discovery URL.
-func (c *Cluster) GenerateEtcdDiscoveryURL(size int) error {
-	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
+func (c *Cluster) GenerateEtcdCluster(size int) (string, error) {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
 	if err != nil {
-		return err
+		return "", err
 	}
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	token := hex.EncodeToString(b)
+
+	c.Config.EtcdClusters[token] = &EtcdCluster{
+		Size:     size,
+		Machines: map[string]*EtcdMachine{},
 	}
-	c.Config.EtcdDiscoveryURL = string(content)
-	return nil
+
+	return token, nil
 }
 
 func Has(host *Host, exists bool) bool {

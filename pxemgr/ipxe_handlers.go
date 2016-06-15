@@ -631,6 +631,34 @@ func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http
 	w.WriteHeader(202)
 }
 
+func (mgr *pxeManagerT) setEtcdClusterToken(serial string, w http.ResponseWriter, r *http.Request) {
+	host, exists := mgr.cluster.HostWithSerial(serial)
+	if !exists {
+		w.WriteHeader(400)
+		w.Write([]byte("host doesn't exist"))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	payload := hostmgr.Host{}
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("unable to parse json data in set_cabinet request"))
+		return
+	}
+
+	host.EtcdClusterToken = payload.EtcdClusterToken
+	err = host.Commit("updated host etcd cluster token")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host etcd cluster token failed"))
+		return
+	}
+	mgr.cluster.Update()
+	w.WriteHeader(202)
+}
+
 func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("this is the iPXE server of mayu " + mgr.version))
