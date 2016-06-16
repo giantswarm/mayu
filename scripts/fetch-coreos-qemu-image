@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -eu
+
+: ${1?"Usage: $0 <coreos-version>"}
+
+COREOS_VERSION=$1
+COREOS_CHANNEL=${2:-stable}
+IMAGE_PATH=./images/qemu/${COREOS_VERSION}
+
+mkdir -p ${IMAGE_PATH}
+
+# remove old images
+rm -f ${IMAGE_PATH}/coreos*
+
+wget -O ${IMAGE_PATH}/coreos_production_qemu_image.img.bz2 http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_qemu_image.img.bz2 && \
+wget -O ${IMAGE_PATH}/coreos_production_qemu_image.img.bz2.sig http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_qemu_image.img.bz2.sig
+echo "$COREOS_VERSION" > ${IMAGE_PATH}/coreos-version
+
+gpg --verify ${IMAGE_PATH}/coreos_production_qemu_image.img.bz2.sig

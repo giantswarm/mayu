@@ -23,6 +23,7 @@ const (
 	vmlinuzFile      = "coreos_production_pxe.vmlinuz"
 	initrdFile       = "coreos_production_pxe_image.cpio.gz"
 	installImageFile = "coreos_production_image.bin.bz2"
+	qemuImageFile    = "coreos_production_qemu_image.img.bz2"
 
 	defaultProfileName = "default"
 )
@@ -257,6 +258,14 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		setContentLength(w, img)
 		defer img.Close()
 		io.Copy(w, img)
+	} else if strings.HasSuffix(r.URL.Path, "/qemu/coreos_production_qemu_image.img.bz2") {
+		img, err := mgr.getQemuImage(coreOSversion)
+		if err != nil {
+			panic(err)
+		}
+		setContentLength(w, img)
+		defer img.Close()
+		io.Copy(w, img)
 	} else {
 		panic(fmt.Sprintf("no handler provided for invalid URL path '%s'", r.URL.Path))
 	}
@@ -276,6 +285,10 @@ func (mgr *pxeManagerT) getKernelImage(coreOSversion string) (*os.File, error) {
 
 func (mgr *pxeManagerT) getInitRD(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, initrdFile))
+}
+
+func (mgr *pxeManagerT) getQemuImage(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, installImageFile))
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
