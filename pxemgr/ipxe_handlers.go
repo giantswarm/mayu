@@ -258,7 +258,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		setContentLength(w, img)
 		defer img.Close()
 		io.Copy(w, img)
-	} else if strings.HasSuffix(r.URL.Path, "/qemu/coreos_production_qemu_image.img.bz2") {
+	} else if strings.HasSuffix(r.URL.Path, "/qemu/image.img.bz2") {
 		img, err := mgr.getQemuImage(coreOSversion)
 		if err != nil {
 			panic(err)
