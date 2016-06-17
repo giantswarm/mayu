@@ -24,7 +24,7 @@ const (
 	initrdFile       = "coreos_production_pxe_image.cpio.gz"
 	installImageFile = "coreos_production_image.bin.bz2"
 	qemuImageFile    = "coreos_production_qemu_usr_image.squashfs"
-	qemuKernelFile   = "coreos_production_pxe.vmlinuz"
+	qemuKernelFile   = "coreos_production_qemu.vmlinuz"
 
 	defaultProfileName = "default"
 )
@@ -235,7 +235,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
 	glog.V(3).Infof("sending CoreOS %s image", coreOSversion)
 
-	if strings.HasSuffix(r.URL.Path, "/qemu/usr_image.squashfs.sha256") {
+	if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s.sha256", qemuImageFile)) {
 		img, err := mgr.getQemuImageSHA(coreOSversion)
 		if err != nil {
 			panic(err)
@@ -243,7 +243,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		setContentLength(w, img)
 		defer img.Close()
 		io.Copy(w, img)
-	} else if strings.HasSuffix(r.URL.Path, "/qemu/usr_image.squashfs") {
+	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s", qemuImageFile)) {
 		img, err := mgr.getQemuImage(coreOSversion)
 		if err != nil {
 			panic(err)
@@ -251,7 +251,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		setContentLength(w, img)
 		defer img.Close()
 		io.Copy(w, img)
-	} else if strings.HasSuffix(r.URL.Path, "/qemu/vmlinuz") {
+	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s", qemuKernelFile)) {
 		img, err := mgr.getQemuKernel(coreOSversion)
 		if err != nil {
 			panic(err)
@@ -309,7 +309,7 @@ func (mgr *pxeManagerT) getQemuImage(coreOSversion string) (*os.File, error) {
 }
 
 func (mgr *pxeManagerT) getQemuImageSHA(coreOSversion string) (*os.File, error) {
-	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, qemuImageFile, ".sha256"))
+	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, fmt.Sprintf("%s.sha256", qemuImageFile)))
 }
 
 func (mgr *pxeManagerT) getQemuKernel(coreOSversion string) (*os.File, error) {
