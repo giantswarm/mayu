@@ -235,85 +235,69 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
 	glog.V(3).Infof("sending CoreOS %s image", coreOSversion)
 
+	var (
+		img *os.File
+		err error
+	)
+
 	if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s.sha256", qemuImageFile)) {
-		img, err := mgr.getQemuImageSHA(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, img)
-		defer img.Close()
-		io.Copy(w, img)
+		img, err = mgr.qemuImageSHA(coreOSversion)
 	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s", qemuImageFile)) {
-		img, err := mgr.getQemuImage(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, img)
-		defer img.Close()
-		io.Copy(w, img)
+		img, err = mgr.qemuImage(coreOSversion)
+	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s.sha256", qemuKernelFile)) {
+		img, err = mgr.qemuKernelSHA(coreOSversion)
 	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s", qemuKernelFile)) {
-		img, err := mgr.getQemuKernel(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, img)
-		defer img.Close()
-		io.Copy(w, img)
+		img, err = mgr.qemuKernel(coreOSversion)
+
 	} else if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
-		vmlinuz, err := mgr.getKernelImage(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, vmlinuz)
-		defer vmlinuz.Close()
-		io.Copy(w, vmlinuz)
+		img, err = mgr.pxeKernelImage(coreOSversion)
 	} else if strings.HasSuffix(r.URL.Path, "/initrd.cpio.gz") {
-		initrd, err := mgr.getInitRD(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, initrd)
-		defer initrd.Close()
-		io.Copy(w, initrd)
+		img, err = mgr.pxeInitRD(coreOSversion)
 	} else if strings.HasSuffix(r.URL.Path, "/install_image.bin.bz2") {
-		img, err := mgr.getInstallImage(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, img)
-		defer img.Close()
-		io.Copy(w, img)
+		img, err = mgr.pxeInstallImage(coreOSversion)
 	} else {
 		panic(fmt.Sprintf("no handler provided for invalid URL path '%s'", r.URL.Path))
 	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	setContentLength(w, img)
+	defer img.Close()
+	io.Copy(w, img)
 }
 
 func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("got request", r.URL)
 }
 
-func (mgr *pxeManagerT) getInstallImage(coreOSversion string) (*os.File, error) {
+func (mgr *pxeManagerT) pxeInstallImage(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, installImageFile))
 }
 
-func (mgr *pxeManagerT) getKernelImage(coreOSversion string) (*os.File, error) {
+func (mgr *pxeManagerT) pxeKernelImage(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, vmlinuzFile))
 }
 
-func (mgr *pxeManagerT) getInitRD(coreOSversion string) (*os.File, error) {
+func (mgr *pxeManagerT) pxeInitRD(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/"+coreOSversion, initrdFile))
 }
 
-func (mgr *pxeManagerT) getQemuImage(coreOSversion string) (*os.File, error) {
+func (mgr *pxeManagerT) qemuImage(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, qemuImageFile))
 }
 
-func (mgr *pxeManagerT) getQemuImageSHA(coreOSversion string) (*os.File, error) {
+func (mgr *pxeManagerT) qemuImageSHA(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, fmt.Sprintf("%s.sha256", qemuImageFile)))
 }
 
-func (mgr *pxeManagerT) getQemuKernel(coreOSversion string) (*os.File, error) {
+func (mgr *pxeManagerT) qemuKernel(coreOSversion string) (*os.File, error) {
 	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, qemuKernelFile))
+}
+
+func (mgr *pxeManagerT) qemuKernelSHA(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, fmt.Sprintf("%s.sha256", qemuKernelFile)))
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
