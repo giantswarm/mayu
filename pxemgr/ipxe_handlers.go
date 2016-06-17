@@ -23,7 +23,8 @@ const (
 	vmlinuzFile      = "coreos_production_pxe.vmlinuz"
 	initrdFile       = "coreos_production_pxe_image.cpio.gz"
 	installImageFile = "coreos_production_image.bin.bz2"
-	qemuImageFile    = "coreos_production_qemu_image.img.bz2"
+	qemuImageFile    = "coreos_production_qemu_usr_image.squashfs"
+	qemuKernelFile   = "coreos_production_pxe.vmlinuz"
 
 	defaultProfileName = "default"
 )
@@ -234,7 +235,31 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
 	glog.V(3).Infof("sending CoreOS %s image", coreOSversion)
 
-	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
+	if strings.HasSuffix(r.URL.Path, "/qemu/usr_image.squashfs.sha256") {
+		img, err := mgr.getQemuImageSHA(coreOSversion)
+		if err != nil {
+			panic(err)
+		}
+		setContentLength(w, img)
+		defer img.Close()
+		io.Copy(w, img)
+	} else if strings.HasSuffix(r.URL.Path, "/qemu/usr_image.squashfs") {
+		img, err := mgr.getQemuImage(coreOSversion)
+		if err != nil {
+			panic(err)
+		}
+		setContentLength(w, img)
+		defer img.Close()
+		io.Copy(w, img)
+	} else if strings.HasSuffix(r.URL.Path, "/qemu/vmlinuz") {
+		img, err := mgr.getQemuKernel(coreOSversion)
+		if err != nil {
+			panic(err)
+		}
+		setContentLength(w, img)
+		defer img.Close()
+		io.Copy(w, img)
+	} else if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
 		vmlinuz, err := mgr.getKernelImage(coreOSversion)
 		if err != nil {
 			panic(err)
@@ -252,14 +277,6 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		io.Copy(w, initrd)
 	} else if strings.HasSuffix(r.URL.Path, "/install_image.bin.bz2") {
 		img, err := mgr.getInstallImage(coreOSversion)
-		if err != nil {
-			panic(err)
-		}
-		setContentLength(w, img)
-		defer img.Close()
-		io.Copy(w, img)
-	} else if strings.HasSuffix(r.URL.Path, "/qemu/image.img.bz2") {
-		img, err := mgr.getQemuImage(coreOSversion)
 		if err != nil {
 			panic(err)
 		}
@@ -288,7 +305,15 @@ func (mgr *pxeManagerT) getInitRD(coreOSversion string) (*os.File, error) {
 }
 
 func (mgr *pxeManagerT) getQemuImage(coreOSversion string) (*os.File, error) {
-	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, installImageFile))
+	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, qemuImageFile))
+}
+
+func (mgr *pxeManagerT) getQemuImageSHA(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, qemuImageFile, ".sha256"))
+}
+
+func (mgr *pxeManagerT) getQemuKernel(coreOSversion string) (*os.File, error) {
+	return os.Open(path.Join(mgr.imagesCacheDir+"/qemu/"+coreOSversion, qemuKernelFile))
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
