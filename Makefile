@@ -95,6 +95,7 @@ bin-dist: all
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
 	cp scripts/fetch-coreos-image bin-dist/fetch-coreos-image
+	cp scripts/fetch-coreos-qemu-image bin-dist/fetch-coreos-qemu-image
 	cp scripts/fetch-yochu-assets bin-dist/fetch-yochu-assets
 	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-amd64.tar.gz *
 

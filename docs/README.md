@@ -15,3 +15,4 @@ Here we provide more detailed documentation about Mayu.
 - [iPXE Setup](ipxe.md)
 - [Compiling Mayu](compiling.md)
 - [Security Overview](security.md)
+- [Qemu KVM inside CoreOS](qemu.md)
