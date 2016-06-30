@@ -40,6 +40,8 @@ const (
 	DefaultTLSCertFile              string = ""
 	DefaultTLSKeyFile               string = ""
 	DefaultEtcdQuorumSize           int    = 3
+	DefaultEtcdDiscoveryUrl         string = ""
+	DefaultEtcdEndpoint             string = "127.0.0.1:2379"
 )
 
 type MayuFlags struct {
@@ -67,6 +69,8 @@ type MayuFlags struct {
 	tlsCertFile          string
 	tlsKeyFile           string
 	etcdQuorumSize       int
+	etcdDiscoveryUrl     string
+	etcdEndpoint         string
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
@@ -122,6 +126,8 @@ func init() {
 	pf.StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
 	pf.StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
 	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Quorum of the etcd cluster")
+	pf.StringVar(&globalFlags.etcdDiscoveryUrl, "etcd-discovery", DefaultEtcdDiscoveryUrl, "The etcd discovery base url (eg https://discovery.etcd.io). Default is Mayu itself. Note: This should be the base URL of the discovery without a specific token. Mayu itself creates a token for the etcd clusters.")
+	pf.StringVar(&globalFlags.etcdEndpoint, "etcd-endpoint", DefaultEtcdEndpoint, "The etcd endpoint for the internal discovery feature.")
 
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
@@ -213,6 +219,8 @@ func mainRun(cmd *cobra.Command, args []string) {
 	pxeManager, err := pxemgr.PXEManager(pxemgr.PXEManagerConfiguration{
 		ConfigFile:           globalFlags.configFile,
 		EtcdQuorumSize:       globalFlags.etcdQuorumSize,
+		EtcdDiscoveryUrl:     globalFlags.etcdDiscoveryUrl,
+		EtcdEndpoint:         globalFlags.etcdEndpoint,
 		DNSmasqExecutable:    globalFlags.dnsmasq,
 		DNSmasqTemplate:      globalFlags.dnsmasqTemplate,
 		TFTPRoot:             globalFlags.tFTPRoot,

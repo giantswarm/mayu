@@ -13,7 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/client"
 	"github.com/golang/glog"
+	"golang.org/x/net/context"
 )
 
 const clusterConfFile = "cluster.json"
@@ -37,18 +39,7 @@ type Cluster struct {
 	predefinedVals map[string]map[string]string
 }
 
-type EtcdMachine struct {
-	Name    string
-	PeerURL string
-}
-
-type EtcdCluster struct {
-	Size     int
-	Machines map[string]*EtcdMachine
-}
-
 type ClusterConfig struct {
-	EtcdClusters            map[string]*EtcdCluster
 	DefaultEtcdClusterToken string
 }
 
@@ -91,12 +82,10 @@ func NewCluster(baseDir string, gitStore bool) (*Cluster, error) {
 	}
 
 	c := &Cluster{
-		baseDir:  baseDir,
-		GitStore: gitStore,
-		mu:       new(sync.Mutex),
-		Config: ClusterConfig{
-			EtcdClusters: map[string]*EtcdCluster{},
-		},
+		baseDir:        baseDir,
+		GitStore:       gitStore,
+		mu:             new(sync.Mutex),
+		Config:         ClusterConfig{},
 		predefinedVals: map[string]map[string]string{},
 		hostsCache:     map[string]*cachedHost{},
 	}
@@ -292,7 +281,7 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	return ch
 }
 
-func (c *Cluster) GenerateEtcdCluster(size int) (string, error) {
+func (c *Cluster) GenerateEtcdCluster(etcdEndpoint string, size int) (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -300,9 +289,32 @@ func (c *Cluster) GenerateEtcdCluster(size int) (string, error) {
 	}
 	token := hex.EncodeToString(b)
 
-	c.Config.EtcdClusters[token] = &EtcdCluster{
-		Size:     size,
-		Machines: map[string]*EtcdMachine{},
+	// store in etcd
+	cfg := client.Config{
+		Endpoints: []string{fmt.Sprintf("http://%s", etcdEndpoint)},
+		Transport: client.DefaultTransport,
+		// set timeout per request to fail fast when the target endpoint is unavailable
+		HeaderTimeoutPerRequest: time.Second,
+	}
+	etcdClient, err := client.New(cfg)
+	if err != nil {
+		return "", err
+	}
+	kapi := client.NewKeysAPI(etcdClient)
+
+	_, err = kapi.Set(context.Background(), path.Join("_etcd", "registry", token), "", &client.SetOptions{
+		PrevExist: client.PrevNoExist,
+		Dir:       true,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	_, err = kapi.Set(context.Background(), path.Join("_etcd", "registry", token, "_config", "size"), strconv.Itoa(size), &client.SetOptions{
+		PrevExist: client.PrevNoExist,
+	})
+	if err != nil {
+		return "", err
 	}
 
 	return token, nil

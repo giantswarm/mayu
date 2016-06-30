@@ -17,6 +17,8 @@ import (
 type PXEManagerConfiguration struct {
 	ConfigFile           string
 	EtcdQuorumSize       int
+	EtcdDiscoveryUrl     string
+	EtcdEndpoint         string
 	DNSmasqExecutable    string
 	DNSmasqTemplate      string
 	TFTPRoot             string
@@ -50,6 +52,8 @@ type pxeManagerT struct {
 	ignitionConfig       string
 	useIgnition          bool
 	imagesCacheDir       string
+	etcdDiscoveryUrl     string
+	etcdEndpoint         string
 	version              string
 
 	config  *configuration
@@ -85,6 +89,8 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		useIgnition:          c.UseIgnition,
 		firstStageScript:     c.FirstStageScript,
 		imagesCacheDir:       c.ImagesCacheDir,
+		etcdDiscoveryUrl:     c.EtcdDiscoveryUrl,
+		etcdEndpoint:         c.EtcdEndpoint,
 		version:              c.Version,
 
 		config:  &conf,
@@ -99,13 +105,19 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		mu: new(sync.Mutex),
 	}
 
+	if c.EtcdDiscoveryUrl == "" {
+		mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd/"
+	} else {
+		mgr.etcdDiscoveryUrl = c.EtcdDiscoveryUrl
+	}
+
 	if mgr.cluster.Config.DefaultEtcdClusterToken == "" {
-		token, err := mgr.cluster.GenerateEtcdCluster(c.EtcdQuorumSize)
+		token, err := mgr.cluster.GenerateEtcdCluster(mgr.etcdEndpoint, c.EtcdQuorumSize)
 		if err != nil {
 			glog.Fatalf("Failed to generate etcd cluster token: %s", err)
 		}
 		mgr.cluster.Config.DefaultEtcdClusterToken = token
-		mgr.cluster.Commit("generated etcd cluster")
+		mgr.cluster.Commit(fmt.Sprintf("Set default etcd cluster to '%s'", token))
 	}
 
 	return mgr, nil
@@ -273,4 +285,9 @@ func (mgr *pxeManagerT) thisHost() string {
 	}
 
 	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.httpPort)
+}
+
+func httpError(w http.ResponseWriter, msg string, status int) {
+	glog.Warningln(msg)
+	http.Error(w, msg, status)
 }

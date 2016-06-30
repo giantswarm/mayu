@@ -39,7 +39,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	}{
 		Host:             host,
 		ClusterNetwork:   mgr.config.Network,
-		EtcdDiscoveryUrl: mgr.thisHost() + "/etcd/" + etcdClusterToken,
+		EtcdDiscoveryUrl: fmt.Sprintf("%s/%s", mgr.etcdDiscoveryUrl, etcdClusterToken),
 		MayuHost:         mgr.config.Network.BindAddr,
 		MayuPort:         mgr.httpPort,
 		MayuURL:          mgr.thisHost(),

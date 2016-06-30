@@ -126,38 +126,3 @@ the command `boot-complete`. This command enables to change the versions of
 $ mayuctl boot-complete --update-versions
 
 ```
-
-## Manage etcd clusters
-
-Mayu contains an etcd discovery to setup and manage your etcd clusters.
-
-```
-$ mayuctl etcd-clusters
-```
-
-### Usage
-
-```nohighlight
-Manage etcd clusters
-
-Usage:
-  mayuctl etcd-clusters [flags]
-  mayuctl etcd-clusters [command]
-
-Available Commands:
-  list          List machines.
-  status        Status of a cluster.
-  add           Add a machine to the cluster
-  delete        Delete a machine from the cluster
-
-Flags:
-  -d, --debug[=false]: Print debug output
-      --host="localhost": Host name to connect to mayu service
-      --no-tls[=false]: Do not use TLS communication
-      --port=4080: Port to connect to mayu service
-  -v, --verbose[=false]: Print verbose output
-
-Use "mayuctl etcd-clusters [command] --help" for more information about a command.
-```
-
-
