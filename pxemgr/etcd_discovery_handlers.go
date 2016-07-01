@@ -57,7 +57,7 @@ func (mgr *pxeManagerT) etcdDiscoveryHandler(w http.ResponseWriter, r *http.Requ
 
 func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.Request) {
 	var err error
-	size := 3
+	size := mgr.defaultEtcdQuorumSize
 	s := r.FormValue("size")
 	if s != "" {
 		size, err = strconv.Atoi(s)
@@ -66,8 +66,8 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 			return
 		}
 	}
-	token, err := mgr.cluster.GenerateEtcdCluster(mgr.etcdEndpoint, size)
 
+	token, err := mgr.cluster.GenerateEtcdDiscoveryToken(mgr.etcdEndpoint, size)
 	if err != nil {
 		httpError(w, fmt.Sprintf("Unable to generate token '%v'", err), 400)
 		return

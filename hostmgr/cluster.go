@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"path"
 	"strconv"
@@ -130,6 +131,9 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		}
 		if s, exists := predef["fleettags"]; exists {
 			newHost.FleetMetadata = strings.Split(s, ",")
+		}
+		if s, exists := predef["etcdclustertoken"]; exists {
+			newHost.EtcdClusterToken = s
 		}
 	} else {
 		glog.V(2).Infof("no predefined values for '%s'", serial)
@@ -281,7 +285,7 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	return ch
 }
 
-func (c *Cluster) GenerateEtcdCluster(etcdEndpoint string, size int) (string, error) {
+func (c *Cluster) GenerateEtcdDiscoveryToken(etcdEndpoint string, size int) (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -316,7 +320,26 @@ func (c *Cluster) GenerateEtcdCluster(etcdEndpoint string, size int) (string, er
 	if err != nil {
 		return "", err
 	}
+	return token, nil
+}
 
+func (c *Cluster) FetchEtcdDiscoveryToken(etcdDiscoveryUrl string, size int) (string, error) {
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/new", etcdDiscoveryUrl), strings.NewReader(fmt.Sprintf("size=%d", size)))
+	if err != nil {
+		return "", err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	token := strings.TrimPrefix(string(body), etcdDiscoveryUrl+"/")
 	return token, nil
 }
 

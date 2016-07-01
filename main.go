@@ -39,6 +39,7 @@ const (
 	DefaultHTTPBindAddress          string = "0.0.0.0"
 	DefaultTLSCertFile              string = ""
 	DefaultTLSKeyFile               string = ""
+	DefaultUseInternalEtcdDiscovery bool   = true
 	DefaultEtcdQuorumSize           int    = 3
 	DefaultEtcdDiscoveryUrl         string = ""
 	DefaultEtcdEndpoint             string = "127.0.0.1:2379"
@@ -48,29 +49,30 @@ type MayuFlags struct {
 	debug   bool
 	version bool
 
-	configFile           string
-	clusterDir           string
-	showTemplates        bool
-	noGit                bool
-	noTLS                bool
-	tFTPRoot             string
-	yochuPath            string
-	staticHTMLPath       string
-	firstStageScript     string
-	lastStageCloudconfig string
-	ignitionConfig       string
-	useIgnition          bool
-	templateSnippets     string
-	dnsmasq              string
-	dnsmasqTemplate      string
-	imagesCacheDir       string
-	httpPort             int
-	httpBindAddress      string
-	tlsCertFile          string
-	tlsKeyFile           string
-	etcdQuorumSize       int
-	etcdDiscoveryUrl     string
-	etcdEndpoint         string
+	configFile               string
+	clusterDir               string
+	showTemplates            bool
+	noGit                    bool
+	noTLS                    bool
+	tFTPRoot                 string
+	yochuPath                string
+	staticHTMLPath           string
+	firstStageScript         string
+	lastStageCloudconfig     string
+	ignitionConfig           string
+	useIgnition              bool
+	templateSnippets         string
+	dnsmasq                  string
+	dnsmasqTemplate          string
+	imagesCacheDir           string
+	httpPort                 int
+	httpBindAddress          string
+	tlsCertFile              string
+	tlsKeyFile               string
+	useInternalEtcdDiscovery bool
+	etcdQuorumSize           int
+	etcdDiscoveryUrl         string
+	etcdEndpoint             string
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
@@ -125,8 +127,9 @@ func init() {
 	pf.StringVar(&globalFlags.httpBindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
 	pf.StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
 	pf.StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
-	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Quorum of the etcd cluster")
-	pf.StringVar(&globalFlags.etcdDiscoveryUrl, "etcd-discovery", DefaultEtcdDiscoveryUrl, "The etcd discovery base url (eg https://discovery.etcd.io). Default is Mayu itself. Note: This should be the base URL of the discovery without a specific token. Mayu itself creates a token for the etcd clusters.")
+	pf.BoolVar(&globalFlags.useInternalEtcdDiscovery, "use-internal-etcd-discovery", DefaultUseInternalEtcdDiscovery, "Use the internal etcd discovery")
+	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Default quorum of the etcd clusters")
+	pf.StringVar(&globalFlags.etcdDiscoveryUrl, "etcd-discovery", DefaultEtcdDiscoveryUrl, "External etcd discovery base url (eg https://discovery.etcd.io). Note: This should be the base URL of the discovery without a specific token. Mayu itself creates a token for the etcd clusters.")
 	pf.StringVar(&globalFlags.etcdEndpoint, "etcd-endpoint", DefaultEtcdEndpoint, "The etcd endpoint for the internal discovery feature.")
 
 	globalFlags.filesystem = fs.DefaultFilesystem
@@ -217,27 +220,28 @@ func mainRun(cmd *cobra.Command, args []string) {
 	}
 
 	pxeManager, err := pxemgr.PXEManager(pxemgr.PXEManagerConfiguration{
-		ConfigFile:           globalFlags.configFile,
-		EtcdQuorumSize:       globalFlags.etcdQuorumSize,
-		EtcdDiscoveryUrl:     globalFlags.etcdDiscoveryUrl,
-		EtcdEndpoint:         globalFlags.etcdEndpoint,
-		DNSmasqExecutable:    globalFlags.dnsmasq,
-		DNSmasqTemplate:      globalFlags.dnsmasqTemplate,
-		TFTPRoot:             globalFlags.tFTPRoot,
-		NoTLS:                globalFlags.noTLS,
-		HTTPPort:             globalFlags.httpPort,
-		HTTPBindAddress:      globalFlags.httpBindAddress,
-		TLSCertFile:          globalFlags.tlsCertFile,
-		TLSKeyFile:           globalFlags.tlsKeyFile,
-		YochuPath:            globalFlags.yochuPath,
-		StaticHTMLPath:       globalFlags.staticHTMLPath,
-		TemplateSnippets:     globalFlags.templateSnippets,
-		LastStageCloudconfig: globalFlags.lastStageCloudconfig,
-		IgnitionConfig:       globalFlags.ignitionConfig,
-		UseIgnition:          globalFlags.useIgnition,
-		FirstStageScript:     globalFlags.firstStageScript,
-		ImagesCacheDir:       globalFlags.imagesCacheDir,
-		Version:              projectVersion,
+		ConfigFile:               globalFlags.configFile,
+		UseInternalEtcdDiscovery: globalFlags.useInternalEtcdDiscovery,
+		EtcdQuorumSize:           globalFlags.etcdQuorumSize,
+		EtcdDiscoveryUrl:         globalFlags.etcdDiscoveryUrl,
+		EtcdEndpoint:             globalFlags.etcdEndpoint,
+		DNSmasqExecutable:        globalFlags.dnsmasq,
+		DNSmasqTemplate:          globalFlags.dnsmasqTemplate,
+		TFTPRoot:                 globalFlags.tFTPRoot,
+		NoTLS:                    globalFlags.noTLS,
+		HTTPPort:                 globalFlags.httpPort,
+		HTTPBindAddress:          globalFlags.httpBindAddress,
+		TLSCertFile:              globalFlags.tlsCertFile,
+		TLSKeyFile:               globalFlags.tlsKeyFile,
+		YochuPath:                globalFlags.yochuPath,
+		StaticHTMLPath:           globalFlags.staticHTMLPath,
+		TemplateSnippets:         globalFlags.templateSnippets,
+		LastStageCloudconfig:     globalFlags.lastStageCloudconfig,
+		IgnitionConfig:           globalFlags.ignitionConfig,
+		UseIgnition:              globalFlags.useIgnition,
+		FirstStageScript:         globalFlags.firstStageScript,
+		ImagesCacheDir:           globalFlags.imagesCacheDir,
+		Version:                  projectVersion,
 	}, cluster)
 	if err != nil {
 		glog.Fatalf("unable to create a pxe manager: %s\n", err)

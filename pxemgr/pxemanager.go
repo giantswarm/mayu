@@ -15,46 +15,49 @@ import (
 )
 
 type PXEManagerConfiguration struct {
-	ConfigFile           string
-	EtcdQuorumSize       int
-	EtcdDiscoveryUrl     string
-	EtcdEndpoint         string
-	DNSmasqExecutable    string
-	DNSmasqTemplate      string
-	TFTPRoot             string
-	NoTLS                bool
-	TLSCertFile          string
-	TLSKeyFile           string
-	HTTPPort             int
-	HTTPBindAddress      string
-	YochuPath            string
-	StaticHTMLPath       string
-	TemplateSnippets     string
-	LastStageCloudconfig string
-	IgnitionConfig       string
-	UseIgnition          bool
-	FirstStageScript     string
-	ImagesCacheDir       string
-	Version              string
+	ConfigFile               string
+	UseInternalEtcdDiscovery bool
+	EtcdQuorumSize           int
+	EtcdDiscoveryUrl         string
+	EtcdEndpoint             string
+	DNSmasqExecutable        string
+	DNSmasqTemplate          string
+	TFTPRoot                 string
+	NoTLS                    bool
+	TLSCertFile              string
+	TLSKeyFile               string
+	HTTPPort                 int
+	HTTPBindAddress          string
+	YochuPath                string
+	StaticHTMLPath           string
+	TemplateSnippets         string
+	LastStageCloudconfig     string
+	IgnitionConfig           string
+	UseIgnition              bool
+	FirstStageScript         string
+	ImagesCacheDir           string
+	Version                  string
 }
 
 type pxeManagerT struct {
-	noTLS                bool
-	httpPort             int
-	httpBindAddress      string
-	tlsCertFile          string
-	tlsKeyFile           string
-	yochuPath            string
-	staticHTMLPath       string
-	templateSnippets     string
-	lastStageCloudconfig string
-	firstStageScript     string
-	ignitionConfig       string
-	useIgnition          bool
-	imagesCacheDir       string
-	etcdDiscoveryUrl     string
-	etcdEndpoint         string
-	version              string
+	noTLS                    bool
+	httpPort                 int
+	httpBindAddress          string
+	tlsCertFile              string
+	tlsKeyFile               string
+	yochuPath                string
+	staticHTMLPath           string
+	templateSnippets         string
+	lastStageCloudconfig     string
+	firstStageScript         string
+	ignitionConfig           string
+	useIgnition              bool
+	imagesCacheDir           string
+	useInternalEtcdDiscovery bool
+	defaultEtcdQuorumSize    int
+	etcdDiscoveryUrl         string
+	etcdEndpoint             string
+	version                  string
 
 	config  *configuration
 	cluster *hostmgr.Cluster
@@ -75,23 +78,33 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		glog.Fatalf("No default_coreos_version specified in %s\n", c.ConfigFile)
 	}
 
+	if c.EtcdDiscoveryUrl != "" && c.UseInternalEtcdDiscovery {
+		glog.Fatalln("External etcd discovery url is set and internal etcd discovery is activated. Please choose only one.")
+	} else if c.EtcdDiscoveryUrl == "" && !c.UseInternalEtcdDiscovery {
+		glog.Fatalln("The internal etcd discovery is deactivated and no external discovery url is given")
+	} else if c.UseInternalEtcdDiscovery && c.EtcdEndpoint == "" {
+		glog.Fatalln("The internal etcd discovery is activated but no etcd endpoint is given")
+	}
+
 	mgr := &pxeManagerT{
-		noTLS:                c.NoTLS,
-		httpPort:             c.HTTPPort,
-		httpBindAddress:      c.HTTPBindAddress,
-		tlsCertFile:          c.TLSCertFile,
-		tlsKeyFile:           c.TLSKeyFile,
-		yochuPath:            c.YochuPath,
-		staticHTMLPath:       c.StaticHTMLPath,
-		templateSnippets:     c.TemplateSnippets,
-		lastStageCloudconfig: c.LastStageCloudconfig,
-		ignitionConfig:       c.IgnitionConfig,
-		useIgnition:          c.UseIgnition,
-		firstStageScript:     c.FirstStageScript,
-		imagesCacheDir:       c.ImagesCacheDir,
-		etcdDiscoveryUrl:     c.EtcdDiscoveryUrl,
-		etcdEndpoint:         c.EtcdEndpoint,
-		version:              c.Version,
+		noTLS:                    c.NoTLS,
+		httpPort:                 c.HTTPPort,
+		httpBindAddress:          c.HTTPBindAddress,
+		tlsCertFile:              c.TLSCertFile,
+		tlsKeyFile:               c.TLSKeyFile,
+		yochuPath:                c.YochuPath,
+		staticHTMLPath:           c.StaticHTMLPath,
+		templateSnippets:         c.TemplateSnippets,
+		lastStageCloudconfig:     c.LastStageCloudconfig,
+		ignitionConfig:           c.IgnitionConfig,
+		useIgnition:              c.UseIgnition,
+		firstStageScript:         c.FirstStageScript,
+		imagesCacheDir:           c.ImagesCacheDir,
+		useInternalEtcdDiscovery: c.UseInternalEtcdDiscovery,
+		defaultEtcdQuorumSize:    c.EtcdQuorumSize,
+		etcdDiscoveryUrl:         c.EtcdDiscoveryUrl,
+		etcdEndpoint:             c.EtcdEndpoint,
+		version:                  c.Version,
 
 		config:  &conf,
 		cluster: cluster,
@@ -105,14 +118,17 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		mu: new(sync.Mutex),
 	}
 
-	if c.EtcdDiscoveryUrl == "" {
-		mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd/"
-	} else {
-		mgr.etcdDiscoveryUrl = c.EtcdDiscoveryUrl
-	}
-
 	if mgr.cluster.Config.DefaultEtcdClusterToken == "" {
-		token, err := mgr.cluster.GenerateEtcdCluster(mgr.etcdEndpoint, c.EtcdQuorumSize)
+		var (
+			token string
+			err   error
+		)
+		if mgr.useInternalEtcdDiscovery {
+			mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd"
+			token, err = mgr.cluster.GenerateEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.defaultEtcdQuorumSize)
+		} else {
+			token, err = mgr.cluster.FetchEtcdDiscoveryToken(mgr.etcdDiscoveryUrl, mgr.defaultEtcdQuorumSize)
+		}
 		if err != nil {
 			glog.Fatalf("Failed to generate etcd cluster token: %s", err)
 		}
@@ -158,8 +174,10 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
 
 	// etcd discovery
-	etcdRouter := mgr.router.PathPrefix("/etcd").Subrouter()
-	mgr.defineEtcdDiscoveryRoutes(etcdRouter)
+	if mgr.useInternalEtcdDiscovery {
+		etcdRouter := mgr.router.PathPrefix("/etcd").Subrouter()
+		mgr.defineEtcdDiscoveryRoutes(etcdRouter)
+	}
 
 	// boring stuff
 	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
