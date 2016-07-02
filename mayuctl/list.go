@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultListFields = "ip,serial,profile,ipmiaddr,providerid,metadata,coreos,state,lastboot"
+	defaultListFields = "ip,serial,profile,ipmiaddr,providerid,etcdtoken,metadata,coreos,state,lastboot"
 	timestampFormat   = "2006-01-02 15:04:05"
 )
 
@@ -64,6 +64,9 @@ Or, choose the columns to display:
 				return "-"
 			}
 			return host.ProviderId
+		},
+		"etcdtoken": func(host *hostmgr.Host) string {
+			return host.EtcdClusterToken
 		},
 		"metadata": func(host *hostmgr.Host) string {
 			return host.FleetMetadata.String()

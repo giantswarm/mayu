@@ -10,8 +10,8 @@ import (
 var (
 	overrideCmd = &cobra.Command{
 		Use:   "override <serial> <property> <value>",
-		Short: "Overrides globally defined properties for a host: EtcdDiscoveryURL, docker_version, yochu_version, etc",
-		Long:  "Overrides globally defined properties for a host: EtcdDiscoveryURL, docker_version, yochu_version, etc",
+		Short: "Overrides templates_env properties for a host: docker_version, yochu_version, etc",
+		Long:  "Overrides templates_env properties for a host: docker_version, yochu_version, etc",
 		Run:   overrideRun,
 	}
 )

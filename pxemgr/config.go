@@ -35,11 +35,12 @@ type configuration struct {
 }
 
 type profile struct {
-	Quantity      int
-	Name          string
-	Tags          []string
-	DisableEngine bool   `yaml:"disable_engine"`
-	CoreOSVersion string `yaml:"coreos_version"`
+	Quantity         int
+	Name             string
+	Tags             []string
+	DisableEngine    bool   `yaml:"disable_engine"`
+	CoreOSVersion    string `yaml:"coreos_version"`
+	EtcdClusterToken string `yaml:"etcd_cluster_token"`
 }
 
 type network struct {

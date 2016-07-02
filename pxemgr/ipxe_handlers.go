@@ -107,19 +107,23 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()
-			if host.Profile != "" {
-				host.FleetDisableEngine = mgr.profileDisableEngine(host.Profile)
-				host.FleetMetadata = mgr.profileMetadata(host.Profile)
-
-				host.CoreOSVersion = mgr.profileCoreOSVersion(host.Profile)
-			} else {
-				host.FleetMetadata = mgr.profileMetadata(defaultProfileName)
-				host.FleetDisableEngine = mgr.profileDisableEngine(defaultProfileName)
-
-				host.CoreOSVersion = mgr.profileCoreOSVersion(defaultProfileName)
+			if host.Profile == "" {
+				host.Profile = defaultProfileName
 			}
+			host.FleetDisableEngine = mgr.profileDisableEngine(host.Profile)
+			host.FleetMetadata = mgr.profileMetadata(host.Profile)
+			host.CoreOSVersion = mgr.profileCoreOSVersion(host.Profile)
+			host.EtcdClusterToken = mgr.profileEtcdClusterToken(host.Profile)
 
 			err = host.Commit("updated host profile and metadata")
+			if err != nil {
+				glog.Fatalln(err)
+			}
+		}
+
+		if host.EtcdClusterToken == "" {
+			host.EtcdClusterToken = mgr.cluster.Config.DefaultEtcdClusterToken
+			err = host.Commit("set default etcd discovery token")
 			if err != nil {
 				glog.Fatalln(err)
 			}
@@ -153,6 +157,15 @@ func (mgr *pxeManagerT) profileMetadata(profileName string) []string {
 		}
 	}
 	return []string{}
+}
+
+func (mgr *pxeManagerT) profileEtcdClusterToken(profileName string) string {
+	for _, v := range mgr.config.Profiles {
+		if v.Name == profileName {
+			return v.EtcdClusterToken
+		}
+	}
+	return ""
 }
 
 func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) {
@@ -625,6 +638,34 @@ func (mgr *pxeManagerT) setCabinet(serial string, w http.ResponseWriter, r *http
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host cabinet failed"))
+		return
+	}
+	mgr.cluster.Update()
+	w.WriteHeader(202)
+}
+
+func (mgr *pxeManagerT) setEtcdClusterToken(serial string, w http.ResponseWriter, r *http.Request) {
+	host, exists := mgr.cluster.HostWithSerial(serial)
+	if !exists {
+		w.WriteHeader(400)
+		w.Write([]byte("host doesn't exist"))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	payload := hostmgr.Host{}
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("unable to parse json data in set_etcd_cluster_token request"))
+		return
+	}
+
+	host.EtcdClusterToken = payload.EtcdClusterToken
+	err = host.Commit("updated host etcd cluster token")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host etcd cluster token failed"))
 		return
 	}
 	mgr.cluster.Update()

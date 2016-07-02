@@ -48,6 +48,7 @@ func statusRun(cmd *cobra.Command, args []string) {
 	lines = append(lines, fmt.Sprintf(statusScheme, "Profile:", host.Profile))
 	lines = append(lines, fmt.Sprintf(statusScheme, "DisableEngine:", strconv.FormatBool(host.FleetDisableEngine)))
 	lines = append(lines, fmt.Sprintf(statusScheme, "State:", hostmgr.HostStateMap()[host.State]))
+	lines = append(lines, fmt.Sprintf(statusScheme, "EtcdToken:", host.EtcdClusterToken))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Metadata:", metadata))
 	lines = append(lines, fmt.Sprintf(statusScheme, "CoreOS:", host.CoreOSVersion))
 	lines = append(lines, fmt.Sprintf(statusScheme, "Mayu:", host.MayuVersion))

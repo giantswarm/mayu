@@ -1,6 +1,7 @@
 package pxemgr
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -40,17 +41,15 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 }
 
 func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error {
-	etcdDiscoveryURL := mgr.cluster.Config.EtcdDiscoveryURL
+	etcdClusterToken := mgr.cluster.Config.DefaultEtcdClusterToken
 
-	if hostDiscoveryURL, exists := host.Overrides["EtcdDiscoveryURL"]; exists {
-		etcdDiscoveryURL = hostDiscoveryURL.(string)
+	if host.EtcdClusterToken != "" {
+		etcdClusterToken = host.EtcdClusterToken
 	}
 
 	mergedTemplatesEnv := mgr.config.TemplatesEnv
 	for k, v := range host.Overrides {
-		if k != "EtcdDiscoveryUrl" {
-			mergedTemplatesEnv[k] = v
-		}
+		mergedTemplatesEnv[k] = v
 	}
 
 	ctx := struct {
@@ -66,7 +65,7 @@ func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error 
 	}{
 		Host:             host,
 		ClusterNetwork:   mgr.config.Network,
-		EtcdDiscoveryUrl: etcdDiscoveryURL,
+		EtcdDiscoveryUrl: fmt.Sprintf("%s/%s", mgr.etcdDiscoveryUrl, etcdClusterToken),
 		MayuHost:         mgr.config.Network.BindAddr,
 		MayuPort:         mgr.httpPort,
 		MayuURL:          mgr.thisHost(),

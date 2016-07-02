@@ -20,9 +20,10 @@ Available Commands:
   version       Show cli version
   list          List machines.
   status        Status of a host.
-  set           Set metadata of machines (metadata, providerid, ipmiaddr, cabinet, state).
+  set           Set metadata of machines (metadata, providerid, ipmiaddr, cabinet, state, etcdtoken).
   boot-complete Change the state of a host to 'running' (only run on provisioned machines).
-  override      Overrides globally defined properties for a host: EtcdDiscoveryURL, docker_version, yochu_version, etc
+  etcd-clusters Manage etcd clusters
+  override      Overrides globally defined properties for a host: docker_version, yochu_version, etc
 
 Flags:
   -d, --debug[=false]: Print debug output
@@ -105,7 +106,7 @@ $ mayuctl set 004b27ed-692e-b32e-1f68-d89aff66c71b cabinet 1
 
 You can use the command `override` to override the value of properties for a
 specific machine by using its serial number. You can override the value of properties
-such as the `yochu_version`, `EtcdDiscoveryURL`, `CoreOSVersion`, etc...
+such as the `yochu_version`, `CoreOSVersion`, etc...
 
 ```nohighlight
 $ mayuctl override 004b27ed-692e-b32e-1f68-d89aff66c71b CoreOSVersion 899.13.0
