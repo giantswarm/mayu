@@ -25,6 +25,17 @@ all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY
 	mkdir -p $(PROJECT_PATH)
 	mkdir -p $(GOPATH)/doc
 	cd $(PROJECT_PATH) && ln -s ../../../.. $(PROJECT)
+	docker run \
+	    --rm \
+	    -v $(shell pwd):/usr/code \
+	    -e GOPATH=/usr/code/.gobuild \
+	    -e GOOS=$(GOOS) \
+	    -e GOARCH=$(GOARCH) \
+	    -e GO15VENDOREXPERIMENT=1 \
+	    -w /usr/code/ \
+		golang:1.5 \
+		go get github.com/Masterminds/glide
+	$(GOPATH)/bin/glide install
 
 infopusher/infopusher:
 	cd infopusher ; make
