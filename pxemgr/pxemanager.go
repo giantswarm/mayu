@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/giantswarm/mayu/hostmgr"
@@ -86,6 +87,8 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		glog.Fatalln("The internal etcd discovery is activated but no etcd endpoint is given")
 	}
 
+	c.EtcdDiscoveryUrl = strings.TrimRight(c.EtcdDiscoveryUrl, "/")
+
 	mgr := &pxeManagerT{
 		noTLS:                    c.NoTLS,
 		httpPort:                 c.HTTPPort,
@@ -118,6 +121,29 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		mu: new(sync.Mutex),
 	}
 
+	// check for deprecated EtcdDiscoveryUrl
+	if mgr.cluster.Config.EtcdDiscoveryURL != "" && mgr.cluster.Config.DefaultEtcdClusterToken == "" {
+		// transform discovery url to token
+		parts := strings.Split(mgr.cluster.Config.EtcdDiscoveryURL, "/")
+		token := parts[len(parts)-1]
+		baseUrl := strings.Join(parts[:len(parts)-1], "/")
+
+		if mgr.useInternalEtcdDiscovery {
+			// convert token to internal etcd discovery
+			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, token, mgr.defaultEtcdQuorumSize)
+			if err != nil {
+				glog.Fatalf("Can't store discovery token in etcd.", baseUrl, mgr.etcdDiscoveryUrl)
+			}
+
+			glog.Warningf("Transferred etcd token to internal discovery. Note that your machines still have the old discovery url in their cloud-config and that you need to transfer the current member data yourself.")
+		} else if mgr.etcdDiscoveryUrl != baseUrl {
+			glog.Fatalf("Deprecated EtcdDiscoveryURL ('%s') in your cluster.json differs from the --etcd-discovery parameter ('%s').", baseUrl, mgr.etcdDiscoveryUrl)
+		}
+		mgr.cluster.Config.EtcdDiscoveryURL = ""
+		mgr.cluster.Config.DefaultEtcdClusterToken = token
+		mgr.cluster.Commit(fmt.Sprintf("Convert deprecated etcd discovery url to default etcd token '%s'", token))
+	}
+
 	if mgr.cluster.Config.DefaultEtcdClusterToken == "" {
 		var (
 			token string
@@ -125,12 +151,19 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		)
 		if mgr.useInternalEtcdDiscovery {
 			mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd"
-			token, err = mgr.cluster.GenerateEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.defaultEtcdQuorumSize)
+			token, err = mgr.cluster.GenerateEtcdDiscoveryToken()
+			if err != nil {
+				glog.Fatalf("Failed to generate etcd cluster token: %s", err)
+			}
+			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, token, mgr.defaultEtcdQuorumSize)
+			if err != nil {
+				glog.Fatalf("Failed to store etcd cluster token in etcd: %s", err)
+			}
 		} else {
 			token, err = mgr.cluster.FetchEtcdDiscoveryToken(mgr.etcdDiscoveryUrl, mgr.defaultEtcdQuorumSize)
-		}
-		if err != nil {
-			glog.Fatalf("Failed to generate etcd cluster token: %s", err)
+			if err != nil {
+				glog.Fatalf("Failed to fetch etcd cluster token from external registry: %s", err)
+			}
 		}
 		mgr.cluster.Config.DefaultEtcdClusterToken = token
 		mgr.cluster.Commit(fmt.Sprintf("Set default etcd cluster to '%s'", token))

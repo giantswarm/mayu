@@ -42,6 +42,9 @@ type Cluster struct {
 
 type ClusterConfig struct {
 	DefaultEtcdClusterToken string
+
+	// Deprecated
+	EtcdDiscoveryURL string `json:"EtcdDiscoveryURL,omitempty"`
 }
 
 type cachedHost struct {
@@ -285,7 +288,7 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	return ch
 }
 
-func (c *Cluster) GenerateEtcdDiscoveryToken(etcdEndpoint string, size int) (string, error) {
+func (c *Cluster) GenerateEtcdDiscoveryToken() (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -293,6 +296,10 @@ func (c *Cluster) GenerateEtcdDiscoveryToken(etcdEndpoint string, size int) (str
 	}
 	token := hex.EncodeToString(b)
 
+	return token, nil
+}
+
+func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, token string, size int) error {
 	// store in etcd
 	cfg := client.Config{
 		Endpoints: []string{fmt.Sprintf("http://%s", etcdEndpoint)},
@@ -302,7 +309,7 @@ func (c *Cluster) GenerateEtcdDiscoveryToken(etcdEndpoint string, size int) (str
 	}
 	etcdClient, err := client.New(cfg)
 	if err != nil {
-		return "", err
+		return err
 	}
 	kapi := client.NewKeysAPI(etcdClient)
 
@@ -311,16 +318,13 @@ func (c *Cluster) GenerateEtcdDiscoveryToken(etcdEndpoint string, size int) (str
 		Dir:       true,
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	_, err = kapi.Set(context.Background(), path.Join("_etcd", "registry", token, "_config", "size"), strconv.Itoa(size), &client.SetOptions{
 		PrevExist: client.PrevNoExist,
 	})
-	if err != nil {
-		return "", err
-	}
-	return token, nil
+	return err
 }
 
 func (c *Cluster) FetchEtcdDiscoveryToken(etcdDiscoveryUrl string, size int) (string, error) {
