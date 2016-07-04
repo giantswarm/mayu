@@ -191,7 +191,7 @@ func (g MayuFlags) ValidateHTTPCertificateFileExistance() (bool, error) {
 }
 
 func mainRun(cmd *cobra.Command, args []string) {
-	glog.V(8).Infoln(fmt.Sprintf("starting mayu version %s", projectVersion))
+	glog.V(8).Infof("starting mayu version %s", projectVersion)
 
 	var err error
 

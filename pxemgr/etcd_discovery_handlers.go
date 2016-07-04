@@ -67,9 +67,15 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	token, err := mgr.cluster.GenerateEtcdDiscoveryToken(mgr.etcdEndpoint, size)
+	token, err := mgr.cluster.GenerateEtcdDiscoveryToken()
 	if err != nil {
 		httpError(w, fmt.Sprintf("Unable to generate token '%v'", err), 400)
+		return
+	}
+
+	err = mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, token, size)
+	if err != nil {
+		httpError(w, fmt.Sprintf("Unable to store token in etcd '%v'", err), 400)
 		return
 	}
 
