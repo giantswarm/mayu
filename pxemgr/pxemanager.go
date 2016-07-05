@@ -150,7 +150,6 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			err   error
 		)
 		if mgr.useInternalEtcdDiscovery {
-			mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd"
 			token, err = mgr.cluster.GenerateEtcdDiscoveryToken()
 			if err != nil {
 				glog.Fatalf("Failed to generate etcd cluster token: %s", err)
@@ -167,6 +166,10 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		}
 		mgr.cluster.Config.DefaultEtcdClusterToken = token
 		mgr.cluster.Commit(fmt.Sprintf("Set default etcd cluster to '%s'", token))
+	}
+
+	if mgr.useInternalEtcdDiscovery {
+		mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd"
 	}
 
 	return mgr, nil
