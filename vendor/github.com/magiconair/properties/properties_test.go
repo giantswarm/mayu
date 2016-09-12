@@ -1,4 +1,4 @@
-// Copyright 2013-2014 Frank Schroeder. All rights reserved.
+// Copyright 2016 Frank Schroeder. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -840,6 +840,20 @@ func (s *TestSuite) TestDeleteUnknownKey(c *C) {
 	c.Check(len(p.m), Equals, 1)
 	c.Check(len(p.c), Equals, 1)
 	c.Check(len(p.k), Equals, 1)
+}
+
+func (s *TestSuite) TestMerge(c *C) {
+	input1 := "#comment\nkey=value\nkey2=value2"
+	input2 := "#another comment\nkey=another value\nkey3=value3"
+	p1, err := parse(input1)
+	c.Assert(err, IsNil)
+	p2, err := parse(input2)
+	p1.Merge(p2)
+	c.Check(len(p1.m), Equals, 3)
+	c.Check(len(p1.c), Equals, 1)
+	c.Check(len(p1.k), Equals, 3)
+	c.Check(p1.MustGet("key"), Equals, "another value")
+	c.Check(p1.GetComment("key"), Equals, "another comment")
 }
 
 // ----------------------------------------------------------------------------
