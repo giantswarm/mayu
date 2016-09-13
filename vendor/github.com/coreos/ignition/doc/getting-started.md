@@ -8,7 +8,18 @@ Ignition uses a JSON configuration file to represent the set of changes to be ma
 
 Ignition will choose where to look for configuration based on the underlying platform. A list of [supported platforms][platforms] and metadata sources is provided for reference.
 
-The configuration must be passed to Ignition through the designated data source. Please refer to Ignition [config examples][examples] to learn about writing config files.
+The configuration must be passed to Ignition through the designated data source. Please refer to Ignition [config examples][examples] to learn about writing config files. The provided configuration will be appended to the universal base configuration:
+
+```json
+{
+  "storage": {
+    "filesystems": [{
+      "name": "root",
+      "path": "/sysroot"
+    }]
+  }
+}
+```
 
 ## Troubleshooting
 
@@ -18,8 +29,9 @@ The single most useful piece of information needed when troubleshooting is the l
 journalctl --identifier=ignition
 ```
 
-In the vast majority of cases, it will be immediately obvious why Ignition failed. If it's not, inspect the config that Ignition wrote into the log. This shows how Ignition interpreted the supplied configuration. The user-provided config may have a misspelled section or maybe an incorrect hierarchy.
+In the event that this doesn't yield any results, running as root may help. There are circumstances where the journal isn't owned by the systemd-journal group or the current user is not a part of that group.
 
+In the vast majority of cases, it will be immediately obvious why Ignition failed. If it's not, inspect the config that Ignition wrote into the log. This shows how Ignition interpreted the supplied configuration. The user-provided config may have a misspelled section or maybe an incorrect hierarchy.
 
 [configspec]: configuration.md
 [examples]: https://github.com/coreos/docs/blob/master/ignition/examples.md

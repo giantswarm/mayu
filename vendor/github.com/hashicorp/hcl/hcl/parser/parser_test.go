@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/hcl/ast"
@@ -19,6 +20,7 @@ func TestType(t *testing.T) {
 	}{
 		{token.STRING, `foo = "foo"`},
 		{token.NUMBER, `foo = 123`},
+		{token.NUMBER, `foo = -29`},
 		{token.FLOAT, `foo = 123.12`},
 		{token.FLOAT, `foo = -123.12`},
 		{token.BOOL, `foo = true`},
@@ -98,6 +100,58 @@ EOF
 	}
 }
 
+func TestListOfMaps(t *testing.T) {
+	src := `foo = [
+    {key = "bar"},
+    {key = "baz", key2 = "qux"},
+  ]`
+	p := newParser([]byte(src))
+
+	file, err := p.Parse()
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	// Here we make all sorts of assumptions about the input structure w/ type
+	// assertions. The intent is only for this to be a "smoke test" ensuring
+	// parsing actually performed its duty - giving this test something a bit
+	// more robust than _just_ "no error occurred".
+	expected := []string{`"bar"`, `"baz"`, `"qux"`}
+	actual := make([]string, 0, 3)
+	ol := file.Node.(*ast.ObjectList)
+	objItem := ol.Items[0]
+	list := objItem.Val.(*ast.ListType)
+	for _, node := range list.List {
+		obj := node.(*ast.ObjectType)
+		for _, item := range obj.List.Items {
+			val := item.Val.(*ast.LiteralType)
+			actual = append(actual, val.Token.Text)
+		}
+
+	}
+	if !reflect.DeepEqual(expected, actual) {
+		t.Fatalf("Expected: %#v, got %#v", expected, actual)
+	}
+}
+
+func TestListOfMaps_requiresComma(t *testing.T) {
+	src := `foo = [
+    {key = "bar"}
+    {key = "baz"}
+  ]`
+	p := newParser([]byte(src))
+
+	_, err := p.Parse()
+	if err == nil {
+		t.Fatalf("Expected error, got none!")
+	}
+
+	expected := "error parsing list, expected comma or list end"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("Expected err:\n  %s\nTo contain:\n  %s\n", err, expected)
+	}
+}
+
 func TestObjectType(t *testing.T) {
 	var literals = []struct {
 		src      string
@@ -155,6 +209,7 @@ func TestObjectType(t *testing.T) {
 		item, err := p.objectItem()
 		if err != nil {
 			t.Error(err)
+			continue
 		}
 
 		// we know that the ObjectKey name is foo for all cases, what matters
@@ -162,6 +217,7 @@ func TestObjectType(t *testing.T) {
 		obj, ok := item.Val.(*ast.ObjectType)
 		if !ok {
 			t.Errorf("node should be of type LiteralType, got: %T", item.Val)
+			continue
 		}
 
 		// check if the total length of items are correct
@@ -261,6 +317,10 @@ func TestParse(t *testing.T) {
 			false,
 		},
 		{
+			"object_list_comma.hcl",
+			false,
+		},
+		{
 			"structure.hcl",
 			false,
 		},
@@ -275,10 +335,6 @@ func TestParse(t *testing.T) {
 		{
 			"complex.hcl",
 			false,
-		},
-		{
-			"assign_deep.hcl",
-			true,
 		},
 		{
 			"types.hcl",
@@ -296,6 +352,22 @@ func TestParse(t *testing.T) {
 			"missing_braces.hcl",
 			true,
 		},
+		{
+			"unterminated_object.hcl",
+			true,
+		},
+		{
+			"unterminated_object_2.hcl",
+			true,
+		},
+		{
+			"key_without_value.hcl",
+			true,
+		},
+		{
+			"object_key_without_value.hcl",
+			true,
+		},
 	}
 
 	const fixtureDir = "./test-fixtures"
@@ -309,6 +381,31 @@ func TestParse(t *testing.T) {
 		_, err = Parse(d)
 		if (err != nil) != tc.Err {
 			t.Fatalf("Input: %s\n\nError: %s", tc.Name, err)
+		}
+	}
+}
+
+func TestParse_inline(t *testing.T) {
+	cases := []struct {
+		Value string
+		Err   bool
+	}{
+		{"t t e{{}}", true},
+		{"o{{}}", true},
+		{"t t e d N{{}}", true},
+		{"t t e d{{}}", true},
+		{"N{}N{{}}", true},
+		{"v\nN{{}}", true},
+		{"v=/\n[,", true},
+		{"v=10kb", true},
+		{"v=/foo", true},
+	}
+
+	for _, tc := range cases {
+		t.Logf("Testing: %q", tc.Value)
+		ast, err := Parse([]byte(tc.Value))
+		if (err != nil) != tc.Err {
+			t.Fatalf("Input: %q\n\nError: %s\n\nAST: %#v", tc.Value, err, ast)
 		}
 	}
 }
