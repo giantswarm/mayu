@@ -57,7 +57,7 @@ this default value.
 Most importantly you also need to fetch the CoreOS image version. This is explained in the [Running Mayu](running.md) section.
 
 ```yaml
-default_coreos_version: 1010.5.0
+default_coreos_version: 1122.2.0
 ```
 
 ### Network

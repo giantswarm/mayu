@@ -10,9 +10,9 @@ Within a release (or after running `make bin-dist`) you will find a script calle
 
 Note: You need to install the CoreOS image signing key to be able to verify the downloads. See https://coreos.com/os/docs/latest/verify-images.html
 
-To fetch CoreOS `1010.5.0` you can run:
+To fetch CoreOS `1122.2.0` you can run:
 ```
-./fetch-coreos-qemu-image 1010.5.0
+./fetch-coreos-qemu-image 1122.2.0
 ```
 
 Or if you prefer the alpha channel use:

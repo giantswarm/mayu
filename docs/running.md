@@ -9,7 +9,7 @@ default CoreOS version. But you might also define different CoreOS versions with
 *Note:* the script is part of a release tarball or if you've build Mayu yourself it is in `bin-dist/`. Please do not run `scripts/fetch-coreos-image` - you need to fetch or build a distribution first.
 
 ```
-./fetch-coreos-image 1010.5.0
+./fetch-coreos-image 1122.2.0
 ```
 
 If you like to distribute your own binaries for docker, etcd or fleet have a look at [Yochu](https://github.com/giantswarm/yochu).
