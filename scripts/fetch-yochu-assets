@@ -1,11 +1,13 @@
 #!/bin/sh
 
-ETCD_VERSION=v2.2.5-gs-1
-FLEET_VERSION=v0.11.5-gs-grpc-1
+ETCD_VERSION=v3.0.3
+FLEET_VERSION=v0.11.5-gs-grpc-2rc1
 DOCKER_VERSION=1.10.3
-YOCHU_VERSION=0.19.1
+YOCHU_VERSION=0.20.1
 RKT_VERSION=v1.3.0
-K8S_VERSION=v1.2.2
+K8S_VERSION=v1.3.4
+CALICO_VERSION=v0.22.0
+CALICO_CNI_VERSION=v1.4.2
 
 mkdir -p ./yochu
 
@@ -39,4 +41,15 @@ fi
 if [ ! -d "./yochu/k8s/${K8S_VERSION}" ]; then
 	mkdir -p ./yochu/k8s/${K8S_VERSION}
 	wget -O ./yochu/k8s/${K8S_VERSION}/kubectl https://downloads.giantswarm.io/k8s/${K8S_VERSION}/kubectl
+fi
+
+if [ ! -d "./yochu/calico-cni/${CALICO_CNI_VERSION}" ]; then
+	mkdir -p ./yochu/calico-cni/${CALICO_CNI_VERSION}
+	wget -O ./yochu/calico-cni/${CALICO_CNI_VERSION}/calico https://downloads.giantswarm.io/calico-cni/${CALICO_CNI_VERSION}/calico
+	wget -O ./yochu/calico-cni/${CALICO_CNI_VERSION}/calico-cni https://downloads.giantswarm.io/calico-cni/${CALICO_CNI_VERSION}/calico-ipam
+fi
+
+if [ ! -d "./yochu/calicoctl/${CALICO_VERSION}" ]; then
+	mkdir -p ./yochu/calicoctl/${CALICO_VERSION}
+	wget -O ./yochu/calicoctl/${CALICO_VERSION}/calicoctl https://downloads.giantswarm.io/calicoctl/${CALICO_VERSION}/calicoctl
 fi
