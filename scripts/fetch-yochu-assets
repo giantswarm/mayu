@@ -46,7 +46,7 @@ fi
 if [ ! -d "./yochu/calico-cni/${CALICO_CNI_VERSION}" ]; then
 	mkdir -p ./yochu/calico-cni/${CALICO_CNI_VERSION}
 	wget -O ./yochu/calico-cni/${CALICO_CNI_VERSION}/calico https://downloads.giantswarm.io/calico-cni/${CALICO_CNI_VERSION}/calico
-	wget -O ./yochu/calico-cni/${CALICO_CNI_VERSION}/calico-cni https://downloads.giantswarm.io/calico-cni/${CALICO_CNI_VERSION}/calico-ipam
+	wget -O ./yochu/calico-cni/${CALICO_CNI_VERSION}/calico-ipam https://downloads.giantswarm.io/calico-cni/${CALICO_CNI_VERSION}/calico-ipam
 fi
 
 if [ ! -d "./yochu/calicoctl/${CALICO_VERSION}" ]; then
