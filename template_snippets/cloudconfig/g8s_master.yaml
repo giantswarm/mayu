@@ -46,11 +46,11 @@
       EnvironmentFile=/etc/environment
       Type=oneshot
       RemainAfterExit=yes
-      ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/g8s/g8s/ssl/master/
+      ExecStartPre=/usr/bin/mkdir -p /etc/giantswarm/g8s/ssl/master/
       ExecStart=/usr/bin/docker run \
       --net=host \
       -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
-      -v /etc/kubernetes/g8s/g8s/ssl/master/:/etc/kubernetes/ssl/ \
+      -v /etc/giantswarm/g8s/ssl/master/:/etc/kubernetes/ssl/ \
       {{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/certctl:{{index .TemplatesEnv "certctl_version"}} \
       issue \
       --vault-addr={{index .TemplatesEnv "vault_addr"}} \
@@ -61,7 +61,7 @@
       --crt-file=/etc/kubernetes/ssl/apiserver.pem \
       --key-file=/etc/kubernetes/ssl/apiserver-key.pem \
       --ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
-      ExecStop=/usr/bin/rm -rf /etc/kubernetes/g8s/g8s/ssl/master/
+      ExecStop=/usr/bin/rm -rf /etc/giantswarm/g8s/ssl/master/
   - name: g8s-kubelet.service
     enable: true
     command: start
@@ -91,7 +91,7 @@
       -v /var/lib/docker/:/var/lib/docker:rw \
       -v /var/lib/kubelet/:/var/lib/kubelet:rw,rslave \
       -v /run:/run:rw \
-      -v /etc/kubernetes/g8s/g8s/ssl/master/:/etc/kubernetes/ssl/ \
+      -v /etc/giantswarm/g8s/ssl/master/:/etc/kubernetes/ssl/ \
       -v /etc/kubernetes/config/:/etc/kubernetes/config/ \
       -v /etc/kubernetes/manifests/:/etc/kubernetes/manifests/ \
       -v /etc/kubernetes/cni/:/etc/kubernetes/cni/ \
@@ -298,7 +298,7 @@
           path: /etc/kubernetes/config/
         name: config-kubernetes
       - hostPath:
-          path: /etc/kubernetes/g8s/g8s/ssl/master/
+          path: /etc/giantswarm/g8s/ssl/master/
         name: ssl-certs-kubernetes
       - hostPath:
           path: /usr/share/ca-certificates
@@ -401,7 +401,7 @@
           readOnly: true
       volumes:
       - hostPath:
-          path: /etc/kubernetes/g8s/g8s/ssl/master/
+          path: /etc/giantswarm/g8s/ssl/master/
         name: ssl-certs-kubernetes
       - hostPath:
           path: /usr/share/ca-certificates
@@ -448,7 +448,7 @@
       hostNetwork: true
       volumes:
       - hostPath:
-          path: /etc/kubernetes/g8s/g8s/ssl/master/
+          path: /etc/giantswarm/g8s/ssl/master/
         name: ssl-certs-kubernetes
       - hostPath:
           path: /usr/share/ca-certificates
@@ -496,7 +496,7 @@
           path: /etc/kubernetes/config/
         name: config-kubernetes
       - hostPath:
-          path: /etc/kubernetes/g8s/g8s/ssl/master/
+          path: /etc/giantswarm/g8s/ssl/master/
         name: ssl-certs-kubernetes
 - path: "/srv/kubedns-dep.yaml"
   owner: root
@@ -544,7 +544,7 @@
             args:
             # command = "/kube-dns
             - --dns-port=10053
-            - --domain=g8s.giantswarm.local.
+            - --domain={{index .TemplatesEnv "g8s_cluster_domain"}}.
             - --kubecfg-file=/etc/kubernetes/config/kubelet-kubeconfig.yml
             - --kube-master-url={{index .TemplatesEnv "g8s_api_scheme"}}://{{index .TemplatesEnv "g8s_api_domain_name"}}:{{index .TemplatesEnv "g8s_api_port"}}
             ports:
@@ -593,7 +593,7 @@
                 cpu: 10m
                 memory: 50Mi
             args:
-            - -cmd=nslookup kubernetes.default.svc.g8s.giantswarm.local 127.0.0.1 >/dev/null && nslookup kubernetes.default.svc.g8s.giantswarm.local 127.0.0.1:10053 >/dev/null
+            - -cmd=nslookup kubernetes.default.svc.{{index .TemplatesEnv "g8s_cluster_domain"}} 127.0.0.1 >/dev/null && nslookup kubernetes.default.svc.{{index .TemplatesEnv "g8s_cluster_domain"}} 127.0.0.1:10053 >/dev/null
             - -port=8080
             - -quiet
             ports:
@@ -606,7 +606,7 @@
               path: /etc/kubernetes/config/
           - name: ssl
             hostPath:
-              path: /etc/kubernetes/g8s/g8s/ssl/worker/
+              path: /etc/giantswarm/g8s/ssl/worker/
 - path: "/srv/kubedns-svc.yaml"
   owner: root
   permissions: 644
@@ -649,20 +649,20 @@
 
     set -eu
 
-    while ! curl --output /dev/null --silent --head --fail --cacert /etc/kubernetes/g8s/g8s/ssl/master/apiserver-ca.pem --cert /etc/kubernetes/g8s/g8s/ssl/master/apiserver.pem --key /etc/kubernetes/g8s/g8s/ssl/master/apiserver-key.pem "http://{{.Host.InternalAddr}}:8080"; do sleep 1 && echo 'Waiting for master'; done
+    while ! curl --output /dev/null --silent --head --fail --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem "http://{{.Host.InternalAddr}}:8080"; do sleep 1 && echo 'Waiting for master'; done
 
     echo "K8S: DNS addons"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-dep.yaml)" \
-      --cacert /etc/kubernetes/g8s/g8s/ssl/master/apiserver-ca.pem --cert /etc/kubernetes/g8s/g8s/ssl/master/apiserver.pem --key /etc/kubernetes/g8s/g8s/ssl/master/apiserver-key.pem \
+      --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem \
       "http://{{.Host.InternalAddr}}:8080//apis/extensions/v1beta1/namespaces/kube-system/deployments"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-svc.yaml)" \
-      --cacert /etc/kubernetes/g8s/g8s/ssl/master/apiserver-ca.pem --cert /etc/kubernetes/g8s/g8s/ssl/master/apiserver.pem --key /etc/kubernetes/g8s/g8s/ssl/master/apiserver-key.pem \
+      --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem \
       "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces/kube-system/services"
     echo "K8S: Calico Policy"
     curl -H "Content-Type: application/json" \
       -XPOST -d"$(cat /srv/calico-system.json)" \
-      --cacert /etc/kubernetes/g8s/g8s/ssl/master/apiserver-ca.pem --cert /etc/kubernetes/g8s/g8s/ssl/master/apiserver.pem --key /etc/kubernetes/g8s/g8s/ssl/master/apiserver-key.pem \
+      --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem \
       "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces/"
 {{end}}

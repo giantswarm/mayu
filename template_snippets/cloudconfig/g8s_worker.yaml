@@ -46,11 +46,11 @@
       EnvironmentFile=/etc/environment
       Type=oneshot
       RemainAfterExit=yes
-      ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/g8s/g8s/ssl/worker/
+      ExecStartPre=/usr/bin/mkdir -p /etc/giantswarm/g8s/ssl/worker/
       ExecStart=/usr/bin/bash -c '/usr/bin/docker run \
       --net=host \
       -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
-      -v /etc/kubernetes/g8s/g8s/ssl/worker/:/etc/kubernetes/ssl/ \
+      -v /etc/giantswarm/g8s/ssl/worker/:/etc/kubernetes/ssl/ \
       {{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/certctl:{{index .TemplatesEnv "certctl_version"}} \
       issue \
       --vault-addr={{index .TemplatesEnv "vault_addr"}} \
@@ -61,7 +61,7 @@
       --crt-file=/etc/kubernetes/ssl/worker.pem \
       --key-file=/etc/kubernetes/ssl/worker-key.pem \
       --ca-file=/etc/kubernetes/ssl/worker-ca.pem'
-      ExecStop=/usr/bin/rm -rf /etc/kubernetes/g8s/g8s/ssl/worker/
+      ExecStop=/usr/bin/rm -rf /etc/giantswarm/g8s/ssl/worker/
   - name: g8s-kubelet.service
     enable: true
     command: start
@@ -91,7 +91,7 @@
       -v /var/lib/docker/:/var/lib/docker:rw \
       -v /var/lib/kubelet/:/var/lib/kubelet:rw,rslave \
       -v /run:/run:rw \
-      -v /etc/kubernetes/g8s/g8s/ssl/worker/:/etc/kubernetes/ssl/ \
+      -v /etc/giantswarm/g8s/ssl/worker/:/etc/kubernetes/ssl/ \
       -v /etc/kubernetes/config/:/etc/kubernetes/config/ \
       -v /etc/kubernetes/manifests/:/etc/kubernetes/manifests/ \
       -v /etc/kubernetes/cni/:/etc/kubernetes/cni/ \
@@ -228,7 +228,7 @@
           path: /etc/kubernetes/config/
         name: config-kubernetes
       - hostPath:
-          path: /etc/kubernetes/g8s/g8s/ssl/worker/
+          path: /etc/giantswarm/g8s/ssl/worker/
         name: ssl-certs-kubernetes
       - hostPath:
           path: /usr/share/ca-certificates
