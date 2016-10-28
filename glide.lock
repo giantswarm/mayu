@@ -60,7 +60,7 @@ imports:
   version: 2752d97bbd91927dd1c43296dbf8700e50e2708c
   repo: https://github.com/gogo/protobuf
 - name: github.com/golang/glog
-  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   repo: https://github.com/golang/groupcache
