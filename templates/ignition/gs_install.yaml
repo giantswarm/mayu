@@ -1,4 +1,5 @@
-ignition_version: 1
+ignition:
+  version: 2.0.0
 systemd:
   units:
     - name: systemd-modules-load.service
@@ -88,38 +89,46 @@ storage:
         force: false
         options:
           - "-LROOT"
-      files:
-        - path: /etc/mayu-env
-          mode: 0644
-          uid: 0
-          contents: |
-            MAYU_VERSION={{.Host.MayuVersion}}
-            SERIAL={{.Host.Serial}}
-        {{if index .TemplatesEnv "yochu_version"}}
-        - path: /etc/yochu-env
-          mode: 0644
-          uid: 0
-          contents: |
-            YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
-            DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
-            ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
-            FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
-            RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
-            K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
-        {{end}}
-        - path: /etc/resolv.conf
-          mode: 0644
-          uid: 0
-          contents: |
-            {{range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
-            {{end}}
-        - path: /etc/hosts
-          mode: 0644
-          uid: 0
-          contents: |
-            127.0.0.1 localhost
-            127.0.0.1 {{.Host.Hostname}}
-            127.0.0.1 etcd.giantswarm
+  files:
+    - path: /etc/mayu-env
+      mode: 0644
+      user:
+        id: 0
+      contents:
+        inline: |
+          MAYU_VERSION={{.Host.MayuVersion}}
+          SERIAL={{.Host.Serial}}
+    {{if index .TemplatesEnv "yochu_version"}}
+    - path: /etc/yochu-env
+      mode: 0644
+      user:
+        id: 0
+      contents:
+        inline: |
+          YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
+          DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
+          ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
+          FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+          RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
+          K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
+    {{end}}
+    - path: /etc/resolv.conf
+      mode: 0644
+      user:
+        id: 0
+      contents:
+        inline: |
+          {{range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+          {{end}}
+    - path: /etc/hosts
+      mode: 0644
+      user:
+        id: 0
+      contents:
+        inline: |
+          127.0.0.1 localhost
+          127.0.0.1 {{.Host.Hostname}}
+          127.0.0.1 etcd.giantswarm
 
 {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
 {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
