@@ -34,7 +34,7 @@ imports:
 - name: github.com/coreos/go-systemd
   version: b32b8467dbea18858bfebf65c1a6a761090f2c31
 - name: github.com/coreos/ignition
-  version: 4e26b268eabaaa746c42418084e3169d9d3d87a5
+  version: 5dd13c9c174b40dfefb09d777d2bd890e8ba6fa7
   subpackages:
   - config
 - name: github.com/coreos/pkg
