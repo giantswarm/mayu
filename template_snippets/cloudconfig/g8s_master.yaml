@@ -39,8 +39,8 @@
     content: |
       [Unit]
       Description=g8s-master-api-certs
-      Requires=docker.service
-      After=docker.service
+      Wants=calico-node.service
+      After=calico-node.service
 
       [Service]
       EnvironmentFile=/etc/environment
@@ -131,8 +131,8 @@
     content: |
       [Unit]
       Description=Kubernetes Addons
-      Requires=g8s-kubelet.service
-      After=g8s-kubelet.service
+      Wants=g8s-kubelet.service g8s-master-api-certs.service
+      After=g8s-kubelet.service g8s-master-api-certs.service
       [Service]
       Type=oneshot
       EnvironmentFile=/etc/environment
@@ -145,8 +145,7 @@
     content: |
       [Unit]
       Description=g8s-policy-controller Service
-      Wants=g8s-kubelet.service
-      Requires=k8s-addons.service
+      Wants=k8s-addons.service
       After=k8s-addons.service
 
       [Service]
@@ -279,7 +278,7 @@
         - --master=http://{{.Host.InternalAddr}}:{{index .TemplatesEnv "g8s_api_port"}}
         - --proxy-mode=iptables
         - --logtostderr=true
-        #- --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
+        - --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
         - --v=2
         securityContext:
           privileged: true

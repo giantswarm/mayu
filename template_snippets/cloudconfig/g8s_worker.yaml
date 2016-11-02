@@ -36,8 +36,8 @@
     content: |
       [Unit]
       Description=g8s-worker-api-certs
-      Requires=docker.service
-      After=docker.service
+      Wants=calico-node.service
+      After=calico-node.service
 
       [Service]
       EnvironmentFile=/etc/environment
@@ -65,7 +65,7 @@
     content: |
       [Unit]
       Description=g8s-kubelet
-      Wants=calico-node.service g8s-worker-api-certs
+      Wants=calico-node.service g8s-worker-api-certs.service
       After=calico-node.service
 
       [Service]
@@ -206,7 +206,7 @@
         - --master={{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}:{{index .TemplatesEnv "g8s_api_port"}}
         - --proxy-mode=iptables
         - --logtostderr=true
-        #- --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
+        - --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
         - --v=2
         securityContext:
           privileged: true
