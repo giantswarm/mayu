@@ -92,7 +92,8 @@
       -v /etc/kubernetes/config/:/etc/kubernetes/config/ \
       -v /etc/kubernetes/manifests/:/etc/kubernetes/manifests/ \
       -v /etc/kubernetes/cni/:/etc/kubernetes/cni/ \
-      -v /opt/cni/bin:/opt/calico/bin \
+      -v /opt/cni/bin/calico:/opt/cni/bin/calico \
+      -v /opt/cni/bin/calico-ipam:/opt/cni/bin/calico-ipam \
       --name $NAME \
       $IMAGE \
       /hyperkube kubelet \
@@ -116,7 +117,6 @@
       --node-labels="name=g8s-worker-%H" \
       --network-plugin-dir=/etc/kubernetes/cni/net.d \
       --network-plugin=cni \
-      --network-plugin-mtu={{index .TemplatesEnv "calico_mtu"}} \
       --pod-infra-container-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/pause-amd64:3.0 \
       --v=2"
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
