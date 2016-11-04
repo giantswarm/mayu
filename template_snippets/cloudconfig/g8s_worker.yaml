@@ -24,9 +24,6 @@
       ExecStartPre=/usr/bin/mkdir -p /opt/bin/
       ExecStartPre=/usr/bin/wget -O /opt/bin/calicoctl {{index .TemplatesEnv "yochu_http_endpoint"}}/calicoctl/{{index .TemplatesEnv "calico_version"}}/calicoctl
       ExecStartPre=/usr/bin/chmod +x /opt/bin/calicoctl
-      {{if eq .Host.Profile "core"}}
-      ExecStartPre=/opt/bin/calicoctl pool add {{index .TemplatesEnv "calico_g8s_subnet"}} {{index .TemplatesEnv "calico_pool_options"}}
-      {{end}}
       ExecStart=/opt/bin/calicoctl node --ip={{.Host.InternalAddr}}  --detach=false --node-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/node:{{index .TemplatesEnv "calico_version"}}
       ExecStop=/opt/bin/calicoctl node stop --force
       ExecStopPost=/bin/bash -c "find /tmp/ -name '_MEI*' | xargs -I {} rm -rf {}"
@@ -68,7 +65,7 @@
     content: |
       [Unit]
       Description=g8s-kubelet
-      Wants=calico-node.service g8s-worker-api-certs
+      Wants=calico-node.service g8s-worker-api-certs.service
       After=calico-node.service
 
       [Service]
@@ -95,7 +92,8 @@
       -v /etc/kubernetes/config/:/etc/kubernetes/config/ \
       -v /etc/kubernetes/manifests/:/etc/kubernetes/manifests/ \
       -v /etc/kubernetes/cni/:/etc/kubernetes/cni/ \
-      -v /opt/cni/bin:/opt/calico/bin \
+      -v /opt/cni/bin/calico:/opt/cni/bin/calico \
+      -v /opt/cni/bin/calico-ipam:/opt/cni/bin/calico-ipam \
       --name $NAME \
       $IMAGE \
       /hyperkube kubelet \
@@ -119,7 +117,6 @@
       --node-labels="name=g8s-worker-%H" \
       --network-plugin-dir=/etc/kubernetes/cni/net.d \
       --network-plugin=cni \
-      --network-plugin-mtu={{index .TemplatesEnv "calico_mtu"}} \
       --pod-infra-container-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/pause-amd64:3.0 \
       --v=2"
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
@@ -209,7 +206,7 @@
         - --master={{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}:{{index .TemplatesEnv "g8s_api_port"}}
         - --proxy-mode=iptables
         - --logtostderr=true
-        #- --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
+        - --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
         - --v=2
         securityContext:
           privileged: true
