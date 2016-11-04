@@ -116,7 +116,7 @@
       --allow-privileged=true \
       --pod-manifest-path=/etc/kubernetes/manifests \
       --kubeconfig=/etc/kubernetes/config/kubelet-kubeconfig.yml \
-      --node-labels="name=g8s-%H" \
+      --node-labels="name=g8s-%H,role=master" \
       --register-node=true \
       --register-schedulable=false \
       --network-plugin-dir=/etc/kubernetes/cni/net.d \
@@ -191,6 +191,31 @@
       --election=calico-policy-election \
       --election-namespace=calico-system \
       --http=127.0.0.1:4040
+      ExecStop=-/usr/bin/docker stop -t 10 $NAME
+      ExecStopPost=-/usr/bin/docker rm -f $NAME
+  - name: g8s-master-api-ping.service
+    enable: true
+    command: start
+    content: |
+      [Unit]
+      Description=g8s-master-api-ping Service
+      Requires=k8s-addons.service
+      After=k8s-addons.service
+
+      [Service]
+      Restart=on-failure
+      RestartSec=1
+      StartLimitInterval=300s
+      StartLimitBurst=3
+      TimeoutStartSec=0
+      EnvironmentFile=/etc/environment
+      Environment="IMAGE={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/ping:{{index .TemplatesEnv "ping_version"}}"
+      Environment="NAME=%p.service"
+      Environment="NETWORK_CONFIG_CONTAINER="
+      ExecStartPre=/usr/bin/docker pull $IMAGE
+      ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+      ExecStartPre=-/usr/bin/docker rm -f $NAME
+      ExecStart=/usr/bin/docker run --rm -p ${COREOS_PRIVATE_IPV4}:8082:80 --name $NAME $IMAGE --healthcheck --cloudflare --cloudflare-email={{index .TemplatesEnv "cloudflare_email"}} --cloudflare-token={{index .TemplatesEnv "cloudflare_token"}} --cloudflare-ip={{index .TemplatesEnv "cloudflare_ip"}} --cloudflare-domain={{index .TemplatesEnv "cloudflare_domain"}} --cloudflare-subdomain={{index .TemplatesEnv "cloudflare_subdomain"}} --kemp --kemp-endpoint={{index .TemplatesEnv "kemp_endpoint"}} --kemp-password={{index .TemplatesEnv "kemp_password"}} --kemp-rs-ip=${COREOS_PRIVATE_IPV4} --kemp-rs-port={{index .TemplatesEnv "kemp_rs_port"}} --kemp-rs-port-unique --kemp-user={{index .TemplatesEnv "kemp_user"}} --kemp-vs-check-port={{index .TemplatesEnv "kemp_vs_check_port"}} --kemp-vs-type=gen --kemp-vs-ip={{index .TemplatesEnv "kemp_vs_ip"}} --kemp-vs-ports={{index .TemplatesEnv "kemp_vs_ports"}} --kemp-vs-name={{index .TemplatesEnv "kemp_vs_name"}} --kemp-vs-ssl-acceleration=false
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
       ExecStopPost=-/usr/bin/docker rm -f $NAME
 {{end}}
@@ -423,9 +448,9 @@
         - controller-manager
         - --master=http://{{.Host.InternalAddr}}:{{index .TemplatesEnv "g8s_insecure_api_port"}}
         - --service-account-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
-        - --leader-elect=true
         - --root-ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
         - --kubeconfig=/etc/kubernetes/config/controller-manager-kubeconfig.yml
+        {{if eq .Host.Profile "core-g8s"}}- --leader-elect=true{{end}}
         resources:
           requests:
             cpu: 200m
@@ -475,7 +500,7 @@
         - scheduler
         - --master=http://{{.Host.InternalAddr}}:{{index .TemplatesEnv "g8s_insecure_api_port"}}
         - --kubeconfig=/etc/kubernetes/config/scheduler-kubeconfig.yml
-        - --leader-elect=true
+        {{if eq .Host.Profile "core-g8s"}}- --leader-elect=true{{end}}
         resources:
           requests:
             cpu: 100m
