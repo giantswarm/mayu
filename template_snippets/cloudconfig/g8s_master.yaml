@@ -39,8 +39,8 @@
     content: |
       [Unit]
       Description=g8s-master-api-certs
-      Wants=calico-node.service
-      After=calico-node.service
+      Requires=docker.service
+      After=docker.service
 
       [Service]
       EnvironmentFile=/etc/environment
