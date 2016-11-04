@@ -360,7 +360,7 @@
         command:
         - /hyperkube
         - apiserver
-        - --apiserver-count=3
+        - --apiserver-count={{index .TemplatesEnv "g8s_apiserver_amount"}}
         - --allow-privileged=true
         - --secure-port=6443
         - --runtime-config=extensions/v1beta1/deployments=true,extensions/v1beta1/daemonsets=true,extensions/v1beta1=true,extensions/v1beta1/thirdpartyresources=true,extensions/v1beta1/networkpolicies=true
