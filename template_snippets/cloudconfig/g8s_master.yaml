@@ -118,7 +118,7 @@
       --kubeconfig=/etc/kubernetes/config/kubelet-kubeconfig.yml \
       --node-labels="name=g8s-%H,role=master" \
       --register-node=true \
-      --register-schedulable=false \
+      --register-schedulable=true \
       --network-plugin-dir=/etc/kubernetes/cni/net.d \
       --network-plugin=cni \
       --pod-infra-container-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/pause-amd64:3.0 \
