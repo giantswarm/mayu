@@ -103,7 +103,7 @@
       --address=${COREOS_PRIVATE_IPV4} \
       --port=10250 \
       --hostname_override=${COREOS_PRIVATE_IPV4} \
-      --api-servers=http://127.0.0.1:8080 \
+      --api-servers=http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}} \
       --containerized \
       --enable-server \
       --logtostderr=true \
@@ -116,9 +116,9 @@
       --allow-privileged=true \
       --pod-manifest-path=/etc/kubernetes/manifests \
       --kubeconfig=/etc/kubernetes/config/kubelet-kubeconfig.yml \
-      --node-labels="name=g8s-%H" \
+      --node-labels="name=g8s-%H,role=master" \
       --register-node=true \
-      --register-schedulable=false \
+      --register-schedulable=true \
       --network-plugin-dir=/etc/kubernetes/cni/net.d \
       --network-plugin=cni \
       --pod-infra-container-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/pause-amd64:3.0 \
@@ -161,7 +161,7 @@
       ExecStart=/usr/bin/docker run --rm --net=host \
       --name $NAME \
       -e ETCD_ENDPOINTS=http://127.0.0.1:2379 \
-      -e K8S_API=http://localhost:8080 \
+      -e K8S_API=http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}} \
       -e LEADER_ELECTION=true \
       $IMAGE
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
@@ -193,6 +193,31 @@
       --http=127.0.0.1:4040
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
       ExecStopPost=-/usr/bin/docker rm -f $NAME
+  - name: g8s-master-api-ping.service
+    enable: true
+    command: start
+    content: |
+      [Unit]
+      Description=g8s-master-api-ping Service
+      Requires=g8s-kubelet.service
+      After=g8s-kubelet.service
+
+      [Service]
+      Restart=on-failure
+      RestartSec=1
+      StartLimitInterval=300s
+      StartLimitBurst=3
+      TimeoutStartSec=0
+      EnvironmentFile=/etc/environment
+      Environment="IMAGE={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/ping:{{index .TemplatesEnv "ping_version"}}"
+      Environment="NAME=%p.service"
+      Environment="NETWORK_CONFIG_CONTAINER="
+      ExecStartPre=/usr/bin/docker pull $IMAGE
+      ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+      ExecStartPre=-/usr/bin/docker rm -f $NAME
+      ExecStart=/usr/bin/docker run --rm -p ${COREOS_PRIVATE_IPV4}:8082:80 --name $NAME $IMAGE --healthcheck --cloudflare --cloudflare-email={{index .TemplatesEnv "cloudflare_email"}} --cloudflare-token={{index .TemplatesEnv "cloudflare_token"}} --cloudflare-ip={{index .TemplatesEnv "cloudflare_ip"}} --cloudflare-domain={{index .TemplatesEnv "cloudflare_domain"}} --cloudflare-subdomain={{index .TemplatesEnv "cloudflare_subdomain"}} --kemp --kemp-endpoint={{index .TemplatesEnv "kemp_endpoint"}} --kemp-password={{index .TemplatesEnv "kemp_password"}} --kemp-rs-ip=${COREOS_PRIVATE_IPV4} --kemp-rs-port={{index .TemplatesEnv "kemp_rs_port"}} --kemp-rs-port-unique --kemp-user={{index .TemplatesEnv "kemp_user"}} --kemp-vs-check-port={{index .TemplatesEnv "kemp_vs_check_port"}} --kemp-vs-type=gen --kemp-vs-ip={{index .TemplatesEnv "kemp_vs_ip"}} --kemp-vs-ports={{index .TemplatesEnv "kemp_vs_ports"}} --kemp-vs-name={{index .TemplatesEnv "kemp_vs_name"}} --kemp-vs-ssl-acceleration=false
+      ExecStop=-/usr/bin/docker stop -t 10 $NAME
+      ExecStopPost=-/usr/bin/docker rm -f $NAME
 {{end}}
 
 {{define "g8s_master_files"}}
@@ -211,7 +236,7 @@
         "mtu": 1430,
         "policy": {
             "type": "k8s",
-            "k8s_api_root": "http://{{.Host.InternalAddr}}:8080/api/v1/",
+            "k8s_api_root": "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/api/v1/",
             "k8s_client_certificate": "/etc/kubernetes/ssl/apiserver.pem",
             "k8s_client_key": "/etc/kubernetes/ssl/apiserver-key.pem",
             "k8s_certificate_authority": "/etc/kubernetes/ssl/apiserver-ca.pem"
@@ -275,7 +300,7 @@
         command:
         - /hyperkube
         - proxy
-        - --master=http://{{.Host.InternalAddr}}:{{index .TemplatesEnv "g8s_api_port"}}
+        - --master=http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}
         - --proxy-mode=iptables
         - --logtostderr=true
         - --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
@@ -360,11 +385,12 @@
         command:
         - /hyperkube
         - apiserver
+        - --apiserver-count={{index .TemplatesEnv "g8s_apiserver_amount"}}
         - --allow-privileged=true
         - --secure-port=6443
         - --runtime-config=extensions/v1beta1/deployments=true,extensions/v1beta1/daemonsets=true,extensions/v1beta1=true,extensions/v1beta1/thirdpartyresources=true,extensions/v1beta1/networkpolicies=true
-        - --insecure_bind_address=0.0.0.0
-        - --insecure_port=8080
+        - --insecure_bind_address=127.0.0.1
+        - --insecure_port={{index .TemplatesEnv "g8s_api_insecure_port"}}
         - --kubelet_https=true
         - --bind-address={{.Host.InternalAddr}}
         - --etcd-prefix=g8s
@@ -380,7 +406,7 @@
         livenessProbe:
           httpGet:
             host: 127.0.0.1
-            port: 8080
+            port: {{index .TemplatesEnv "g8s_api_insecure_port"}}
             path: /healthz
           initialDelaySeconds: 15
           timeoutSeconds: 15
@@ -388,8 +414,8 @@
         - containerPort: 6443
           hostPort: 6443
           name: https
-        - containerPort: 8080
-          hostPort: 8080
+        - containerPort: {{index .TemplatesEnv "g8s_api_insecure_port"}}
+          hostPort: {{index .TemplatesEnv "g8s_api_insecure_port"}}
           name: local
         volumeMounts:
         - mountPath: /etc/kubernetes/ssl/
@@ -420,10 +446,11 @@
         command:
         - /hyperkube
         - controller-manager
-        - --master=http://127.0.0.1:8080
+        - --master=http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}
         - --service-account-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
         - --root-ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
         - --kubeconfig=/etc/kubernetes/config/controller-manager-kubeconfig.yml
+        {{if eq (index .TemplatesEnv "g8s_apiserver_amount") "3"}}- --leader-elect=true{{end}}
         resources:
           requests:
             cpu: 200m
@@ -471,8 +498,9 @@
         command:
         - /hyperkube
         - scheduler
-        - --master=http://127.0.0.1:8080
+        - --master=http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}
         - --kubeconfig=/etc/kubernetes/config/scheduler-kubeconfig.yml
+        {{if eq (index .TemplatesEnv "g8s_apiserver_amount") "3"}}- --leader-elect=true{{end}}
         resources:
           requests:
             cpu: 100m
@@ -648,20 +676,17 @@
 
     set -eu
 
-    while ! curl --output /dev/null --silent --head --fail --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem "http://{{.Host.InternalAddr}}:8080"; do sleep 1 && echo 'Waiting for master'; done
+    while ! curl --output /dev/null --silent --head --fail "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}"; do sleep 1 && echo 'Waiting for master'; done
 
     echo "K8S: DNS addons"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-dep.yaml)" \
-      --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem \
-      "http://{{.Host.InternalAddr}}:8080//apis/extensions/v1beta1/namespaces/kube-system/deployments"
+      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}//apis/extensions/v1beta1/namespaces/kube-system/deployments"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-svc.yaml)" \
-      --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem \
-      "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces/kube-system/services"
+      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/api/v1/namespaces/kube-system/services"
     echo "K8S: Calico Policy"
     curl -H "Content-Type: application/json" \
       -XPOST -d"$(cat /srv/calico-system.json)" \
-      --cacert /etc/giantswarm/g8s/ssl/master/apiserver-ca.pem --cert /etc/giantswarm/g8s/ssl/master/apiserver.pem --key /etc/giantswarm/g8s/ssl/master/apiserver-key.pem \
-      "http://{{.Host.InternalAddr}}:8080/api/v1/namespaces/"
+      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/api/v1/namespaces/"
 {{end}}
