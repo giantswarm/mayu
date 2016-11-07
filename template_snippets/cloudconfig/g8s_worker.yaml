@@ -100,7 +100,7 @@
       --address=${COREOS_PRIVATE_IPV4} \
       --port=10250 \
       --hostname_override=${COREOS_PRIVATE_IPV4} \
-      --api-servers={{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}:{{index .TemplatesEnv "g8s_api_port"}} \
+      --api-servers={{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}} \
       --containerized \
       --enable-server \
       --logtostderr=true \
@@ -139,7 +139,7 @@
         "mtu": 1430,
         "policy": {
             "type": "k8s",
-            "k8s_api_root": "{{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}:{{index .TemplatesEnv "g8s_api_port"}}/api/v1/",
+            "k8s_api_root": "{{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}/api/v1/",
             "k8s_client_certificate": "/etc/kubernetes/ssl/worker.pem",
             "k8s_client_key": "/etc/kubernetes/ssl/worker-key.pem",
             "k8s_certificate_authority": "/etc/kubernetes/ssl/worker-ca.pem"
@@ -203,7 +203,7 @@
         command:
         - /hyperkube
         - proxy
-        - --master={{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}:{{index .TemplatesEnv "g8s_api_port"}}
+        - --master={{index .TemplatesEnv "g8s_api_scheme"}}://api.{{index .TemplatesEnv "common_name"}}
         - --proxy-mode=iptables
         - --logtostderr=true
         - --kubeconfig=/etc/kubernetes/config/proxy-kubeconfig.yml
