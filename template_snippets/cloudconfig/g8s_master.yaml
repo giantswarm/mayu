@@ -653,7 +653,7 @@
               path: /etc/kubernetes/config/
           - name: ssl
             hostPath:
-              path: /etc/giantswarm/g8s/ssl/{{{if eq (index .TemplatesEnv "g8s_apiserver_amount") "3"}}master/{{else}}worker/{{end}}
+              path: /etc/giantswarm/g8s/ssl/{{if eq (index .TemplatesEnv "g8s_apiserver_amount") "3"}}master/{{else}}worker/{{end}}
 - path: "/srv/kubedns-svc.yaml"
   owner: root
   permissions: 644
