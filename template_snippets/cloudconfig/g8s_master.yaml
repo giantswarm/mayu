@@ -118,25 +118,26 @@
       --kubeconfig=/etc/kubernetes/config/kubelet-kubeconfig.yml \
       --node-labels="name=g8s-%H,role=master" \
       --register-node=true \
-      --register-schedulable=true \
+      --register-schedulable={{index .TemplatesEnv "g8s_master_schedulable"}} \
       --network-plugin-dir=/etc/kubernetes/cni/net.d \
       --network-plugin=cni \
       --pod-infra-container-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/pause-amd64:3.0 \
       --v=2"
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
       ExecStopPost=-/usr/bin/docker rm -f $NAME
-  - name: k8s-addons.service
+  - name: g8s-addons.service
     enable: true
     command: start
     content: |
       [Unit]
       Description=Kubernetes Addons
-      Wants=g8s-kubelet.service g8s-master-api-certs.service
-      After=g8s-kubelet.service g8s-master-api-certs.service
+      Wants=g8s-kubelet.service
+      After=g8s-kubelet.service
       [Service]
       Type=oneshot
+      RemainAfterExit=yes
       EnvironmentFile=/etc/environment
-      ExecStart=/opt/k8s-addons
+      ExecStart=-/opt/g8s-addons
       [Install]
       WantedBy=multi-user.target
   - name: g8s-policy-controller.service
@@ -145,8 +146,9 @@
     content: |
       [Unit]
       Description=g8s-policy-controller Service
-      Wants=k8s-addons.service
-      After=k8s-addons.service
+      Wants=g8s-kubelet.service
+      Requires=g8s-addons.service
+      After=g8s-addons.service
 
       [Service]
       Restart=always
@@ -215,7 +217,26 @@
       ExecStartPre=/usr/bin/docker pull $IMAGE
       ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
       ExecStartPre=-/usr/bin/docker rm -f $NAME
-      ExecStart=/usr/bin/docker run --rm -p ${COREOS_PRIVATE_IPV4}:8082:80 --name $NAME $IMAGE --healthcheck --cloudflare --cloudflare-email={{index .TemplatesEnv "cloudflare_email"}} --cloudflare-token={{index .TemplatesEnv "cloudflare_token"}} --cloudflare-ip={{index .TemplatesEnv "cloudflare_ip"}} --cloudflare-domain={{index .TemplatesEnv "cloudflare_domain"}} --cloudflare-subdomain={{index .TemplatesEnv "cloudflare_subdomain"}} --kemp --kemp-endpoint={{index .TemplatesEnv "kemp_endpoint"}} --kemp-password={{index .TemplatesEnv "kemp_password"}} --kemp-rs-ip=${COREOS_PRIVATE_IPV4} --kemp-rs-port={{index .TemplatesEnv "kemp_rs_port"}} --kemp-rs-port-unique --kemp-user={{index .TemplatesEnv "kemp_user"}} --kemp-vs-check-port={{index .TemplatesEnv "kemp_vs_check_port"}} --kemp-vs-type=gen --kemp-vs-ip={{index .TemplatesEnv "kemp_vs_ip"}} --kemp-vs-ports={{index .TemplatesEnv "kemp_vs_ports"}} --kemp-vs-name={{index .TemplatesEnv "kemp_vs_name"}} --kemp-vs-ssl-acceleration=false
+      ExecStart=/usr/bin/docker run --rm -p ${COREOS_PRIVATE_IPV4}:8082:80 --name $NAME $IMAGE \
+      --healthcheck \
+      --cloudflare \
+      --cloudflare-email={{index .TemplatesEnv "cloudflare_email"}} \
+      --cloudflare-token={{index .TemplatesEnv "cloudflare_token"}} \
+      --cloudflare-ip={{index .TemplatesEnv "cloudflare_ip"}} \
+      --cloudflare-domain={{index .TemplatesEnv "cloudflare_domain"}} \
+      --cloudflare-subdomain={{index .TemplatesEnv "cloudflare_subdomain"}} \
+      --kemp \
+      --kemp-rs-unique=false \
+      --kemp-endpoint={{index .TemplatesEnv "kemp_endpoint"}} \
+      --kemp-password={{index .TemplatesEnv "kemp_password"}} \
+      --kemp-rs-ip=${COREOS_PRIVATE_IPV4} \
+      --kemp-rs-port={{index .TemplatesEnv "kemp_rs_port"}} \
+      --kemp-user={{index .TemplatesEnv "kemp_user"}} \
+      --kemp-vs-check-port={{index .TemplatesEnv "kemp_vs_check_port"}} \
+      --kemp-vs-type=gen --kemp-vs-ip={{index .TemplatesEnv "kemp_vs_ip"}} \
+      --kemp-vs-ports={{index .TemplatesEnv "kemp_vs_ports"}} \
+      --kemp-vs-name={{index .TemplatesEnv "kemp_vs_name"}} \
+      --kemp-vs-ssl-acceleration=false
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
       ExecStopPost=-/usr/bin/docker rm -f $NAME
 {{end}}
@@ -573,7 +594,7 @@
             - --dns-port=10053
             - --domain={{index .TemplatesEnv "g8s_cluster_domain"}}.
             - --kubecfg-file=/etc/kubernetes/config/kubelet-kubeconfig.yml
-            - --kube-master-url={{index .TemplatesEnv "g8s_api_scheme"}}://{{index .TemplatesEnv "g8s_api_domain_name"}}:{{index .TemplatesEnv "g8s_api_port"}}
+            - --kube-master-url={{index .TemplatesEnv "g8s_api_scheme"}}://{{index .TemplatesEnv "g8s_api_domain_name"}}
             ports:
             - containerPort: 10053
               name: dns-local
@@ -633,7 +654,7 @@
               path: /etc/kubernetes/config/
           - name: ssl
             hostPath:
-              path: /etc/giantswarm/g8s/ssl/worker/
+              path: /etc/giantswarm/g8s/ssl/{{if eq (index .TemplatesEnv "g8s_apiserver_amount") "3"}}master/{{else}}worker/{{end}}
 - path: "/srv/kubedns-svc.yaml"
   owner: root
   permissions: 644
@@ -669,7 +690,7 @@
         "name": "calico-system"
       }
     }
-- path: /opt/k8s-addons
+- path: /opt/g8s-addons
   permissions: 544
   content: |
     #!/bin/bash
