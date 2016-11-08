@@ -135,8 +135,9 @@
       After=g8s-kubelet.service
       [Service]
       Type=oneshot
+      RemainAfterExit=yes
       EnvironmentFile=/etc/environment
-      ExecStart=/opt/g8s-addons
+      ExecStart=-/opt/g8s-addons
       [Install]
       WantedBy=multi-user.target
   - name: g8s-policy-controller.service
