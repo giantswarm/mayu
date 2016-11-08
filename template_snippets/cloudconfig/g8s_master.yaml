@@ -216,7 +216,26 @@
       ExecStartPre=/usr/bin/docker pull $IMAGE
       ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
       ExecStartPre=-/usr/bin/docker rm -f $NAME
-      ExecStart=/usr/bin/docker run --rm -p ${COREOS_PRIVATE_IPV4}:8082:80 --name $NAME $IMAGE --healthcheck --cloudflare --cloudflare-email={{index .TemplatesEnv "cloudflare_email"}} --cloudflare-token={{index .TemplatesEnv "cloudflare_token"}} --cloudflare-ip={{index .TemplatesEnv "cloudflare_ip"}} --cloudflare-domain={{index .TemplatesEnv "cloudflare_domain"}} --cloudflare-subdomain={{index .TemplatesEnv "cloudflare_subdomain"}} --kemp --kemp-rs-server-unique=false --kemp-endpoint={{index .TemplatesEnv "kemp_endpoint"}} --kemp-password={{index .TemplatesEnv "kemp_password"}} --kemp-rs-ip=${COREOS_PRIVATE_IPV4} --kemp-rs-port={{index .TemplatesEnv "kemp_rs_port"}} --kemp-user={{index .TemplatesEnv "kemp_user"}} --kemp-vs-check-port={{index .TemplatesEnv "kemp_vs_check_port"}} --kemp-vs-type=gen --kemp-vs-ip={{index .TemplatesEnv "kemp_vs_ip"}} --kemp-vs-ports={{index .TemplatesEnv "kemp_vs_ports"}} --kemp-vs-name={{index .TemplatesEnv "kemp_vs_name"}} --kemp-vs-ssl-acceleration=false
+      ExecStart=/usr/bin/docker run --rm -p ${COREOS_PRIVATE_IPV4}:8082:80 --name $NAME $IMAGE \
+      --healthcheck \
+      --cloudflare \
+      --cloudflare-email={{index .TemplatesEnv "cloudflare_email"}} \
+      --cloudflare-token={{index .TemplatesEnv "cloudflare_token"}} \
+      --cloudflare-ip={{index .TemplatesEnv "cloudflare_ip"}} \
+      --cloudflare-domain={{index .TemplatesEnv "cloudflare_domain"}} \
+      --cloudflare-subdomain={{index .TemplatesEnv "cloudflare_subdomain"}} \
+      --kemp \
+      --kemp-rs-unique=false \
+      --kemp-endpoint={{index .TemplatesEnv "kemp_endpoint"}} \
+      --kemp-password={{index .TemplatesEnv "kemp_password"}} \
+      --kemp-rs-ip=${COREOS_PRIVATE_IPV4} \
+      --kemp-rs-port={{index .TemplatesEnv "kemp_rs_port"}} \
+      --kemp-user={{index .TemplatesEnv "kemp_user"}} \
+      --kemp-vs-check-port={{index .TemplatesEnv "kemp_vs_check_port"}} \
+      --kemp-vs-type=gen --kemp-vs-ip={{index .TemplatesEnv "kemp_vs_ip"}} \
+      --kemp-vs-ports={{index .TemplatesEnv "kemp_vs_ports"}} \
+      --kemp-vs-name={{index .TemplatesEnv "kemp_vs_name"}} \
+      --kemp-vs-ssl-acceleration=false
       ExecStop=-/usr/bin/docker stop -t 10 $NAME
       ExecStopPost=-/usr/bin/docker rm -f $NAME
 {{end}}
