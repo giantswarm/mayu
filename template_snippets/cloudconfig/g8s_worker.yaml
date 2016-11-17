@@ -25,8 +25,12 @@
       ExecStartPre=/usr/bin/wget -O /opt/bin/calicoctl {{index .TemplatesEnv "yochu_http_endpoint"}}/calicoctl/{{index .TemplatesEnv "calico_version"}}/calicoctl
       ExecStartPre=/usr/bin/chmod +x /opt/bin/calicoctl
       ExecStart=/opt/bin/calicoctl node --ip={{.Host.InternalAddr}}  --detach=false --node-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/node:{{index .TemplatesEnv "calico_version"}}
+      ExecStartPost=/usr/sbin/iptables -I FORWARD -s {{index .TemplatesEnv "yochu_localsubnet"}} -d {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
+      ExecStartPost=/usr/sbin/iptables -I FORWARD -d {{index .TemplatesEnv "yochu_localsubnet"}} -s {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
       ExecStop=/opt/bin/calicoctl node stop --force
       ExecStopPost=/bin/bash -c "find /tmp/ -name '_MEI*' | xargs -I {} rm -rf {}"
+      ExecStopPost=/usr/sbin/iptables -D FORWARD -s {{index .TemplatesEnv "yochu_localsubnet"}} -d {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
+      ExecStopPost=/usr/sbin/iptables -D FORWARD -d {{index .TemplatesEnv "yochu_localsubnet"}} -s {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
 
       [Install]
       WantedBy=multi-user.target
