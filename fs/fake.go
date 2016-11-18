@@ -110,7 +110,7 @@ func (f FakeFile) Stat() (os.FileInfo, error) {
 	return FakeFileInfo{File: f}, nil
 }
 
-// FakeFileInfo describes a wrapped FakeFile isntance and is returned
+// FakeFileInfo describes a wrapped FakeFile instance and is returned
 // by FakeFile.Stat
 type FakeFileInfo struct {
 	File FakeFile
