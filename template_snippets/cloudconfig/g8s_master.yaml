@@ -706,7 +706,7 @@
     echo "K8S: DNS addons"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-dep.yaml)" \
-      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}//apis/extensions/v1beta1/namespaces/kube-system/deployments"
+      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/apis/extensions/v1beta1/namespaces/kube-system/deployments"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-svc.yaml)" \
       "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/api/v1/namespaces/kube-system/services"
