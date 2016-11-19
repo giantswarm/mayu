@@ -28,8 +28,12 @@
       ExecStartPre=/opt/bin/calicoctl pool add {{index .TemplatesEnv "calico_g8s_subnet"}} {{index .TemplatesEnv "calico_pool_options"}}
       {{end}}
       ExecStart=/opt/bin/calicoctl node --ip={{.Host.InternalAddr}}  --detach=false --node-image={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/node:{{index .TemplatesEnv "calico_version"}}
+      ExecStartPost=/usr/sbin/iptables -I FORWARD -s {{index .TemplatesEnv "yochu_localsubnet"}} -d {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
+      ExecStartPost=/usr/sbin/iptables -I FORWARD -d {{index .TemplatesEnv "yochu_localsubnet"}} -s {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
       ExecStop=/opt/bin/calicoctl node stop --force
       ExecStopPost=/bin/bash -c "find /tmp/ -name '_MEI*' | xargs -I {} rm -rf {}"
+      ExecStopPost=/usr/sbin/iptables -D FORWARD -s {{index .TemplatesEnv "yochu_localsubnet"}} -d {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
+      ExecStopPost=/usr/sbin/iptables -D FORWARD -d {{index .TemplatesEnv "yochu_localsubnet"}} -s {{index .TemplatesEnv "calico_g8s_subnet"}} -j ACCEPT
 
       [Install]
       WantedBy=multi-user.target
@@ -702,7 +706,7 @@
     echo "K8S: DNS addons"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-dep.yaml)" \
-      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}//apis/extensions/v1beta1/namespaces/kube-system/deployments"
+      "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/apis/extensions/v1beta1/namespaces/kube-system/deployments"
     curl -H "Content-Type: application/yaml" \
       -XPOST -d"$(cat /srv/kubedns-svc.yaml)" \
       "http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}/api/v1/namespaces/kube-system/services"
