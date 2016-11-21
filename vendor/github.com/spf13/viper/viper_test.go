@@ -37,6 +37,14 @@ eyes : brown
 beard: true
 `)
 
+var yamlExampleWithExtras = []byte(`Existing: true
+Bogus: true
+`)
+
+type testUnmarshalExtra struct {
+	Existing bool
+}
+
 var tomlExample = []byte(`
 title = "TOML Example"
 
@@ -253,6 +261,18 @@ func TestUnmarshalling(t *testing.T) {
 	assert.Equal(t, []interface{}{"skateboarding", "snowboarding", "go"}, Get("hobbies"))
 	assert.Equal(t, map[interface{}]interface{}{"jacket": "leather", "trousers": "denim", "pants": map[interface{}]interface{}{"size": "large"}}, Get("clothing"))
 	assert.Equal(t, 35, Get("age"))
+}
+
+func TestUnmarshalExact(t *testing.T) {
+	vip := New()
+	target := &testUnmarshalExtra{}
+	vip.SetConfigType("yaml")
+	r := bytes.NewReader(yamlExampleWithExtras)
+	vip.ReadConfig(r)
+	err := vip.UnmarshalExact(target)
+	if err == nil {
+		t.Fatal("UnmarshalExact should error when populating a struct from a conf that contains unused fields")
+	}
 }
 
 func TestOverrides(t *testing.T) {
@@ -743,6 +763,7 @@ func TestSub(t *testing.T) {
 var yamlMergeExampleTgt = []byte(`
 hello:
     pop: 37890
+    lagrenum: 765432101234567
     world:
     - us
     - uk
@@ -753,6 +774,7 @@ hello:
 var yamlMergeExampleSrc = []byte(`
 hello:
     pop: 45000
+    lagrenum: 7654321001234567
     universe:
     - mw
     - ad
@@ -770,6 +792,14 @@ func TestMergeConfig(t *testing.T) {
 		t.Fatalf("pop != 37890, = %d", pop)
 	}
 
+	if pop := v.GetInt("hello.lagrenum"); pop != 765432101234567 {
+		t.Fatalf("lagrenum != 765432101234567, = %d", pop)
+	}
+
+	if pop := v.GetInt64("hello.lagrenum"); pop != int64(765432101234567) {
+		t.Fatalf("int64 lagrenum != 765432101234567, = %d", pop)
+	}
+
 	if world := v.GetStringSlice("hello.world"); len(world) != 4 {
 		t.Fatalf("len(world) != 4, = %d", len(world))
 	}
@@ -784,6 +814,14 @@ func TestMergeConfig(t *testing.T) {
 
 	if pop := v.GetInt("hello.pop"); pop != 45000 {
 		t.Fatalf("pop != 45000, = %d", pop)
+	}
+
+	if pop := v.GetInt("hello.lagrenum"); pop != 7654321001234567 {
+		t.Fatalf("lagrenum != 7654321001234567, = %d", pop)
+	}
+
+	if pop := v.GetInt64("hello.lagrenum"); pop != int64(7654321001234567) {
+		t.Fatalf("int64 lagrenum != 7654321001234567, = %d", pop)
 	}
 
 	if world := v.GetStringSlice("hello.world"); len(world) != 4 {
@@ -837,4 +875,35 @@ func TestMergeConfigNoMerge(t *testing.T) {
 	if fu := v.GetString("fu"); fu != "bar" {
 		t.Fatalf("fu != \"bar\", = %s", fu)
 	}
+}
+
+func TestUnmarshalingWithAliases(t *testing.T) {
+	SetDefault("Id", 1)
+	Set("name", "Steve")
+	Set("lastname", "Owen")
+
+	RegisterAlias("UserID", "Id")
+	RegisterAlias("Firstname", "name")
+	RegisterAlias("Surname", "lastname")
+
+	type config struct {
+		Id        int
+		FirstName string
+		Surname   string
+	}
+
+	var C config
+
+	err := Unmarshal(&C)
+	if err != nil {
+		t.Fatalf("unable to decode into struct, %v", err)
+	}
+
+	assert.Equal(t, &C, &config{Id: 1, FirstName: "Steve", Surname: "Owen"})
+}
+
+func TestSetConfigNameClearsFileCache(t *testing.T) {
+	SetConfigFile("/tmp/config.yaml")
+	SetConfigName("default")
+	assert.Empty(t, v.getConfigFile())
 }

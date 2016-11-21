@@ -1,0 +1,41 @@
+{{define "net_bridge"}}
+  - name: 00-{{.Host.ConnectedNIC}}.network
+    runtime: false
+    content: |
+      [Match]
+      Name={{.Host.ConnectedNIC}}
+
+      [Network]
+      Address={{.Host.InternalAddr}}/22
+      Gateway={{.ClusterNetwork.Router}}
+      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+      {{ end }}
+
+  - name: 00-br0.netdev
+    runtime: true
+    content: |
+      [NetDev]
+      Name=br0
+      Kind=bridge
+
+  - name: 30-br0.network
+    runtime: true
+    content: |
+      [Match]
+      Name=br0
+
+      [Network]
+      Address=192.168.10.1/24
+      DHCPServer=yes
+      DNS=8.8.8.8
+      IPMasquerade=yes
+
+  - name: 99-nodhcp.network
+    runtime: false
+    content: |
+      [Match]
+      Name=*
+
+      [Network]
+      DHCP=no
+{{end}}

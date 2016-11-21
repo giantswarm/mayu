@@ -1,13 +1,18 @@
 language: go
 sudo: false
-go:
-  - 1.4
-  - 1.5
-  - tip
-install:
-  - go get golang.org/x/tools/cmd/vet
+
+matrix:
+  include:
+    - go: 1.4
+    - go: 1.5
+    - go: 1.6
+    - go: 1.7
+    - go: tip
+  allow_failures:
+    - go: tip
+
 script:
   - go get -t -v ./...
-  - diff -u <(echo -n) <(gofmt -d -s .)
-  - go tool vet .
+  - diff -u <(echo -n) <(gofmt -d .)
+  - go vet $(go list ./... | grep -v /vendor/)
   - go test -v -race ./...

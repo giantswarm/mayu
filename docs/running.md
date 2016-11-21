@@ -1,28 +1,61 @@
 # Running Mayu
 
+## Download CoreOS Images
+
+Before you start up Mayu you need to download a CoreOS image. In fact you need to download 
+all the CoreOS versions that you specified in your `config.yaml`. You definitely need your
+default CoreOS version. But you might also define different CoreOS versions within your profiles.
+
+*Note:* the script is part of a release tarball or if you've build Mayu yourself it is in `bin-dist/`. Please do not run `scripts/fetch-coreos-image` - you need to fetch or build a distribution first.
+
+```
+./fetch-coreos-image 1122.2.0
+```
+
+If you like to distribute your own binaries for docker, etcd or fleet have a look at [Yochu](https://github.com/giantswarm/yochu).
+There is also a script to fetch Giant Swarms binaries as an example.
+
+```
+./fetch-yochu-assets
+```
+
+## Start Mayu
+
 Once Mayu is properly configured, it can be started:
 
 ```nohighlight
 make bin-dist
-./mayu -cluster-directory cluster -v=12 -no-git
+./mayu --cluster-directory cluster -v=12 --no-git --no-tls
 ```
 
-You can also run it within a Docker container:
+### Run Mayu within a Docker container
 
-```nohighlight
+```
 docker run --rm -it \
   --cap-add=NET_ADMIN \
   --net=host \
-  -v $(pwd)/bin-dist/cluster:/opt/mayu/cluster \
-  -v /etc/mayu/config.yaml:/opt/mayu/config/config.yaml \
+  --name=mayu \
+  -v $(pwd)/cluster:/var/lib/mayu \
+  -v $(pwd)/images:/usr/lib/mayu/images \
+  -v $(pwd)/yochu:/usr/lib/mayu/yochu \
   giantswarm/mayu \
-  -v=12 -no-git
+  -v=12 --no-git --no-tls
 ```
 
-Or use the `mayu.service` unit file included in the `giantswarm/mayu` repository.
+Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.
 
-Mayu is now ready to bootstrap a new cluster. Mayu uses the
-`cluster-directory` to save the cluster state:
+For running `mayu` in a local VM you might want to add two more volumes, to
+enable DNS resultion by the `dnsmasq` included in `mayu`:
+
+```
+-v /etc/hosts:/etc/hosts -v /etc/resolv.conf:/etc/resolv.conf
+```
+
+## Cluster information
+
+Mayu is now ready to bootstrap a new cluster. You can use [mayuctl](mayuctl.md) to list information about your cluster and machines.
+
+Mayu uses the `cluster-directory` to save the cluster state:
 
 ```nohighlight
 $ tree cluster

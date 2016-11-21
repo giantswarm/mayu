@@ -1,6 +1,8 @@
 package hostmgr
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -12,7 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/client"
 	"github.com/golang/glog"
+	"golang.org/x/net/context"
 )
 
 const clusterConfFile = "cluster.json"
@@ -37,7 +41,10 @@ type Cluster struct {
 }
 
 type ClusterConfig struct {
-	EtcdDiscoveryURL string
+	DefaultEtcdClusterToken string
+
+	// Deprecated
+	EtcdDiscoveryURL string `json:"EtcdDiscoveryURL,omitempty"`
 }
 
 type cachedHost struct {
@@ -82,6 +89,7 @@ func NewCluster(baseDir string, gitStore bool) (*Cluster, error) {
 		baseDir:        baseDir,
 		GitStore:       gitStore,
 		mu:             new(sync.Mutex),
+		Config:         ClusterConfig{},
 		predefinedVals: map[string]map[string]string{},
 		hostsCache:     map[string]*cachedHost{},
 	}
@@ -127,8 +135,11 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		if s, exists := predef["fleettags"]; exists {
 			newHost.FleetMetadata = strings.Split(s, ",")
 		}
+		if s, exists := predef["etcdclustertoken"]; exists {
+			newHost.EtcdClusterToken = s
+		}
 	} else {
-		glog.V(2).Infof("no predefined predefined values for '%s'", serial)
+		glog.V(2).Infof("no predefined values for '%s'", serial)
 	}
 
 	machineID := genMachineID(cabinet, machineOnCabinet)
@@ -277,19 +288,63 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	return ch
 }
 
-// GenerateEtcdDiscoveryURL calls out for the etcd discovery and configures the
-// cluster with the newly generated discovery URL.
-func (c *Cluster) GenerateEtcdDiscoveryURL(size int) error {
-	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", size))
+func (c *Cluster) GenerateEtcdDiscoveryToken() (string, error) {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(b)
+
+	return token, nil
+}
+
+func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, token string, size int) error {
+	// store in etcd
+	cfg := client.Config{
+		Endpoints: []string{fmt.Sprintf("http://%s", etcdEndpoint)},
+		Transport: client.DefaultTransport,
+		// set timeout per request to fail fast when the target endpoint is unavailable
+		HeaderTimeoutPerRequest: time.Second,
+	}
+	etcdClient, err := client.New(cfg)
 	if err != nil {
 		return err
 	}
-	content, err := ioutil.ReadAll(resp.Body)
+	kapi := client.NewKeysAPI(etcdClient)
+
+	_, err = kapi.Set(context.Background(), path.Join("_etcd", "registry", token), "", &client.SetOptions{
+		PrevExist: client.PrevNoExist,
+		Dir:       true,
+	})
 	if err != nil {
 		return err
 	}
-	c.Config.EtcdDiscoveryURL = string(content)
-	return nil
+
+	_, err = kapi.Set(context.Background(), path.Join("_etcd", "registry", token, "_config", "size"), strconv.Itoa(size), &client.SetOptions{
+		PrevExist: client.PrevNoExist,
+	})
+	return err
+}
+
+func (c *Cluster) FetchEtcdDiscoveryToken(etcdDiscoveryUrl string, size int) (string, error) {
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/new", etcdDiscoveryUrl), strings.NewReader(fmt.Sprintf("size=%d", size)))
+	if err != nil {
+		return "", err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	token := strings.TrimPrefix(string(body), etcdDiscoveryUrl+"/")
+	return token, nil
 }
 
 func Has(host *Host, exists bool) bool {

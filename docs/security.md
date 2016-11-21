@@ -1,9 +1,9 @@
 # Security Overview
 
 Mayu uses `Transport Layer Security <https://en.wikipedia.org/wiki/Transport_Layer_Security>` (TLS)
-to secure connections between `mayu` and `mayuctl` and other clients like curl.
+to encrypt connections between `mayu` and `mayuctl` and other clients like curl.
 
-When using `mayu` in secure mode make sure that you use an iPXE image, which
+When using `mayu` in TLS mode make sure that you use an iPXE image, which
 was compiled with [`DOWNLOAD_PROTO_HTTPS`](http://ipxe.org/buildcfg/download_proto_https)
 support.
 
@@ -18,7 +18,7 @@ Mayu communicates over following protocols: DHCP, TFTP, iPXE, and HTTP/HTTPS.
 Currently, there is two general security notices around these protocols,
 which you can find at the end of this section.
 
-We recommend to run `mayu` within a separate secured network
+We recommend to run `mayu` within a separate network
 with limited access by non-authorized users. This way the lack of
 authentification as well as the general protocol issues are less critical.
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/hashicorp/hcl/testhelper"
 )
 
 func TestDecode_interface(t *testing.T) {
@@ -58,14 +59,12 @@ func TestDecode_interface(t *testing.T) {
 			"escape.hcl",
 			false,
 			map[string]interface{}{
-				"foo": "bar\"baz\\n",
-			},
-		},
-		{
-			"interpolate_escape.hcl",
-			false,
-			map[string]interface{}{
-				"foo": "${file(\"bing/bong.txt\")}",
+				"foo":          "bar\"baz\\n",
+				"qux":          "back\\slash",
+				"bar":          "new\nline",
+				"qax":          `slash\:colon`,
+				"nested":       `${HH\:mm\:ss}`,
+				"nestedquotes": `${"\"stringwrappedinquotes\""}`,
 			},
 		},
 		{
@@ -81,6 +80,12 @@ func TestDecode_interface(t *testing.T) {
 			nil,
 		},
 		{
+			"multiline_literal.hcl",
+			false,
+			map[string]interface{}{"multiline_literal": testhelper.Unix2dos(`hello
+  world`)},
+		},
+		{
 			"multiline_no_marker.hcl",
 			true,
 			nil,
@@ -88,17 +93,40 @@ func TestDecode_interface(t *testing.T) {
 		{
 			"multiline.hcl",
 			false,
-			map[string]interface{}{"foo": "bar\nbaz\n"},
+			map[string]interface{}{"foo": testhelper.Unix2dos("bar\nbaz\n")},
+		},
+		{
+			"multiline_indented.hcl",
+			false,
+			map[string]interface{}{"foo": testhelper.Unix2dos("  bar\n  baz\n")},
+		},
+		{
+			"multiline_no_hanging_indent.hcl",
+			false,
+			map[string]interface{}{"foo": testhelper.Unix2dos("  baz\n    bar\n      foo\n")},
 		},
 		{
 			"multiline_no_eof.hcl",
 			false,
-			map[string]interface{}{"foo": "bar\nbaz\n", "key": "value"},
+			map[string]interface{}{"foo": testhelper.Unix2dos("bar\nbaz\n"), "key": "value"},
 		},
 		{
 			"multiline.json",
 			false,
 			map[string]interface{}{"foo": "bar\nbaz"},
+		},
+		{
+			"null_strings.json",
+			false,
+			map[string]interface{}{
+				"module": []map[string]interface{}{
+					map[string]interface{}{
+						"app": []map[string]interface{}{
+							map[string]interface{}{"foo": ""},
+						},
+					},
+				},
+			},
 		},
 		{
 			"scientific.json",
@@ -173,6 +201,27 @@ func TestDecode_interface(t *testing.T) {
 			},
 		},
 		{
+			"list_of_maps.hcl",
+			false,
+			map[string]interface{}{
+				"foo": []interface{}{
+					map[string]interface{}{"somekey1": "someval1"},
+					map[string]interface{}{"somekey2": "someval2", "someextrakey": "someextraval"},
+				},
+			},
+		},
+		{
+			"assign_deep.hcl",
+			false,
+			map[string]interface{}{
+				"resource": []interface{}{
+					map[string]interface{}{
+						"foo": []interface{}{
+							map[string]interface{}{
+								"bar": []map[string]interface{}{
+									map[string]interface{}{}}}}}}},
+		},
+		{
 			"structure_list.hcl",
 			false,
 			map[string]interface{}{
@@ -239,6 +288,18 @@ func TestDecode_interface(t *testing.T) {
 		},
 
 		{
+			"unterminated_brace.hcl",
+			true,
+			nil,
+		},
+
+		{
+			"nested_provider_bad.hcl",
+			true,
+			nil,
+		},
+
+		{
 			"object_list.json",
 			false,
 			map[string]interface{}{
@@ -267,6 +328,34 @@ func TestDecode_interface(t *testing.T) {
 				},
 			},
 		},
+
+		// Terraform GH-8295 sanity test that basic decoding into
+		// interface{} works.
+		{
+			"terraform_variable_invalid.json",
+			false,
+			map[string]interface{}{
+				"variable": []map[string]interface{}{
+					map[string]interface{}{
+						"whatever": "abc123",
+					},
+				},
+			},
+		},
+
+		{
+			"interpolate.json",
+			false,
+			map[string]interface{}{
+				"default": `${replace("europe-west", "-", " ")}`,
+			},
+		},
+
+		{
+			"block_assign.hcl",
+			true,
+			nil,
+		},
 	}
 
 	for _, tc := range cases {
@@ -284,6 +373,52 @@ func TestDecode_interface(t *testing.T) {
 
 		if !reflect.DeepEqual(out, tc.Out) {
 			t.Fatalf("Input: %s. Actual, Expected.\n\n%#v\n\n%#v", tc.File, out, tc.Out)
+		}
+
+		var v interface{}
+		err = Unmarshal(d, &v)
+		if (err != nil) != tc.Err {
+			t.Fatalf("Input: %s\n\nError: %s", tc.File, err)
+		}
+
+		if !reflect.DeepEqual(v, tc.Out) {
+			t.Fatalf("Input: %s. Actual, Expected.\n\n%#v\n\n%#v", tc.File, out, tc.Out)
+		}
+	}
+}
+
+func TestDecode_interfaceInline(t *testing.T) {
+	cases := []struct {
+		Value string
+		Err   bool
+		Out   interface{}
+	}{
+		{"t t e{{}}", true, nil},
+		{"t=0t d {}", true, map[string]interface{}{"t": 0}},
+		{"v=0E0v d{}", true, map[string]interface{}{"v": float64(0)}},
+	}
+
+	for _, tc := range cases {
+		t.Logf("Testing: %q", tc.Value)
+
+		var out interface{}
+		err := Decode(&out, tc.Value)
+		if (err != nil) != tc.Err {
+			t.Fatalf("Input: %q\n\nError: %s", tc.Value, err)
+		}
+
+		if !reflect.DeepEqual(out, tc.Out) {
+			t.Fatalf("Input: %q. Actual, Expected.\n\n%#v\n\n%#v", tc.Value, out, tc.Out)
+		}
+
+		var v interface{}
+		err = Unmarshal([]byte(tc.Value), &v)
+		if (err != nil) != tc.Err {
+			t.Fatalf("Input: %q\n\nError: %s", tc.Value, err)
+		}
+
+		if !reflect.DeepEqual(v, tc.Out) {
+			t.Fatalf("Input: %q. Actual, Expected.\n\n%#v\n\n%#v", tc.Value, out, tc.Out)
 		}
 	}
 }
@@ -371,9 +506,12 @@ func TestDecode_flatMap(t *testing.T) {
 }
 
 func TestDecode_structure(t *testing.T) {
+	type Embedded interface{}
+
 	type V struct {
-		Key int
-		Foo string
+		Embedded `hcl:"-"`
+		Key      int
+		Foo      string
 	}
 
 	var actual V
@@ -566,6 +704,26 @@ func TestDecode_structureMap(t *testing.T) {
 	}
 }
 
+func TestDecode_structureMapInvalid(t *testing.T) {
+	// Terraform GH-8295
+
+	type hclVariable struct {
+		Default     interface{}
+		Description string
+		Fields      []string `hcl:",decodedFields"`
+	}
+
+	type rawConfig struct {
+		Variable map[string]*hclVariable
+	}
+
+	var actual rawConfig
+	err := Decode(&actual, testReadFile(t, "terraform_variable_invalid.json"))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestDecode_interfaceNonPointer(t *testing.T) {
 	var value interface{}
 	err := Decode(value, testReadFile(t, "basic_int_string.hcl"))
@@ -629,7 +787,7 @@ content {
 func TestDecode_NestedNode(t *testing.T) {
 	// given
 	var value struct {
-		Nested  struct {
+		Nested struct {
 			Content ast.Node
 		}
 	}
@@ -662,3 +820,34 @@ nested "content" {
 	}
 }
 
+// https://github.com/hashicorp/hcl/issues/60
+func TestDecode_topLevelKeys(t *testing.T) {
+	type Template struct {
+		Source string
+	}
+
+	templates := struct {
+		Templates []*Template `hcl:"template"`
+	}{}
+
+	err := Decode(&templates, `
+	template {
+	    source = "blah"
+	}
+
+	template {
+	    source = "blahblah"
+	}`)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if templates.Templates[0].Source != "blah" {
+		t.Errorf("bad source: %s", templates.Templates[0].Source)
+	}
+
+	if templates.Templates[1].Source != "blahblah" {
+		t.Errorf("bad source: %s", templates.Templates[1].Source)
+	}
+}

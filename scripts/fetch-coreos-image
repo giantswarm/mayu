@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -eu
+
+: ${1?"Usage: $0 <coreos-version>"}
+
+COREOS_VERSION=$1
+
+mkdir -p ./images/${COREOS_VERSION}
+
+# remove old images
+rm -f ./images/${COREOS_VERSION}/coreos*
+
+wget -O ./images/${COREOS_VERSION}/coreos_production_image.bin.bz2 http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_image.bin.bz2 && \
+wget -O ./images/${COREOS_VERSION}/coreos_production_pxe.vmlinuz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe.vmlinuz && \
+wget -O ./images/${COREOS_VERSION}/coreos_pxe_image.cpio.gz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe_image.cpio.gz
+echo "$COREOS_VERSION" > ./images/${COREOS_VERSION}/coreos-version
+
+mkdir -p ./images/${COREOS_VERSION}/usr/share/oem
+cp templates/first_stage_cloudconfig.yaml ./images/${COREOS_VERSION}/usr/share/oem/cloud-config.yml
+
+docker run --rm -v $(pwd)/images/${COREOS_VERSION}:/usr/code/images \
+	ubuntu:wily /bin/bash -c "apt-get update -y && apt-get install cpio && \
+	zcat /usr/code/images/coreos_pxe_image.cpio.gz > /usr/code/images/coreos_production_pxe_image.cpio && \
+	cd /usr/code/images && find usr | cpio -o -A -H newc -O coreos_production_pxe_image.cpio && \
+	gzip coreos_production_pxe_image.cpio"
+
+rm -rf ./images/${COREOS_VERSION}/usr
+rm -f ./images/${COREOS_VERSION}/coreos_pxe_image.cpio.gz

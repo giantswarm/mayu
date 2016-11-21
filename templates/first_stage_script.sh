@@ -11,8 +11,13 @@ while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 1;  done
 
 wget -O /tmp/helper {{.HostInfoHelperURL}}
 chmod +x /tmp/helper
-/tmp/helper -post-url={{.CloudConfigURL}} > /tmp/future-cloud-config.yaml
 
+if [[ -n "{{.CloudConfigURL}}" ]]; then
+  /tmp/helper -post-url={{.CloudConfigURL}} > /tmp/future-cloud-config.yaml
+fi
+if [[ -n "{{.IgnitionConfigURL}}" ]]; then
+  /tmp/helper -post-url={{.IgnitionConfigURL}} > /tmp/future-ignition-config.json
+fi
 C=$(cat /proc/cmdline | tr ' ' '\n' | grep maybe-install-coreos= | awk -F=  '{print $2}')
 
 serial=$(cat /sys/devices/virtual/dmi/id/{product,chassis,board}_serial | tr  ' ' '-' | sed '/^\s*$/d' | head -1)
@@ -20,6 +25,7 @@ serial=$(cat /sys/devices/virtual/dmi/id/{product,chassis,board}_serial | tr  ' 
 DEVICE=""
 CLOUDINIT=""
 CHANNEL_ID=""
+IGNITION=""
 
 
 coreos_install() {
@@ -59,6 +65,12 @@ coreos_install() {
     fi
   fi
 
+  if [[ -n "${IGNITION}" ]]; then
+      if [[ ! -f "${IGNITION}" ]]; then
+          echo "$0: Ignition config file (${IGNITION}) does not exist." >&2
+          exit 1
+      fi
+  fi
 
   IMAGE_URL="{{.InstallImageURL}}"
 
@@ -120,6 +132,28 @@ if [[ -n "${CLOUDINIT}" ]] || [[ -n "${COPY_NET}" ]]; then
   umount "${WORKDIR}/rootfs"
 fi
 
+if [[ -n "${IGNITION}" ]]; then
+    # The OEM partition should be #3 but make no assumptions here!
+    # Also don't mount by label directly in case other devices conflict.
+    OEM_DEV=$(blkid -t "LABEL=OEM" -o device "${DEVICE}"*)
+
+    if [[ -z "${OEM_DEV}" ]]; then
+      echo "Unable to find new OEM partition on ${DEVICE}" >&2
+      exit 1
+    fi
+
+    mkdir -p "${WORKDIR}/oemfs"
+    mount "${OEM_DEV}" "${WORKDIR}/oemfs"
+    trap "umount '${WORKDIR}/oemfs' && rm -rf '${WORKDIR}'" EXIT
+
+    echo "Installing Ignition config ${IGNITION}..."
+    cp "${IGNITION}" "${WORKDIR}/oemfs/coreos-install.json"
+    echo  "set linux_append=\"coreos.config.url=oem:///coreos-install.json"\" > "${WORKDIR}/oemfs/grub.cfg"
+
+    umount "${WORKDIR}/oemfs"
+    trap "rm -rf '${WORKDIR}'" EXIT
+fi
+
 rm -rf "${WORKDIR}"
 trap - EXIT
 
@@ -137,7 +171,12 @@ case "$C" in
 
     CHANNEL_ID=$C
     DEVICE=/dev/sda
-    CLOUDINIT=/tmp/future-cloud-config.yaml
+    if [[ -n "{{.CloudConfigURL}}" ]]; then
+      CLOUDINIT=/tmp/future-cloud-config.yaml
+    fi
+    if [[ -n "{{.IgnitionConfigURL}}" ]]; then
+      IGNITION=/tmp/future-ignition-config.json
+    fi
     set -e
     coreos_install
 

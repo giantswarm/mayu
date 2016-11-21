@@ -15,24 +15,28 @@ const hostConfFile = "conf.json"
 
 // Host represents a node within the mayu cluster.
 type Host struct {
-	Id               int       `json:",omitempty"`
-	ProviderId       string    `json:",omitempty"`
-	Enabled          bool      `json:",omitempty"`
-	Name             string    `json:",omitempty"`
-	Serial           string    `json:",omitempty"`
-	MacAddresses     []string  `json:",omitempty"`
-	InternalAddr     net.IP    `json:",omitempty"`
-	BondInterfaces   []string  `json:",omitempty"`
-	Cabinet          uint      `json:",omitempty"`
-	MachineOnCabinet uint      `json:",omitempty"`
-	IPMIAddr         net.IP    `json:",omitempty"`
-	Hostname         string    `json:",omitempty"`
-	MachineID        string    `json:",omitempty"`
-	ConnectedNIC     string    `json:",omitempty`
-	FleetMetadata    FleetMeta `json:",omitempty"`
-	KeepDiskData     bool      `json:",omitempty"`
-	LastBoot         time.Time `json:",omitempty"`
-	Profile          string    `json:",omitempty"`
+	Id                 int       `json:",omitempty"`
+	ProviderId         string    `json:",omitempty"`
+	Enabled            bool      `json:",omitempty"`
+	Name               string    `json:",omitempty"`
+	Serial             string    `json:",omitempty"`
+	MacAddresses       []string  `json:",omitempty"`
+	InternalAddr       net.IP    `json:",omitempty"`
+	BondInterfaces     []string  `json:",omitempty"`
+	Cabinet            uint      `json:",omitempty"`
+	MachineOnCabinet   uint      `json:",omitempty"`
+	IPMIAddr           net.IP    `json:",omitempty"`
+	Hostname           string    `json:",omitempty"`
+	MachineID          string    `json:",omitempty"`
+	ConnectedNIC       string    `json:",omitempty`
+	FleetMetadata      FleetMeta `json:",omitempty"`
+	FleetDisableEngine bool      `json:",omitempty"`
+	KeepDiskData       bool      `json:",omitempty"`
+	LastBoot           time.Time `json:",omitempty"`
+	Profile            string    `json:",omitempty"`
+	EtcdClusterToken   string    `json:",omitempty"`
+
+	Overrides map[string]interface{} `json:",omitempty"`
 
 	State hostState
 
@@ -41,6 +45,8 @@ type Host struct {
 	DockerVersion string `json:",omitempty"`
 	FleetVersion  string `json:",omitempty"`
 	EtcdVersion   string `json:",omitempty"`
+	RktVersion    string `json:",omitempty"`
+	K8sVersion    string `json:",omitempty"`
 	YochuVersion  string `json:",omitempty"`
 
 	hostDir     *os.File

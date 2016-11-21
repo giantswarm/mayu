@@ -3,9 +3,8 @@
 Here we provide more detailed documentation about configuring Mayu. By
 default TLS is enabled when communicating with `mayu` over network. If your
 setup does not provide or rely on TLS for whatever reasons, you can set
-`no_secure` to `true` within your `config.yaml`. The corresponding flag for
-`mayuctl` is `--no-secure`. Check [mayuctl](mayuctl.md) for more
-information about the client.
+`--no-tls`. The corresponding flag for `mayuctl` is `--no-tls`.
+Check [mayuctl](mayuctl.md) for more information about the client.
 
 ## File Tree
 
@@ -13,17 +12,25 @@ information about the client.
 .
 |-- mayu                              - the mayu executable
 |-- config.yaml.dist                  - mayu configuration file template
-|-- images                            - directory containing the boot and installation images
-|   `-- ...
 |-- static_html
 |   `-- infopusher                    - small node info pusher used during the installation process
+|   `-- mayuctl                       - pushes information after each reboot of machines
 |-- templates
 |   |-- dnsmasq_template.conf         - template file used to generate the dnsmasq configuration
+|   |-- first_stage_cloudconfig.yaml  - template used to generate the first cloud-config to install the machine
 |   |-- first_stage_script.sh         - template used to generate the installation script
 |   |-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
-|-- template_snippets                 - directory containing some template snippets used by the final cloud-config
-|   |-- net_bond.yaml
-|   `-- net_singlenic.yaml
+|   `-- ignition
+|       `--gs_install.yaml            - template used to generate the ignition config used to install CoreOS
+|-- template_snippets                 - directory containing some template snippets used in the cloudconfig or ignition
+|   |-- cloudconfig
+|   |   |-- net_bond.yaml
+|   |   |-- net_singlenic.yaml
+|   |   `-- quobyte.yaml
+|   `-- ignition
+|       |-- net_bond.yaml
+|       |-- net_singlenic.yaml
+|       `-- quobyte.yaml
 `-- tftproot
     `-- undionly.kpxe                 - ipxe pxe image
 ```
@@ -37,34 +44,20 @@ network snippets `net_bond.yaml` or `net_singlenic.yaml`.
 
 The very first thing to do is to copy `config.yaml.dist` to
 `/etc/mayu/config.yaml` and modify it regarding your needs. The initial
-section configures the paths to the templates, some binaries (ipxe and dnsmasq)
-and some directories. The default settings match the distributed mayu file
-tree.
+section configures the network, profiles for the machines and the versions
+of the software that should be installed via Yochu.
+
+### Default CoreOS Version
+
+To successfully run Mayu you need to specify a default CoreOS version. This version is used to bootstrap
+machine. So whenever a new machine starts this CoreOS version is used to install CoreOS on the disk of
+the machine. You can also specify other CoreOS versions within profiles or single machines that overwrite
+this default value.
+
+Most importantly you also need to fetch the CoreOS image version. This is explained in the [Running Mayu](running.md) section.
 
 ```yaml
-tftproot: ./tftproot
-static_html_path: ./static_html
-ipxe: undionly.kpxe
-first_stage_script: ./templates/first_stage_script.sh
-last_stage_cloudconfig: ./templates/last_stage_cloudconfig.yaml
-dnsmasq_template: ./templates/dnsmasq_template.conf
-template_snippets: ./template_snippets
-dnsmasq: ./dnsmasq
-images_cache_dir: ./images
-http_port: 4080
-```
-
-### Certificates
-
-Communication between `mayu` and `mayuctl` by default is TLS encrypted. For
-that you need to provide certificates as follows. To disable this security
-feature you can set `no_secure` to `true`. Then no certificate needs to be
-provided.
-
-```yaml
-no_secure: false
-https_cert_file: "./cert.pem"
-https_key_file: "./key.pem"
+default_coreos_version: 1122.2.0
 ```
 
 ### Network
@@ -97,9 +90,12 @@ template snippet will be used.
 profiles:
   - name: core
     quantity: 3
+    coreos_version: "835.13.0"
     tags:
       - "rule-core=true"
   - name: default
+    disable_engine: true
+    coreos_version: "835.13.0"
     tags:
       - "rule-worker=true"
       - "stack-compute=true"
@@ -108,13 +104,13 @@ profiles:
 The final goal of a mayu-enabled deployment is a functional fleet cluster. To
 be able to assign different roles to the different nodes, mayu employs a
 mechanism of profile selection. Each profile has a `name`, a `quantity`
-(defines the number of cluster nodes that should have this profile) and a list
-of `tags` (the elements of this list will be directly mapped to fleet metadata
-tags). Once all the profiles' quantities are matched (in this example that
-means we have 3 nodes with the profile core), mayu will assign the profile
-"default" to the remaining nodes. Thus, profiles with a `quantity` set are of
-higher priority than the default profile.
-
+(defines the number of cluster nodes that should have this profile), a
+`disable_engine` (defines whether the cluster nodes can be elected as fleet
+leader) and a list of `tags` (the elements of this list will be directly mapped
+to fleet metadata tags). Once all the profiles' quantities are matched (in
+this example that means we have 3 nodes with the profile core), mayu will assign
+the profile "default" to the remaining nodes. Thus, profiles with a `quantity`
+set are of higher priority than the default profile.
 
 ### Template Variables For Cloudconfig
 
@@ -130,6 +126,34 @@ templates_env:
 
 These variables are used by the templates (most of them are directly injected
 into the final cloudconfig file).
+
+## Commandline flags
+
+```
+--tftproot=./tftproot
+--static_html_path=./static_html
+--ipxe=undionly.kpxe
+--first_stage_script=./templates/first_stage_script.sh
+--last_stage_cloudconfig=./templates/last_stage_cloudconfig.yaml
+--dnsmasq_template=./templates/dnsmasq_template.conf
+--template_snippets=./template_snippets
+--dnsmasq=./dnsmasq
+--images_cache_dir=./images
+--http_port=4080
+```
+
+### Certificates
+
+Communication between `mayu` and `mayuctl` by default is TLS encrypted. For
+that you need to provide certificates as follows. To disable tls
+you can set `--no-tls` to `true`. Then no certificate needs to be
+provided.
+
+```
+--no-tls=false
+--tls-cert-file="./cert.pem"
+--tls_key-file="./key.pem"
+```
 
 ## `last_stage_cloudconfig.yaml`
 

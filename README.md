@@ -1,11 +1,13 @@
 # Mayu
 
 [![Build Status](https://api.travis-ci.org/giantswarm/mayu.svg)](https://travis-ci.org/giantswarm/mayu)
-[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu) [![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
+[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu)
+[![Go Report Card](https://goreportcard.com/badge/github.com/giantswarm/mayu)](https://goreportcard.com/report/github.com/giantswarm/mayu)
+[![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
 
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
 that must follow a specific configuration with CoreOS. It sets up fleet
-meta-data, and patched versions of fleet, etcd, and docker when using 
+meta-data, and patched versions of fleet, etcd, and docker when using
 [Yochu](https://github.com/giantswarm/yochu).
 
 ## Prerequisites
@@ -35,50 +37,16 @@ Developing Mayu requires the following tools to be installed.
 
 ## Getting Mayu
 
-Download the latest tarball from here: https://downloads.giantswarm.io/mayu/latest/mayu.tar.gz
+Download the latest release from here: https://github.com/giantswarm/mayu/releases/latest
 
-Clone the latest git repository version from here: `git@github.com:giantswarm/mayu.git`
+Clone the latest git repository version from here: https://github.com/giantswarm/mayu.git
 
 Get the latest docker image from here: https://hub.docker.com/r/giantswarm/mayu/
 
 ## Running Mayu
 
-### Preparing configuration
-
-Copy the default configuration and apply changes regarding your needs.
-
-```
-cp config.yaml.dist config.yaml
-```
-
-### Run Mayu from source
-
-start mayu:
-```
-make bin-dist
-./mayu -cluster-directory cluster -v=12 -no-git
-```
-
-### Run Mayu within a Docker container
-
-```
-docker run --rm -it \
-  --cap-add=NET_ADMIN \
-  --net=host \
-  -v $(pwd)/bin-dist/cluster:/opt/mayu/cluster \
-  -v /etc/mayu/config.yaml:/opt/mayu/config/config.yaml \
-  giantswarm/mayu \
-  -v=12 -no-git
-```
-
-Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.
-
-For running `mayu` in a local VM you might want to add two more volumes, to
-enable DNS resultion by the `dnsmasq` included in `mayu`:
-
-```
--v /etc/hosts:/etc/hosts -v /etc/resolv.conf:/etc/resolv.conf
-```
+Configuring Mayu is explained in [docs/configuration.md](docs/configuration.md). After configuration have
+a look at [docs/running.md](docs/running.md) on how to start Mayu.
 
 ## Further Steps
 

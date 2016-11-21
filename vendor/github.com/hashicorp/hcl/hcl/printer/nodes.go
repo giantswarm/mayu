@@ -221,12 +221,12 @@ func (p *printer) objectType(o *ast.ObjectType) []byte {
 	defer un(trace(p, "ObjectType"))
 	var buf bytes.Buffer
 	buf.WriteString("{")
-	buf.WriteByte(newline)
 
 	var index int
 	var nextItem token.Pos
-	var commented bool
+	var commented, newlinePrinted bool
 	for {
+
 		// Print stand alone comments
 		for _, c := range p.standaloneComments {
 			for _, comment := range c.List {
@@ -238,6 +238,13 @@ func (p *printer) objectType(o *ast.ObjectType) []byte {
 				}
 
 				if comment.Pos().After(p.prev) && comment.Pos().Before(nextItem) {
+					// If there are standalone comments and the initial newline has not
+					// been printed yet, do it now.
+					if !newlinePrinted {
+						newlinePrinted = true
+						buf.WriteByte(newline)
+					}
+
 					// add newline if it's between other printed nodes
 					if index > 0 {
 						commented = true
@@ -256,6 +263,14 @@ func (p *printer) objectType(o *ast.ObjectType) []byte {
 		if index == len(o.List.Items) {
 			p.prev = o.Rbrace
 			break
+		}
+
+		// At this point we are sure that it's not a totally empty block: print
+		// the initial newline if it hasn't been printed yet by the previous
+		// block about standalone comments.
+		if !newlinePrinted {
+			buf.WriteByte(newline)
+			newlinePrinted = true
 		}
 
 		// check if we have adjacent one liner items. If yes we'll going to align
@@ -419,10 +434,12 @@ func (p *printer) list(l *ast.ListType) []byte {
 		}
 	}
 
+	insertSpaceBeforeItem := false
 	for i, item := range l.List {
 		if item.Pos().Line != l.Lbrack.Line {
 			// multiline list, add newline before we add each item
 			buf.WriteByte(newline)
+			insertSpaceBeforeItem = false
 			// also indent each line
 			val := p.output(item)
 			curLen := len(val)
@@ -432,12 +449,8 @@ func (p *printer) list(l *ast.ListType) []byte {
 			if lit, ok := item.(*ast.LiteralType); ok && lit.LineComment != nil {
 				// if the next item doesn't have any comments, do not align
 				buf.WriteByte(blank) // align one space
-				if i != len(l.List)-1 {
-					if lit, ok := l.List[i+1].(*ast.LiteralType); ok && lit.LineComment != nil {
-						for i := 0; i < longestLine-curLen; i++ {
-							buf.WriteByte(blank)
-						}
-					}
+				for i := 0; i < longestLine-curLen; i++ {
+					buf.WriteByte(blank)
 				}
 
 				for _, comment := range lit.LineComment.List {
@@ -449,10 +462,14 @@ func (p *printer) list(l *ast.ListType) []byte {
 				buf.WriteByte(newline)
 			}
 		} else {
+			if insertSpaceBeforeItem {
+				buf.WriteByte(blank)
+				insertSpaceBeforeItem = false
+			}
 			buf.Write(p.output(item))
 			if i != len(l.List)-1 {
 				buf.WriteString(",")
-				buf.WriteByte(blank)
+				insertSpaceBeforeItem = true
 			}
 		}
 

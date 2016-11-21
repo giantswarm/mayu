@@ -116,6 +116,51 @@ func (c *Client) SetIPMIAddr(serial, value string) error {
 	return nil
 }
 
+// SetEtcdClusterToken sets the etcd cluster token given by value for a node given by serial.
+func (c *Client) SetEtcdClusterToken(serial, value string) error {
+	data, err := json.Marshal(hostmgr.Host{
+		EtcdClusterToken: value,
+	})
+	if err != nil {
+		return err
+	}
+
+	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_etcd_cluster_token", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 399 {
+		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// SetState sets the machine state for a node given by serial.
+func (c *Client) SetState(serial, value string) error {
+	state, err := hostmgr.HostState(value)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(hostmgr.Host{
+		State: state,
+	})
+	if err != nil {
+		return err
+	}
+
+	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_state", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 399 {
+		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 // SetCabinet sets the cabinet given by value for a node given by serial.
 func (c *Client) SetCabinet(serial, value string) error {
 	cabinet, err := strconv.ParseUint(value, 10, 0)
@@ -131,6 +176,26 @@ func (c *Client) SetCabinet(serial, value string) error {
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_cabinet", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 399 {
+		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// Override overrides a template properties such as docker_version, yochu_version, etc
+func (c *Client) Override(serial, property, value string) error {
+	data, err := json.Marshal(hostmgr.Host{
+		Overrides: map[string]interface{}{property: value},
+	})
+	if err != nil {
+		return err
+	}
+
+	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/override", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}

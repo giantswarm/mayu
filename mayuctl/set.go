@@ -10,8 +10,8 @@ import (
 var (
 	setCmd = &cobra.Command{
 		Use:   "set <serial> <key> <value>",
-		Short: "Set metadata of machines (metadata, providerid, ipmiaddr, cabinet).",
-		Long:  "Set metadata of machines (metadata, providerid, ipmiaddr, cabinet).",
+		Short: "Set metadata of machines (metadata, providerid, ipmiaddr, cabinet, state, etcdtoken).",
+		Long:  "Set metadata of machines (metadata, providerid, ipmiaddr, cabinet, state, etcdtoken).",
 		Run:   setRun,
 	}
 )
@@ -34,6 +34,12 @@ func setRun(cmd *cobra.Command, args []string) {
 		assert(err)
 	case "cabinet":
 		err := mayu.SetCabinet(args[0], args[2])
+		assert(err)
+	case "state":
+		err := mayu.SetState(args[0], args[2])
+		assert(err)
+	case "etcdtoken":
+		err := mayu.SetEtcdClusterToken(args[0], args[2])
 		assert(err)
 	default:
 		fmt.Printf("setting key with name '%s' is not supported\n", args[1])

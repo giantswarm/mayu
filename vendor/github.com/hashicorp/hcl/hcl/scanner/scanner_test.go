@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/hcl/hcl/token"
 	"strings"
+
+	"github.com/hashicorp/hcl/hcl/token"
 )
 
-var f100 = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+var f100 = strings.Repeat("f", 100)
 
 type tokenPair struct {
 	tok  token.Type
@@ -131,6 +132,7 @@ var tokenLists = map[string][]tokenPair{
 		{token.NUMBER, "-00"},
 		{token.NUMBER, "-01"},
 		{token.NUMBER, "-07"},
+		{token.NUMBER, "-29"},
 		{token.NUMBER, "-042"},
 		{token.NUMBER, "-01234567"},
 		{token.NUMBER, "-0x0"},
@@ -281,6 +283,11 @@ func TestPosition(t *testing.T) {
 	}
 }
 
+func TestNullChar(t *testing.T) {
+	s := New([]byte("\"\\0"))
+	s.Scan() // Used to panic
+}
+
 func TestComment(t *testing.T) {
 	testTokenList(t, tokenLists["comment"])
 }
@@ -376,6 +383,14 @@ func TestRealExample(t *testing.T) {
 Main interface
 EOF
 	    }
+
+		network_interface {
+	        device_index = 1
+	        description = <<-EOF
+			Outer text
+				Indented text
+			EOF
+		}
 	}`
 
 	literals := []struct {
@@ -434,6 +449,15 @@ EOF
 		{token.ASSIGN, `=`},
 		{token.HEREDOC, "<<EOF\nMain interface\nEOF\n"},
 		{token.RBRACE, `}`},
+		{token.IDENT, `network_interface`},
+		{token.LBRACE, `{`},
+		{token.IDENT, `device_index`},
+		{token.ASSIGN, `=`},
+		{token.NUMBER, `1`},
+		{token.IDENT, `description`},
+		{token.ASSIGN, `=`},
+		{token.HEREDOC, "<<-EOF\n\t\t\tOuter text\n\t\t\t\tIndented text\n\t\t\tEOF\n"},
+		{token.RBRACE, `}`},
 		{token.RBRACE, `}`},
 		{token.EOF, ``},
 	}
@@ -446,7 +470,7 @@ EOF
 		}
 
 		if l.literal != tok.Text {
-			t.Errorf("got: %s want %s\n", tok, l.literal)
+			t.Errorf("got:\n%+v\n%s\n want:\n%+v\n%s\n", []byte(tok.String()), tok, []byte(l.literal), l.literal)
 		}
 	}
 
@@ -470,8 +494,9 @@ func TestError(t *testing.T) {
 
 	testError(t, `"`, "1:2", "literal not terminated", token.STRING)
 	testError(t, `"abc`, "1:5", "literal not terminated", token.STRING)
-	testError(t, `"abc`+"\n", "1:5", "literal not terminated", token.STRING)
+	testError(t, `"abc`+"\n", "2:1", "literal not terminated", token.STRING)
 	testError(t, `/*/`, "1:4", "comment not terminated", token.COMMENT)
+	testError(t, `/foo`, "1:1", "expected '/' for comment", token.COMMENT)
 }
 
 func testError(t *testing.T, src, pos, msg string, tok token.Type) {

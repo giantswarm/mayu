@@ -1,0 +1,36 @@
+#!/bin/sh
+
+set -eu
+
+: ${1?"Usage: $0 <coreos-version>"}
+
+COREOS_VERSION=$1
+COREOS_CHANNEL=${2:-stable}
+IMAGE_PATH=$(pwd)/images/qemu/${COREOS_VERSION}
+KERNEL=coreos_production_qemu.vmlinuz
+USRFS=coreos_production_qemu_usr_image.squashfs
+
+mkdir -p ${IMAGE_PATH}
+cd ${IMAGE_PATH}
+
+# remove old images
+rm -f coreos*
+
+wget http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe.vmlinuz
+wget http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe.vmlinuz.sig
+wget http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe_image.cpio.gz
+wget http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe_image.cpio.gz.sig
+echo "$COREOS_VERSION" > coreos-version
+
+gpg --verify coreos_production_pxe.vmlinuz.sig
+gpg --verify coreos_production_pxe_image.cpio.gz.sig
+
+docker run --rm -v $IMAGE_PATH:/usr/code/images --net=host ubuntu:wily /bin/bash -c "apt-get update -y && apt-get install cpio && \
+      zcat /usr/code/images/coreos_production_pxe_image.cpio.gz | cpio -i --quiet --sparse usr.squashfs && mv usr.squashfs /usr/code/images/$USRFS"
+
+cp coreos_production_pxe.vmlinuz $KERNEL
+
+sha256sum $KERNEL > $KERNEL.sha256
+sha256sum $USRFS > $USRFS.sha256
+
+cd -

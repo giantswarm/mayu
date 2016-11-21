@@ -35,6 +35,23 @@ func (s hostState) MarshalJSON() ([]byte, error) {
 	return []byte{}, fmt.Errorf("don't know how to marshal '%d'", s)
 }
 
+func HostState(state string) (hostState, error) {
+	switch state {
+	case "unknown":
+		return Unknown, nil
+	case "configured":
+		return Configured, nil
+	case "installing":
+		return Installing, nil
+	case "installed":
+		return Installed, nil
+	case "running":
+		return Running, nil
+	default:
+		return -1, fmt.Errorf("wrong host state '%s'", state)
+	}
+}
+
 func (s *hostState) UnmarshalJSON(b []byte) error {
 	str := string(b)
 	switch str {

@@ -17,20 +17,25 @@ ifndef GOARCH
   GOARCH := $(shell go env GOARCH)
 endif
 
-COREOS_VERSION := 835.12.0
-ETCD_VERSION := v2.2.5-gs-1
-FLEET_VERSION := v0.11.3-gs-2
-DOCKER_VERSION := 1.6.2
-YOCHU_VERSION := 0.18.0
+.PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update release386
 
-.PHONY: all clean bin-dist clean-bin-dist publish vendor-clean vendor-update
-
-all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL) cache/coreos_production_pxe.vmlinuz cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_image.bin.bz2 cache/yochu/$(YOCHU_VERSION) cache/fleet/$(FLEET_VERSION) cache/etcd/$(ETCD_VERSION) cache/docker/$(DOCKER_VERSION)
+all: .gobuild infopusher/infopusher helpers/infopusher $(BINARY_SERVER) $(BINARY_CTL)
 
 .gobuild:
 	mkdir -p $(PROJECT_PATH)
 	mkdir -p $(GOPATH)/doc
 	cd $(PROJECT_PATH) && ln -s ../../../.. $(PROJECT)
+	docker run \
+	    --rm \
+	    -v $(shell pwd):/usr/code \
+	    -e GOPATH=/usr/code/.gobuild \
+	    -e GOOS=$(GOOS) \
+	    -e GOARCH=$(GOARCH) \
+	    -e GO15VENDOREXPERIMENT=1 \
+	    -w /usr/code/ \
+		golang:1.5 \
+		go get github.com/Masterminds/glide
+	$(GOPATH)/bin/glide install
 
 infopusher/infopusher:
 	cd infopusher ; make
@@ -75,59 +80,11 @@ $(BINARY_CTL): $(SOURCE) VERSION .gobuild
       golang:1.5 \
 	    go build -a -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o $(BINARY_CTL) github.com/$(ORGANIZATION)/$(PROJECT)/mayuctl
 
-distclean: clean clean-cache clean-bin-dist
+distclean: clean clean-bin-dist
 
 clean:
 	rm -rf .gobuild bin helpers/infopusher
 	cd infopusher ; make clean
-
-clean-cache:
-	rm -f cache/coreos_production_pxe.vmlinuz
-	rm -f cache/coreos_pxe_image.cpio.gz
-	rm -f cache/coreos_production_image.bin.bz2
-	rm -f cache/coreos_production_pxe_image.cpio.gz
-	rm -rf cache/yochu
-	rm -rf cache/etcd
-	rm -rf cache/fleet
-	rm -rf cache/docker
-
-cache/coreos_production_pxe.vmlinuz:
-	mkdir -p cache
-	wget -O cache/coreos_production_pxe.vmlinuz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe.vmlinuz
-
-cache/coreos_pxe_image.cpio.gz:
-	mkdir -p cache
-	wget -O cache/coreos_pxe_image.cpio.gz  http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_pxe_image.cpio.gz
-
-cache/coreos_production_image.bin.bz2:
-	mkdir -p cache
-	wget -O cache/coreos_production_image.bin.bz2 http://stable.release.core-os.net/amd64-usr/${COREOS_VERSION}/coreos_production_image.bin.bz2
-
-cache/coreos_production_pxe_image.cpio.gz: cache/coreos_pxe_image.cpio.gz
-	mkdir -p cache
-	docker run --rm -v $(shell pwd)/cache:/usr/code/cache \
-			debian:jessie /bin/bash -c "apt-get update -y && apt-get install cpio && \
-			zcat /usr/code/cache/coreos_pxe_image.cpio.gz > /usr/code/cache/coreos_production_pxe_image.cpio && \
-			cd /usr/code/cache && find usr | cpio -o -A -H newc -O coreos_production_pxe_image.cpio && \
-			gzip coreos_production_pxe_image.cpio"
-
-cache/yochu/$(YOCHU_VERSION):
-	mkdir -p cache/yochu/${YOCHU_VERSION}
-	wget -O cache/yochu/${YOCHU_VERSION}/yochu https://downloads.giantswarm.io/yochu/${YOCHU_VERSION}/yochu
-
-cache/etcd/$(ETCD_VERSION):
-	mkdir -p cache/etcd/${ETCD_VERSION}
-	wget -O cache/etcd/${ETCD_VERSION}/etcd https://downloads.giantswarm.io/etcd/${ETCD_VERSION}/etcd
-	wget -O cache/etcd/${ETCD_VERSION}/etcdctl https://downloads.giantswarm.io/etcd/${ETCD_VERSION}/etcdctl
-
-cache/fleet/$(FLEET_VERSION):
-	mkdir -p cache/fleet/${FLEET_VERSION}
-	wget -O cache/fleet/${FLEET_VERSION}/fleetd https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetd
-	wget -O cache/fleet/${FLEET_VERSION}/fleetctl https://downloads.giantswarm.io/fleet/${FLEET_VERSION}/fleetctl
-
-cache/docker/$(DOCKER_VERSION):
-	mkdir -p cache/docker/${DOCKER_VERSION}
-	wget -O cache/docker/${DOCKER_VERSION}/docker https://downloads.giantswarm.io/docker/${DOCKER_VERSION}/docker
 
 clean-bin-dist:
 	rm -fr bin-dist
@@ -141,12 +98,6 @@ bin-dist: all
 	cp helpers/undionly.kpxe bin-dist/tftproot
 	cp infopusher/infopusher bin-dist/static_html
 	cp $(BINARY_CTL) bin-dist/static_html
-	cp -R cache/yochu bin-dist/static_html
-	cp -R cache/etcd bin-dist/static_html
-	cp -R cache/fleet bin-dist/static_html
-	cp -R cache/docker bin-dist/static_html
-	cp cache/coreos_production_pxe_image.cpio.gz cache/coreos_production_pxe.vmlinuz bin-dist/images
-	cp cache/coreos_production_image.bin.bz2 bin-dist/images
 	cp -f $(BINARY_SERVER) bin-dist
 	cp -f $(BINARY_CTL) bin-dist
 	cp config.yaml.dist bin-dist
@@ -154,7 +105,10 @@ bin-dist: all
 	cp .dockerignore.dist bin-dist/.dockerignore
 	cp -a templates/* bin-dist/templates
 	cp -a template_snippets/* bin-dist/template_snippets
-	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION).tar.gz *
+	cp scripts/fetch-coreos-image bin-dist/fetch-coreos-image
+	cp scripts/fetch-coreos-qemu-image bin-dist/fetch-coreos-qemu-image
+	cp scripts/fetch-yochu-assets bin-dist/fetch-yochu-assets
+	cd bin-dist && rm -f $(PROJECT).*.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-amd64.tar.gz *
 
 vendor-clean:
 	rm -rf vendor/
@@ -166,6 +120,13 @@ vendor-update: vendor-clean
 
 install: $(BINARY_SERVER) $(BINARY_CTL)
 	cp $(BINARY_SERVER) $(BINARY_CTL) /usr/local/bin/
+
+release386: bin-dist
+	rm -rf bin
+	@GOARCH=386 $(MAKE) $(BINARY_SERVER)
+	@GOARCH=386 $(MAKE) $(BINARY_CTL)
+	cp bin/mayu* bin-dist
+	cd bin-dist && rm -f $(PROJECT).*-linux-i386.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-i386.tar.gz --exclude='*.tar.gz' *
 
 godoc: all
 	@echo Opening godoc server at http://localhost:6060/pkg/github.com/$(ORGANIZATION)/$(PROJECT)/

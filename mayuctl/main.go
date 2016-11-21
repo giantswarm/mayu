@@ -29,9 +29,9 @@ type Flags struct {
 	// Overwrite this via command line argument --port.
 	Port uint16
 
-	// NoSecure is used to disable the TLS support. By default TLS is enabled.
-	// Overwrite this via command line argument --no-secure.
-	NoSecure bool
+	// NoTLS is used to disable the TLS support. By default TLS is enabled.
+	// Overwrite this via command line argument --no-tls.
+	NoTLS bool
 
 	// Debug is used to enable debug logging. By default debug logging is
 	// disabled. Overwrite this via command line argument --debug.
@@ -54,7 +54,7 @@ var (
 		Run:   mainRun,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			scheme := "https"
-			if globalFlags.NoSecure {
+			if globalFlags.NoTLS {
 				scheme = "http"
 			}
 
@@ -69,11 +69,11 @@ var (
 )
 
 func init() {
-	mainCmd.PersistentFlags().StringVar(&globalFlags.Host, "host", defaultHost, "hostname to connect to mayu service")
-	mainCmd.PersistentFlags().Uint16Var(&globalFlags.Port, "port", defaultPort, "port to connect to mayu service")
-	mainCmd.PersistentFlags().BoolVar(&globalFlags.NoSecure, "no-secure", false, "do not use secure communication channels like https")
-	mainCmd.PersistentFlags().BoolVarP(&globalFlags.Debug, "debug", "d", false, "print debug output")
-	mainCmd.PersistentFlags().BoolVarP(&globalFlags.Verbose, "verbose", "v", false, "print verbose output")
+	mainCmd.PersistentFlags().StringVar(&globalFlags.Host, "host", defaultHost, "Hostname to connect to mayu service")
+	mainCmd.PersistentFlags().Uint16Var(&globalFlags.Port, "port", defaultPort, "Port to connect to mayu service")
+	mainCmd.PersistentFlags().BoolVar(&globalFlags.NoTLS, "no-tls", false, "Do not use tls communication")
+	mainCmd.PersistentFlags().BoolVarP(&globalFlags.Debug, "debug", "d", false, "Print debug output")
+	mainCmd.PersistentFlags().BoolVarP(&globalFlags.Verbose, "verbose", "v", false, "Print verbose output")
 }
 
 func assert(err error) {
@@ -113,6 +113,7 @@ func main() {
 	mainCmd.AddCommand(statusCmd)
 	mainCmd.AddCommand(setCmd)
 	mainCmd.AddCommand(bootCompleteCmd)
+	mainCmd.AddCommand(overrideCmd)
 
 	mainCmd.Execute()
 }

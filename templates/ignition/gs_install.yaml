@@ -1,0 +1,132 @@
+ignition_version: 1
+systemd:
+  units:
+    - name: systemd-modules-load.service
+      enable: true
+    - name: update-engine.service
+      enable: false
+      mask: true
+    - name: locksmithd.service
+      enable: false
+      mask: true
+    {{template "quobyte" .}}
+    - name: systemd-networkd-wait-online.service
+      enable: true
+    - name: set-giantswarm-environment.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=Configures giantswarm environment
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh -c 'echo "COREOS_PRIVATE_IPV4={{.Host.InternalAddr}}" > /etc/environment'
+
+        [Install]
+        WantedBy=multi-user.target
+    {{if index .TemplatesEnv "yochu_version"}}
+    - name: yochu.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=Giant Swarm yochu
+        Wants=network-online.target
+        After=network-online.target
+        Before=etcd2.service fleet.service docker.service
+
+        [Service]
+        Type=oneshot
+        EnvironmentFile=/etc/yochu-env
+        ExecStartPre=/usr/bin/mkdir -p /home/core/bin
+        ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
+        ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
+        ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
+        ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
+        ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION} --docker-version=${DOCKER_VERSION} --rkt-version=${RKT_VERSION} --k8s-version=${K8S_VERSION}
+        ExecStartPost=/bin/sh -c 'sleep 5'
+        ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls {{end}}--update-versions
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=multi-user.target
+    {{end}}
+    - name: etcd2.service
+      enable: true
+      dropins:
+       - name: 30-etcd2-giantswarm.conf
+         contents: |
+            [Service]
+            {{if .EtcdDiscoveryUrl}}Environment="ETCD_DISCOVERY={{.EtcdDiscoveryUrl}}"{{end}}
+            Environment="ETCD_ADVERTISE_CLIENT_URLS=http://{{.Host.InternalAddr}}:2379"
+            Environment="ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{.Host.InternalAddr}}:2380"
+            Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379,http://0.0.0.0:4001"
+            Environment="ETCD_LISTEN_PEER_URLS=http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001"
+    - name: fleet.service
+      enable: true
+      dropins:
+        - name: 30-fleet-giantswarm.conf
+          contents: |
+            [Service]
+            Environment="FLEET_ETCD_SERVERS=http://{{.Host.InternalAddr}}:2379"
+            {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
+            Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
+    - name: docker.service
+      enable: true
+
+storage:
+  disks:
+    - device: /dev/sda
+      wipe_table: false
+      partitions:
+        - label: ROOT
+  filesystems:
+    - device: "/dev/sda9"
+      format: "ext4"
+      create:
+        force: false
+        options:
+          - "-LROOT"
+      files:
+        - path: /etc/mayu-env
+          mode: 0644
+          uid: 0
+          contents: |
+            MAYU_VERSION={{.Host.MayuVersion}}
+            SERIAL={{.Host.Serial}}
+        {{if index .TemplatesEnv "yochu_version"}}
+        - path: /etc/yochu-env
+          mode: 0644
+          uid: 0
+          contents: |
+            YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
+            DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
+            ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
+            FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
+            RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
+            K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
+        {{end}}
+        - path: /etc/resolv.conf
+          mode: 0644
+          uid: 0
+          contents: |
+            {{range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+            {{end}}
+        - path: /etc/hosts
+          mode: 0644
+          uid: 0
+          contents: |
+            127.0.0.1 localhost
+            127.0.0.1 {{.Host.Hostname}}
+            127.0.0.1 etcd.giantswarm
+
+{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        {{range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}- {{ $pubkey }}
+        {{end}}
