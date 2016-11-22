@@ -73,7 +73,7 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err = mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, token, size)
+	err = mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, size)
 	if err != nil {
 		httpError(w, fmt.Sprintf("Unable to store token in etcd '%v'", err), 400)
 		return

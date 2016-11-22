@@ -17,6 +17,9 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 )
 
 const clusterConfFile = "cluster.json"
@@ -299,11 +302,33 @@ func (c *Cluster) GenerateEtcdDiscoveryToken() (string, error) {
 	return token, nil
 }
 
-func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, token string, size int) error {
+func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string, size int) error {
+	//http transport for etcd connection
+	transport := client.DefaultTransport
+	// read custom root CA file if https and CAfile is configured
+	if strings.HasPrefix(etcdEndpoint, "https") && etcdCAFile != "" {
+		customCA := x509.NewCertPool()
+
+		pemData, err := ioutil.ReadFile(etcdCAFile)
+		if err != nil {
+			return errors.New("Unable to read custom CA file: "+err.Error())
+		}
+		customCA.AppendCertsFromPEM(pemData)
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{RootCAs:customCA},
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+	}
+
 	// store in etcd
 	cfg := client.Config{
-		Endpoints: []string{fmt.Sprintf("http://%s", etcdEndpoint)},
-		Transport: client.DefaultTransport,
+		Endpoints: []string{etcdEndpoint},
+		Transport: transport,
 		// set timeout per request to fail fast when the target endpoint is unavailable
 		HeaderTimeoutPerRequest: time.Second,
 	}
