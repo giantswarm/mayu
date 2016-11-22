@@ -105,7 +105,6 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 		return nil, err
 	}
 
-	
 	for i := 0; i <= 10; i++ {
 		u := url.URL{
 			Scheme:   "http",

@@ -133,7 +133,7 @@ func init() {
 	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Default quorum of the etcd clusters")
 	pf.StringVar(&globalFlags.etcdDiscoveryUrl, "etcd-discovery", DefaultEtcdDiscoveryUrl, "External etcd discovery base url (eg https://discovery.etcd.io). Note: This should be the base URL of the discovery without a specific token. Mayu itself creates a token for the etcd clusters.")
 	pf.StringVar(&globalFlags.etcdEndpoint, "etcd-endpoint", DefaultEtcdEndpoint, "The etcd endpoint for the internal discovery feature (you must also specify protocol).")
-	pf.StringVar(&globalFlags.etcdCAfile, "etcd-cafile", DefaultEtcdCA, "The etcd CA file, if etcd is using non-trustred CA certificate")
+	pf.StringVar(&globalFlags.etcdCAfile, "etcd-cafile", DefaultEtcdCA, "The etcd CA file, if etcd is using non-trustred root CA certificate")
 
 	globalFlags.filesystem = fs.DefaultFilesystem
 }

@@ -304,12 +304,12 @@ func (c *Cluster) GenerateEtcdDiscoveryToken() (string, error) {
 func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string, size int) error {
 	//http transport for etcd connection
 	transport := client.DefaultTransport
+	// read custom root CA file if https and CAfile is configured
 	if strings.HasPrefix(etcdEndpoint, "https") && etcdCAFile != "" {
 		customCA := x509.NewCertPool()
 
 		pemData, err := ioutil.ReadFile(etcdCAFile)
 		if err != nil {
-		    // do error
 			glog.Fatal("Unable to read custom CA file: ", err)
 		}
 		customCA.AppendCertsFromPEM(pemData)
@@ -323,7 +323,7 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 			TLSHandshakeTimeout: 10 * time.Second,
 		}
 	}
-	glog.Infoln("etcd ",etcdEndpoint, " etcdCA file: ",etcdCAFile)
+
 	// store in etcd
 	cfg := client.Config{
 		Endpoints: []string{etcdEndpoint},
@@ -331,7 +331,6 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 		// set timeout per request to fail fast when the target endpoint is unavailable
 		HeaderTimeoutPerRequest: time.Second,
 	}
-
 	etcdClient, err := client.New(cfg)
 	if err != nil {
 		return err
@@ -342,7 +341,6 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 		PrevExist: client.PrevNoExist,
 		Dir:       true,
 	})
-
 	if err != nil {
 		return err
 	}
