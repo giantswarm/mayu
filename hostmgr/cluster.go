@@ -19,6 +19,7 @@ import (
 	"golang.org/x/net/context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 )
 
 const clusterConfFile = "cluster.json"
@@ -310,7 +311,7 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 
 		pemData, err := ioutil.ReadFile(etcdCAFile)
 		if err != nil {
-			glog.Fatal("Unable to read custom CA file: ", err)
+			return errors.New("Unable to read custom CA file: "+err.Error())
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
