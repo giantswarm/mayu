@@ -42,7 +42,8 @@ const (
 	DefaultUseInternalEtcdDiscovery bool   = true
 	DefaultEtcdQuorumSize           int    = 3
 	DefaultEtcdDiscoveryUrl         string = ""
-	DefaultEtcdEndpoint             string = "127.0.0.1:2379"
+	DefaultEtcdEndpoint             string = "http://127.0.0.1:2379"
+	DefaultEtcdCA			string = ""
 )
 
 type MayuFlags struct {
@@ -73,6 +74,7 @@ type MayuFlags struct {
 	etcdQuorumSize           int
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
+	etcdCAfile		 string
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
@@ -130,7 +132,8 @@ func init() {
 	pf.BoolVar(&globalFlags.useInternalEtcdDiscovery, "use-internal-etcd-discovery", DefaultUseInternalEtcdDiscovery, "Use the internal etcd discovery")
 	pf.IntVar(&globalFlags.etcdQuorumSize, "etcd-quorum-size", DefaultEtcdQuorumSize, "Default quorum of the etcd clusters")
 	pf.StringVar(&globalFlags.etcdDiscoveryUrl, "etcd-discovery", DefaultEtcdDiscoveryUrl, "External etcd discovery base url (eg https://discovery.etcd.io). Note: This should be the base URL of the discovery without a specific token. Mayu itself creates a token for the etcd clusters.")
-	pf.StringVar(&globalFlags.etcdEndpoint, "etcd-endpoint", DefaultEtcdEndpoint, "The etcd endpoint for the internal discovery feature.")
+	pf.StringVar(&globalFlags.etcdEndpoint, "etcd-endpoint", DefaultEtcdEndpoint, "The etcd endpoint for the internal discovery feature (you must also specify protocol).")
+	pf.StringVar(&globalFlags.etcdCAfile, "etcd-cafile", DefaultEtcdCA, "The etcd CA file, if etcd is using non-trustred CA certificate")
 
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
@@ -225,6 +228,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		EtcdQuorumSize:           globalFlags.etcdQuorumSize,
 		EtcdDiscoveryUrl:         globalFlags.etcdDiscoveryUrl,
 		EtcdEndpoint:             globalFlags.etcdEndpoint,
+		EtcdCAFile:		  globalFlags.etcdCAfile,
 		DNSmasqExecutable:        globalFlags.dnsmasq,
 		DNSmasqTemplate:          globalFlags.dnsmasqTemplate,
 		TFTPRoot:                 globalFlags.tFTPRoot,

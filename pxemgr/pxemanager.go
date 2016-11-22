@@ -21,6 +21,7 @@ type PXEManagerConfiguration struct {
 	EtcdQuorumSize           int
 	EtcdDiscoveryUrl         string
 	EtcdEndpoint             string
+	EtcdCAFile		 string
 	DNSmasqExecutable        string
 	DNSmasqTemplate          string
 	TFTPRoot                 string
@@ -58,6 +59,7 @@ type pxeManagerT struct {
 	defaultEtcdQuorumSize    int
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
+	etcdCAFile		 string
 	version                  string
 
 	config  *configuration
@@ -107,6 +109,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		defaultEtcdQuorumSize:    c.EtcdQuorumSize,
 		etcdDiscoveryUrl:         c.EtcdDiscoveryUrl,
 		etcdEndpoint:             c.EtcdEndpoint,
+		etcdCAFile:		  c.EtcdCAFile,
 		version:                  c.Version,
 
 		config:  &conf,
@@ -130,7 +133,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 
 		if mgr.useInternalEtcdDiscovery {
 			// convert token to internal etcd discovery
-			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, token, mgr.defaultEtcdQuorumSize)
+			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, mgr.defaultEtcdQuorumSize)
 			if err != nil {
 				glog.Fatalf("Can't store discovery token in etcd.", baseUrl, mgr.etcdDiscoveryUrl)
 			}
@@ -154,7 +157,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			if err != nil {
 				glog.Fatalf("Failed to generate etcd cluster token: %s", err)
 			}
-			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, token, mgr.defaultEtcdQuorumSize)
+			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, mgr.defaultEtcdQuorumSize)
 			if err != nil {
 				glog.Fatalf("Failed to store etcd cluster token in etcd: %s", err)
 			}
