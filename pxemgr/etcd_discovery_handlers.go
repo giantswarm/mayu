@@ -14,6 +14,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"crypto/x509"
+	"crypto/tls"
 )
 
 type EtcdNode struct {
@@ -104,11 +106,28 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	if err != nil {
 		return nil, err
 	}
+	var transport = http.DefaultTransport
+
+	if strings.HasPrefix(mgr.etcdEndpoint, "https") && mgr.etcdCAFile != "" {
+		customCA := x509.NewCertPool()
+
+		pemData, err := ioutil.ReadFile(mgr.etcdCAFile)
+		if err != nil {
+			return nil, errors.New("Unable to read custom CA file: "+err.Error())
+		}
+		customCA.AppendCertsFromPEM(pemData)
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{RootCAs:customCA},
+		}
+	}
+
+	scheme := strings.Split(mgr.etcdEndpoint,":")[0]
+	host := strings.Split(mgr.etcdEndpoint,"/")[2]
 
 	for i := 0; i <= 10; i++ {
 		u := url.URL{
-			Scheme:   "http",
-			Host:     mgr.etcdEndpoint,
+			Scheme:   scheme,
+			Host:     host,
 			Path:     path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd")),
 			RawQuery: r.URL.RawQuery,
 		}
@@ -123,7 +142,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 
 		copyHeader(outreq.Header, r.Header)
 
-		client := http.Client{}
+		client := http.Client{Transport:transport}
 		resp, err := client.Do(outreq)
 		if err != nil {
 			return nil, err
