@@ -106,11 +106,11 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	if err != nil {
 		return nil, err
 	}
-
 	u, err := url.Parse(mgr.etcdEndpoint)
 	if err != nil {
-		nil, errors.New("invalid etcd-endpoint: "+err.Error())
+		return nil, errors.New("invalid etcd-endpoint: "+err.Error())
 	}
+
 	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))
 	u.RawQuery = r.URL.RawQuery
 	var transport = http.DefaultTransport
