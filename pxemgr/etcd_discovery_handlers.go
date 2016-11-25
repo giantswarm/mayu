@@ -113,7 +113,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 
 		pemData, err := ioutil.ReadFile(mgr.etcdCAFile)
 		if err != nil {
-			return nil, errors.New("Unable to read custom CA file: "+err.Error())
+			return nil, errors.New("unable to read custom CA file: "+err.Error())
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
@@ -121,16 +121,14 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 		}
 	}
 
-	scheme := strings.Split(mgr.etcdEndpoint,":")[0]
-	host := strings.Split(mgr.etcdEndpoint,"/")[2]
+	u, err := url.Parse(mgr.etcdEndpoint)
+	if err != nil {
+		nil, errors.New("invalid etcd-endpoint: "+err.Error())
+	}
+	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))
+	u.RawQuery = r.URL.RawQuery
 
 	for i := 0; i <= 10; i++ {
-		u := url.URL{
-			Scheme:   scheme,
-			Host:     host,
-			Path:     path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd")),
-			RawQuery: r.URL.RawQuery,
-		}
 
 		buf := bytes.NewBuffer(body)
 		glog.V(2).Infof("Body '%s'", body)
