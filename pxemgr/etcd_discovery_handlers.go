@@ -106,9 +106,16 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	if err != nil {
 		return nil, err
 	}
+
+	u, err := url.Parse(mgr.etcdEndpoint)
+	if err != nil {
+		nil, errors.New("invalid etcd-endpoint: "+err.Error())
+	}
+	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))
+	u.RawQuery = r.URL.RawQuery
 	var transport = http.DefaultTransport
 
-	if strings.HasPrefix(mgr.etcdEndpoint, "https") && mgr.etcdCAFile != "" {
+	if u.Scheme == "https" && mgr.etcdCAFile != "" {
 		customCA := x509.NewCertPool()
 
 		pemData, err := ioutil.ReadFile(mgr.etcdCAFile)
@@ -120,13 +127,6 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 			TLSClientConfig: &tls.Config{RootCAs:customCA},
 		}
 	}
-
-	u, err := url.Parse(mgr.etcdEndpoint)
-	if err != nil {
-		nil, errors.New("invalid etcd-endpoint: "+err.Error())
-	}
-	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))
-	u.RawQuery = r.URL.RawQuery
 
 	for i := 0; i <= 10; i++ {
 
