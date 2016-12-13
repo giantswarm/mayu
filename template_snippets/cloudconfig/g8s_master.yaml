@@ -63,6 +63,8 @@
       --common-name=api.{{index .TemplatesEnv "common_name"}} \
       --ttl={{index .TemplatesEnv "g8s_certs_ttl"}} \
       --crt-file=/etc/kubernetes/ssl/apiserver.pem \
+      --ip-sans={{index .TemplatesEnv "g8s_api_ip_sans"}} \
+      --alt-names={{index .TemplatesEnv "g8s_api_alt_names"}} \
       --key-file=/etc/kubernetes/ssl/apiserver-key.pem \
       --ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
       ExecStop=/usr/bin/rm -rf /etc/giantswarm/g8s/ssl/master/
