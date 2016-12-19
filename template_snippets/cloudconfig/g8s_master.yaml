@@ -48,9 +48,12 @@
 
       [Service]
       EnvironmentFile=/etc/environment
+      Environment=VAULT_TOKEN={{index .TemplatesEnv "sa_vault_token"}}
+      Environment=VAULT_ADDR={{index .TemplatesEnv "vault_addr"}}
       Type=oneshot
       RemainAfterExit=yes
       ExecStartPre=/usr/bin/mkdir -p /etc/giantswarm/g8s/ssl/master/
+      ExecStartPre=/bin/bash -c 'export rsa_key=$(docker run --rm -i --net host --privileged=true -e VAULT_ADDR -e VAULT_TOKEN giantswarm/docker-vault:0.1.0 read -field=key secret/g8s_sa_sign_key 2>/dev/null); echo -e "-----BEGIN RSA PRIVATE KEY-----\n$rsa_key\n-----END RSA PRIVATE KEY-----" > /etc/giantswarm/g8s/ssl/master/sa_private_key.pem'
       ExecStart=/usr/bin/docker run \
       --net=host \
       -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
@@ -63,6 +66,8 @@
       --common-name=api.{{index .TemplatesEnv "common_name"}} \
       --ttl={{index .TemplatesEnv "g8s_certs_ttl"}} \
       --crt-file=/etc/kubernetes/ssl/apiserver.pem \
+      --ip-sans={{index .TemplatesEnv "g8s_api_ip_sans"}} \
+      --alt-names={{index .TemplatesEnv "g8s_api_alt_names"}} \
       --key-file=/etc/kubernetes/ssl/apiserver-key.pem \
       --ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
       ExecStop=/usr/bin/rm -rf /etc/giantswarm/g8s/ssl/master/
@@ -427,7 +432,7 @@
         - --tls-cert-file=/etc/kubernetes/ssl/apiserver.pem
         - --tls-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
         - --client-ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
-        - --service-account-key-file=/etc/kubernetes/ssl/apiserver-key.pem
+        - --service-account-key-file=/etc/kubernetes/ssl/sa_private_key.pem
         livenessProbe:
           httpGet:
             host: 127.0.0.1
@@ -472,7 +477,7 @@
         - /hyperkube
         - controller-manager
         - --master=http://127.0.0.1:{{index .TemplatesEnv "g8s_api_insecure_port"}}
-        - --service-account-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
+        - --service-account-private-key-file=/etc/kubernetes/ssl/sa_private_key.pem
         - --root-ca-file=/etc/kubernetes/ssl/apiserver-ca.pem
         - --kubeconfig=/etc/kubernetes/config/controller-manager-kubeconfig.yml
         {{if eq (index .TemplatesEnv "g8s_apiserver_amount") "3"}}- --leader-elect=true{{end}}
