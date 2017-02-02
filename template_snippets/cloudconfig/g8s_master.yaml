@@ -163,7 +163,7 @@
       Restart=always
       RestartSec=10
       EnvironmentFile=/etc/environment
-      Environment="IMAGE={{index .TemplatesEnv "yochu_private_registry"}}/giantswarm/k8s-policy-controller:{{index .TemplatesEnv "k8s_policy_controller_version"}}"
+      Environment="IMAGE=calico/kube-policy-controller:{{index .TemplatesEnv "k8s_policy_controller_version"}}"
       Environment="NAME=%p.service"
       Environment="NETWORK_CONFIG_CONTAINER="
       ExecStartPre=/usr/bin/docker pull $IMAGE
