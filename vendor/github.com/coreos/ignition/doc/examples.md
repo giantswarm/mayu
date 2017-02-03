@@ -2,7 +2,9 @@
 
 Each of these examples is written in version 2.0.0 of the config. Ensure that any configuration is compatible with the version that Ignition accepts. Compatibility requires the major versions to match and the spec version be less than or equal to the version Ignition accepts.
 
-## Starting Services
+## Services
+
+### Starting Services
 
 This config will write a single service unit (shown below) with the contents of an example service. This unit will be enabled as a dependency of multi-user.target and therefore start on boot.
 
@@ -19,15 +21,40 @@ This config will write a single service unit (shown below) with the contents of 
 }
 ```
 
-### example.service
+#### example.service
 
-```
+```INI
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/echo Hello World
 
 [Install]
 WantedBy=multi-user.target
+```
+### Modifying Services
+
+This config will add a [systemd unit drop-in](https://coreos.com/os/docs/latest/using-systemd-drop-in-units.html) to modify the existing service `systemd-networkd` and sets its environment variable `SYSTEMD_LOG_LEVEL` to `debug`.
+
+```json
+{
+  "ignition": { "version": "2.0.0" },
+  "systemd": {
+    "units": [{
+      "name": "systemd-networkd.service",
+      "dropins": [{
+        "name": "debug.conf",
+        "contents": "[Service]\nEnvironment=SYSTEMD_LOG_LEVEL=debug"
+      }]
+    }]
+  }
+}
+```
+
+#### systemd-networkd.service.d/debug.conf
+
+```INI
+[Service]
+Environment=SYSTEMD_LOG_LEVEL=debug
 ```
 
 ## Reformat the Root Filesystem
@@ -187,9 +214,9 @@ In many scenarios, it may be useful to have an external data volume. This config
 
 ### var-lib-data.mount
 
-```
+```INI
 [Mount]
-What=/dev/data
+What=/dev/md/data
 Where=/var/lib/data
 Type=ext4
 
@@ -216,5 +243,23 @@ In some cloud environments, there is a limit on the size of the config which may
 ```
 
 The SHA512 sum of the config can be determined using `sha512sum`.
+
+## Setting the hostname
+
+Setting the hostname of a system is as simple as writing `/etc/hostname`:
+
+```json
+{
+  "ignition": { "version": "2.0.0" },
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/hostname",
+      "mode": 420,
+      "contents": { "source": "data:,core1" }
+    }]
+  }
+}
+```
 
 [rfc2397]: http://tools.ietf.org/html/rfc2397
