@@ -18,6 +18,6 @@ dependencies:
 
 test:
     override:
-        - cd $GS_WD && go test -v $(glide novendor)
+        - cd $GS_WD && go test -v $(glide novendor | grep -v infopusher)
         - cd $GS_WD && go build -a -v -tags netgo -ldflags "-X main.projectVersion=$CIRCLE_SHA1 -X main.projectBuild=$CIRCLE_SHA1" -o bin/mayu github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
         - cd $GS_WD && go build -a -v -tags netgo -ldflags "-X main.projectVersion=$CIRCLE_SHA1 -X main.projectBuild=$CIRCLE_SHA1" -o bin/mayuctl github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/mayuctl
