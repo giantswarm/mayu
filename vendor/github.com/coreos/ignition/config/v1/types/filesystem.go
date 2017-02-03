@@ -24,50 +24,72 @@ var (
 )
 
 type Filesystem struct {
-	Device Path              `json:"device,omitempty"`
-	Format FilesystemFormat  `json:"format,omitempty"`
-	Create *FilesystemCreate `json:"create,omitempty"`
-	Files  []File            `json:"files,omitempty"`
+	Device Path              `json:"device,omitempty" yaml:"device"`
+	Format FilesystemFormat  `json:"format,omitempty" yaml:"format"`
+	Create *FilesystemCreate `json:"create,omitempty" yaml:"create"`
+	Files  []File            `json:"files,omitempty"  yaml:"files"`
 }
 
 type FilesystemCreate struct {
-	Force   bool        `json:"force,omitempty"`
-	Options MkfsOptions `json:"options,omitempty"`
+	Force   bool        `json:"force,omitempty"   yaml:"force"`
+	Options MkfsOptions `json:"options,omitempty" yaml:"options"`
 }
-type filesystem Filesystem
+
+func (f *Filesystem) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return f.unmarshal(unmarshal)
+}
 
 func (f *Filesystem) UnmarshalJSON(data []byte) error {
+	return f.unmarshal(func(tf interface{}) error {
+		return json.Unmarshal(data, tf)
+	})
+}
+
+type filesystem Filesystem
+
+func (f *Filesystem) unmarshal(unmarshal func(interface{}) error) error {
 	tf := filesystem(*f)
-	if err := json.Unmarshal(data, &tf); err != nil {
+	if err := unmarshal(&tf); err != nil {
 		return err
 	}
 	*f = Filesystem(tf)
-	return f.AssertValid()
+	return f.assertValid()
 }
 
-func (f Filesystem) AssertValid() error {
-	if err := f.Device.AssertValid(); err != nil {
+func (f Filesystem) assertValid() error {
+	if err := f.Device.assertValid(); err != nil {
 		return err
 	}
-	if err := f.Format.AssertValid(); err != nil {
+	if err := f.Format.assertValid(); err != nil {
 		return err
 	}
 	return nil
 }
 
 type FilesystemFormat string
-type filesystemFormat FilesystemFormat
+
+func (f *FilesystemFormat) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return f.unmarshal(unmarshal)
+}
 
 func (f *FilesystemFormat) UnmarshalJSON(data []byte) error {
+	return f.unmarshal(func(tf interface{}) error {
+		return json.Unmarshal(data, tf)
+	})
+}
+
+type filesystemFormat FilesystemFormat
+
+func (f *FilesystemFormat) unmarshal(unmarshal func(interface{}) error) error {
 	tf := filesystemFormat(*f)
-	if err := json.Unmarshal(data, &tf); err != nil {
+	if err := unmarshal(&tf); err != nil {
 		return err
 	}
 	*f = FilesystemFormat(tf)
-	return f.AssertValid()
+	return f.assertValid()
 }
 
-func (f FilesystemFormat) AssertValid() error {
+func (f FilesystemFormat) assertValid() error {
 	switch f {
 	case "ext4", "btrfs", "xfs":
 		return nil
@@ -77,17 +99,28 @@ func (f FilesystemFormat) AssertValid() error {
 }
 
 type MkfsOptions []string
-type mkfsOptions MkfsOptions
+
+func (o *MkfsOptions) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return o.unmarshal(unmarshal)
+}
 
 func (o *MkfsOptions) UnmarshalJSON(data []byte) error {
+	return o.unmarshal(func(to interface{}) error {
+		return json.Unmarshal(data, to)
+	})
+}
+
+type mkfsOptions MkfsOptions
+
+func (o *MkfsOptions) unmarshal(unmarshal func(interface{}) error) error {
 	to := mkfsOptions(*o)
-	if err := json.Unmarshal(data, &to); err != nil {
+	if err := unmarshal(&to); err != nil {
 		return err
 	}
 	*o = MkfsOptions(to)
-	return o.AssertValid()
+	return o.assertValid()
 }
 
-func (o MkfsOptions) AssertValid() error {
+func (o MkfsOptions) assertValid() error {
 	return nil
 }

@@ -16,17 +16,14 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
-	"reflect"
+	"fmt"
 
 	"github.com/coreos/ignition/config/types"
 	"github.com/coreos/ignition/config/v1"
-	"github.com/coreos/ignition/config/validate"
-	astjson "github.com/coreos/ignition/config/validate/astjson"
-	"github.com/coreos/ignition/config/validate/report"
 
-	json "github.com/ajeddeloh/go-json"
-	"go4.org/errorutil"
+	"github.com/camlistore/camlistore/pkg/errorutil"
 )
 
 var (
@@ -34,100 +31,38 @@ var (
 	ErrEmpty       = errors.New("not a config (empty)")
 	ErrScript      = errors.New("not a config (found coreos-cloudinit script)")
 	ErrDeprecated  = errors.New("config format deprecated")
-	ErrInvalid     = errors.New("config is not valid")
 )
 
-// Parse parses the raw config into a types.Config struct and generates a report of any
-// errors, warnings, info, and deprecations it encountered
-func Parse(rawConfig []byte) (types.Config, report.Report, error) {
+func Parse(rawConfig []byte) (types.Config, error) {
 	switch majorVersion(rawConfig) {
 	case 1:
 		config, err := ParseFromV1(rawConfig)
 		if err != nil {
-			return types.Config{}, report.ReportFromError(err, report.EntryError), err
+			return types.Config{}, err
 		}
 
-		return config, report.ReportFromError(ErrDeprecated, report.EntryDeprecated), nil
+		return config, ErrDeprecated
 	default:
 		return ParseFromLatest(rawConfig)
 	}
 }
 
-func ParseFromLatest(rawConfig []byte) (types.Config, report.Report, error) {
-	if isEmpty(rawConfig) {
-		return types.Config{}, report.Report{}, ErrEmpty
-	} else if isCloudConfig(rawConfig) {
-		return types.Config{}, report.Report{}, ErrCloudConfig
-	} else if isScript(rawConfig) {
-		return types.Config{}, report.Report{}, ErrScript
-	}
-
-	var err error
-	var config types.Config
-
-	// These errors are fatal and the config should not be further validated
+func ParseFromLatest(rawConfig []byte) (config types.Config, err error) {
 	if err = json.Unmarshal(rawConfig, &config); err == nil {
-		versionReport := config.Ignition.Version.Validate()
-		if versionReport.IsFatal() {
-			return types.Config{}, versionReport, ErrInvalid
-		}
+		err = config.Ignition.Version.AssertValid()
+	} else if isEmpty(rawConfig) {
+		err = ErrEmpty
+	} else if isCloudConfig(rawConfig) {
+		err = ErrCloudConfig
+	} else if isScript(rawConfig) {
+		err = ErrScript
 	}
-
-	// Handle json syntax and type errors first, since they are fatal but have offset info
 	if serr, ok := err.(*json.SyntaxError); ok {
 		line, col, highlight := errorutil.HighlightBytePosition(bytes.NewReader(rawConfig), serr.Offset)
-		return types.Config{},
-			report.Report{
-				Entries: []report.Entry{{
-					Kind:      report.EntryError,
-					Message:   serr.Error(),
-					Line:      line,
-					Column:    col,
-					Highlight: highlight,
-				}},
-			},
-			ErrInvalid
+		err = fmt.Errorf("error at line %d, column %d\n%s%v", line, col, highlight, err)
 	}
 
-	if terr, ok := err.(*json.UnmarshalTypeError); ok {
-		line, col, highlight := errorutil.HighlightBytePosition(bytes.NewReader(rawConfig), terr.Offset)
-		return types.Config{},
-			report.Report{
-				Entries: []report.Entry{{
-					Kind:      report.EntryError,
-					Message:   terr.Error(),
-					Line:      line,
-					Column:    col,
-					Highlight: highlight,
-				}},
-			},
-			ErrInvalid
-	}
-
-	// Handle other fatal errors (i.e. invalid version)
-	if err != nil {
-		return types.Config{}, report.ReportFromError(err, report.EntryError), err
-	}
-
-	// Unmarshal again to a json.Node to get offset information for building a report
-	var ast json.Node
-	var r report.Report
-	configValue := reflect.ValueOf(config)
-	if err := json.Unmarshal(rawConfig, &ast); err != nil {
-		r.Add(report.Entry{
-			Kind:    report.EntryWarning,
-			Message: "Ignition could not unmarshal your config for reporting line numbers. This should never happen. Please file a bug.",
-		})
-		r.Merge(validate.ValidateWithoutSource(configValue))
-	} else {
-		r.Merge(validate.Validate(configValue, astjson.FromJsonRoot(ast), bytes.NewReader(rawConfig)))
-	}
-
-	if r.IsFatal() {
-		return types.Config{}, r, ErrInvalid
-	}
-
-	return config, r, nil
+	return
 }
 
 func ParseFromV1(rawConfig []byte) (types.Config, error) {

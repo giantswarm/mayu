@@ -16,15 +16,28 @@ package providers
 
 import (
 	"errors"
+	"time"
 
 	"github.com/coreos/ignition/config/types"
-	"github.com/coreos/ignition/config/validate/report"
 	"github.com/coreos/ignition/internal/log"
-	"github.com/coreos/ignition/internal/resource"
 )
 
 var (
 	ErrNoProvider = errors.New("config provider was not online")
+	ErrTimeout    = errors.New("timed out while waiting for config provider to come online")
 )
 
-type FuncFetchConfig func(logger *log.Logger, client *resource.HttpClient) (types.Config, report.Report, error)
+// Provider represents an external source of configuration. The source can be
+// local to the host system or it may be remote. The provider dictates whether
+// or not the source is online, if the caller should try again when the source
+// is offline, and how long the caller should wait before retries.
+type Provider interface {
+	FetchConfig() (types.Config, error)
+	IsOnline() bool
+	ShouldRetry() bool
+	BackoffDuration() time.Duration
+}
+
+type ProviderCreator interface {
+	Create(logger *log.Logger) Provider
+}

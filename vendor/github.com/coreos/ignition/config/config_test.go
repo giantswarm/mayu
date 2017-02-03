@@ -37,7 +37,7 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			in:  in{config: []byte(`{"ignitionVersion": 1}`)},
-			out: out{config: types.Config{Ignition: types.Ignition{Version: types.IgnitionVersion{Major: 2, Minor: 0}}}},
+			out: out{err: ErrDeprecated},
 		},
 		{
 			in:  in{config: []byte(`{"ignition": {"version": "1.0.0"}}`)},
@@ -49,11 +49,11 @@ func TestParse(t *testing.T) {
 		},
 		{
 			in:  in{config: []byte(`{"ignition": {"version": "2.1.0"}}`)},
-			out: out{err: ErrInvalid},
+			out: out{err: types.ErrNewVersion},
 		},
 		{
 			in:  in{config: []byte(`{}`)},
-			out: out{err: ErrInvalid},
+			out: out{err: types.ErrOldVersion},
 		},
 		{
 			in:  in{config: []byte{}},
@@ -91,7 +91,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		config, _, err := Parse(test.in.config)
+		config, err := Parse(test.in.config)
 		if test.out.err != err {
 			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
 		}

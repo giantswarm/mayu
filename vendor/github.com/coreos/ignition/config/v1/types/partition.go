@@ -18,29 +18,42 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+
+	"github.com/alecthomas/units"
 )
 
 type Partition struct {
-	Label    PartitionLabel     `json:"label,omitempty"`
-	Number   int                `json:"number"`
-	Size     PartitionDimension `json:"size"`
-	Start    PartitionDimension `json:"start"`
-	TypeGUID PartitionTypeGUID  `json:"typeGuid,omitempty"`
+	Label    PartitionLabel     `json:"label,omitempty"    yaml:"label"`
+	Number   int                `json:"number"             yaml:"number"`
+	Size     PartitionDimension `json:"size"               yaml:"size"`
+	Start    PartitionDimension `json:"start"              yaml:"start"`
+	TypeGUID PartitionTypeGUID  `json:"typeGuid,omitempty" yaml:"type_guid"`
 }
 
 type PartitionLabel string
-type partitionLabel PartitionLabel
+
+func (n *PartitionLabel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return n.unmarshal(unmarshal)
+}
 
 func (n *PartitionLabel) UnmarshalJSON(data []byte) error {
+	return n.unmarshal(func(tn interface{}) error {
+		return json.Unmarshal(data, tn)
+	})
+}
+
+type partitionLabel PartitionLabel
+
+func (n *PartitionLabel) unmarshal(unmarshal func(interface{}) error) error {
 	tn := partitionLabel(*n)
-	if err := json.Unmarshal(data, &tn); err != nil {
+	if err := unmarshal(&tn); err != nil {
 		return err
 	}
 	*n = PartitionLabel(tn)
-	return n.AssertValid()
+	return n.assertValid()
 }
 
-func (n PartitionLabel) AssertValid() error {
+func (n PartitionLabel) assertValid() error {
 	// http://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_entries:
 	// 56 (0x38) 	72 bytes 	Partition name (36 UTF-16LE code units)
 
@@ -54,7 +67,33 @@ func (n PartitionLabel) AssertValid() error {
 
 type PartitionDimension uint64
 
+func (n *PartitionDimension) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// In YAML we allow human-readable dimensions like GiB/TiB etc.
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+
+	b2b, err := units.ParseBase2Bytes(str) // TODO(vc): replace the units package
+	if err != nil {
+		return err
+	}
+	if b2b < 0 {
+		return fmt.Errorf("negative value inappropriate: %q", str)
+	}
+
+	// Translate bytes into sectors
+	sectors := (b2b / 512)
+	if b2b%512 != 0 {
+		sectors++
+	}
+	*n = PartitionDimension(uint64(sectors))
+	return nil
+}
+
 func (n *PartitionDimension) UnmarshalJSON(data []byte) error {
+	// In JSON we expect plain integral sectors.
+	// The YAML->JSON conversion is responsible for normalizing human units to sectors.
 	var pd uint64
 	if err := json.Unmarshal(data, &pd); err != nil {
 		return err
@@ -64,19 +103,30 @@ func (n *PartitionDimension) UnmarshalJSON(data []byte) error {
 }
 
 type PartitionTypeGUID string
-type partitionTypeGUID PartitionTypeGUID
+
+func (d *PartitionTypeGUID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return d.unmarshal(unmarshal)
+}
 
 func (d *PartitionTypeGUID) UnmarshalJSON(data []byte) error {
+	return d.unmarshal(func(td interface{}) error {
+		return json.Unmarshal(data, td)
+	})
+}
+
+type partitionTypeGUID PartitionTypeGUID
+
+func (d *PartitionTypeGUID) unmarshal(unmarshal func(interface{}) error) error {
 	td := partitionTypeGUID(*d)
-	if err := json.Unmarshal(data, &td); err != nil {
+	if err := unmarshal(&td); err != nil {
 		return err
 	}
 	*d = PartitionTypeGUID(td)
-	return d.AssertValid()
+	return d.assertValid()
 }
 
-func (d PartitionTypeGUID) AssertValid() error {
-	ok, err := regexp.MatchString("^(|[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12})$", string(d))
+func (d PartitionTypeGUID) assertValid() error {
+	ok, err := regexp.MatchString("[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}", string(d))
 	if err != nil {
 		return fmt.Errorf("error matching type-guid regexp: %v", err)
 	}

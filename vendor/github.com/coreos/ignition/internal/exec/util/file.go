@@ -15,21 +15,19 @@
 package util
 
 import (
-	"bufio"
+	"bytes"
 	"compress/gzip"
-	"encoding/hex"
-	"hash"
-	"io"
+	"errors"
 	"io/ioutil"
-	"net/url"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/coreos/ignition/config/types"
 	"github.com/coreos/ignition/internal/log"
-	"github.com/coreos/ignition/internal/resource"
+	"github.com/coreos/ignition/internal/util"
 
-	"golang.org/x/net/context"
+	"github.com/vincent-petithory/dataurl"
 )
 
 const (
@@ -37,128 +35,102 @@ const (
 	DefaultFilePermissions      os.FileMode = 0644
 )
 
+var (
+	ErrSchemeUnsupported = errors.New("unsupported source scheme")
+	ErrStatusBad         = errors.New("bad HTTP response status")
+)
+
 type File struct {
-	io.ReadCloser
-	hash.Hash
-	Path        types.Path
-	Mode        os.FileMode
-	Uid         int
-	Gid         int
-	expectedSum string
+	Path     types.Path
+	Contents []byte
+	Mode     os.FileMode
+	Uid      int
+	Gid      int
 }
 
-func (f File) Verify() error {
-	if f.Hash == nil {
-		return nil
-	}
-	sum := f.Sum(nil)
-	encodedSum := make([]byte, hex.EncodedLen(len(sum)))
-	hex.Encode(encodedSum, sum)
-
-	if string(encodedSum) != f.expectedSum {
-		return ErrHashMismatch{
-			Calculated: string(encodedSum),
-			Expected:   f.expectedSum,
-		}
-	}
-	return nil
-}
-
-// newHashedReader returns a new ReadCloser that also writes to the provided hash.
-func newHashedReader(reader io.ReadCloser, hasher hash.Hash) io.ReadCloser {
-	return struct {
-		io.Reader
-		io.Closer
-	}{
-		Reader: io.TeeReader(reader, hasher),
-		Closer: reader,
-	}
-}
-
-// RenderFile returns a *File with a Reader that downloads, hashes, and decompresses the incoming data.
-// It returns nil if f had invalid options. Errors reading/verifying/decompressing the file will
-// present themselves when the Reader is actually read from.
-func RenderFile(l *log.Logger, c *resource.HttpClient, f types.File) *File {
-	var reader io.ReadCloser
+func RenderFile(l *log.Logger, f types.File) *File {
+	var contents []byte
 	var err error
-	var expectedSum string
 
-	reader, err = resource.FetchAsReader(l, c, context.Background(), url.URL(f.Contents.Source))
-	if err != nil {
-		l.Crit("Error fetching file %q: %v", f.Path, err)
+	fetch := func() error {
+		contents, err = fetchFile(l, f)
+		return err
+	}
+
+	validate := func() error {
+		return util.AssertValid(f.Contents.Verification, contents)
+	}
+
+	decompress := func() error {
+		contents, err = decompressFile(l, f, contents)
+		return err
+	}
+
+	if l.LogOp(fetch, "fetching file %q", f.Path) != nil {
 		return nil
 	}
-
-	fileHash, err := GetHasher(f.Contents.Verification)
-	if err != nil {
-		l.Crit("Error verifying file %q: %v", f.Path, err)
+	if l.LogOp(validate, "validating file contents") != nil {
 		return nil
 	}
-
-	if fileHash != nil {
-		reader = newHashedReader(reader, fileHash)
-		expectedSum = f.Contents.Verification.Hash.Sum
-	}
-
-	reader, err = decompressFileStream(l, f, reader)
-	if err != nil {
-		l.Crit("Error decompressing file %q: %v", f.Path, err)
+	if l.LogOp(decompress, "decompressing file contents") != nil {
 		return nil
 	}
 
 	return &File{
-		Path:        f.Path,
-		ReadCloser:  reader,
-		Hash:        fileHash,
-		Mode:        os.FileMode(f.Mode),
-		Uid:         f.User.Id,
-		Gid:         f.Group.Id,
-		expectedSum: expectedSum,
+		Path:     f.Path,
+		Contents: []byte(contents),
+		Mode:     os.FileMode(f.Mode),
+		Uid:      f.User.Id,
+		Gid:      f.Group.Id,
 	}
 }
 
-// gzipReader is a wrapper for gzip's reader that closes the stream it wraps as well
-// as itself when Close() is called.
-type gzipReader struct {
-	*gzip.Reader //actually a ReadCloser
-	source       io.Closer
+func fetchFile(l *log.Logger, f types.File) ([]byte, error) {
+	switch f.Contents.Source.Scheme {
+	case "http":
+		client := util.NewHttpClient(l)
+		data, status, err := client.Get(f.Contents.Source.String())
+		if err != nil {
+			return nil, err
+		}
+
+		l.Debug("GET result: %s", http.StatusText(status))
+		if status != http.StatusOK {
+			return nil, ErrStatusBad
+		}
+
+		return data, nil
+	case "data":
+		url, err := dataurl.DecodeString(f.Contents.Source.String())
+		if err != nil {
+			return nil, err
+		}
+
+		return url.Data, nil
+	default:
+		return nil, ErrSchemeUnsupported
+	}
 }
 
-func newGzipReader(reader io.ReadCloser) (io.ReadCloser, error) {
-	gzReader, err := gzip.NewReader(reader)
-	if err != nil {
-		return nil, err
-	}
-	return gzipReader{
-		Reader: gzReader,
-		source: reader,
-	}, nil
-}
-
-func (gz gzipReader) Close() error {
-	if err := gz.Reader.Close(); err != nil {
-		return err
-	}
-	if err := gz.source.Close(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func decompressFileStream(l *log.Logger, f types.File, contents io.ReadCloser) (io.ReadCloser, error) {
+func decompressFile(l *log.Logger, f types.File, contents []byte) ([]byte, error) {
 	switch f.Contents.Compression {
 	case "":
 		return contents, nil
 	case "gzip":
-		return newGzipReader(contents)
+		reader, err := gzip.NewReader(bytes.NewReader(contents))
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close()
+
+		return ioutil.ReadAll(reader)
 	default:
 		return nil, types.ErrCompressionInvalid
 	}
 }
 
-// WriteFile creates and writes the file described by f using the provided context.
+// WriteFile creates and writes the file described by f using the provided context
 func (u Util) WriteFile(f *File) error {
-	defer f.Close()
 	var err error
 
 	path := u.JoinPath(string(f.Path))
@@ -172,22 +144,14 @@ func (u Util) WriteFile(f *File) error {
 	if tmp, err = ioutil.TempFile(filepath.Dir(path), "tmp"); err != nil {
 		return err
 	}
-
+	tmp.Close()
 	defer func() {
-		tmp.Close()
 		if err != nil {
 			os.Remove(tmp.Name())
 		}
 	}()
 
-	fileWriter := bufio.NewWriter(tmp)
-
-	if _, err = io.Copy(fileWriter, f); err != nil {
-		return err
-	}
-	fileWriter.Flush()
-
-	if err = f.Verify(); err != nil {
+	if err := ioutil.WriteFile(tmp.Name(), f.Contents, f.Mode); err != nil {
 		return err
 	}
 
@@ -195,22 +159,22 @@ func (u Util) WriteFile(f *File) error {
 	// by using syscall.Fchown() and syscall.Fchmod()
 
 	// Ensure the ownership and mode are as requested (since WriteFile can be affected by sticky bit)
-	if err = os.Chown(tmp.Name(), f.Uid, f.Gid); err != nil {
+	if err := os.Chown(tmp.Name(), f.Uid, f.Gid); err != nil {
 		return err
 	}
 
-	if err = os.Chmod(tmp.Name(), f.Mode); err != nil {
+	if err := os.Chmod(tmp.Name(), f.Mode); err != nil {
 		return err
 	}
 
-	if err = os.Rename(tmp.Name(), path); err != nil {
+	if err := os.Rename(tmp.Name(), path); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// mkdirForFile helper creates the directory components of path.
+// mkdirForFile helper creates the directory components of path
 func mkdirForFile(path string) error {
 	return os.MkdirAll(filepath.Dir(path), DefaultDirectoryPermissions)
 }

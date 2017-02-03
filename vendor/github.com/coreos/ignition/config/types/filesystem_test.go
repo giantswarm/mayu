@@ -15,13 +15,84 @@
 package types
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
-	"github.com/coreos/ignition/config/validate/report"
+	"github.com/go-yaml/yaml"
 )
 
-func TestFilesystemFormatValidate(t *testing.T) {
+func TestFilesystemFormatUnmarshalJSON(t *testing.T) {
+	type in struct {
+		data string
+	}
+	type out struct {
+		format FilesystemFormat
+		err    error
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			in:  in{data: `"ext4"`},
+			out: out{format: FilesystemFormat("ext4")},
+		},
+		{
+			in:  in{data: `"bad"`},
+			out: out{format: FilesystemFormat("bad"), err: ErrFilesystemInvalidFormat},
+		},
+	}
+
+	for i, test := range tests {
+		var format FilesystemFormat
+		err := json.Unmarshal([]byte(test.in.data), &format)
+		if !reflect.DeepEqual(test.out.err, err) {
+			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
+		}
+		if !reflect.DeepEqual(test.out.format, format) {
+			t.Errorf("#%d: bad format: want %#v, got %#v", i, test.out.format, format)
+		}
+	}
+}
+
+func TestFilesystemFormatUnmarshalYAML(t *testing.T) {
+	type in struct {
+		data string
+	}
+	type out struct {
+		format FilesystemFormat
+		err    error
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			in:  in{data: `"ext4"`},
+			out: out{format: FilesystemFormat("ext4")},
+		},
+		{
+			in:  in{data: `"bad"`},
+			out: out{format: FilesystemFormat("bad"), err: ErrFilesystemInvalidFormat},
+		},
+	}
+
+	for i, test := range tests {
+		var format FilesystemFormat
+		err := yaml.Unmarshal([]byte(test.in.data), &format)
+		if !reflect.DeepEqual(test.out.err, err) {
+			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
+		}
+		if !reflect.DeepEqual(test.out.format, format) {
+			t.Errorf("#%d: bad format: want %#v, got %#v", i, test.out.format, format)
+		}
+	}
+}
+
+func TestFilesystemFormatAssertValid(t *testing.T) {
 	type in struct {
 		format FilesystemFormat
 	}
@@ -48,14 +119,146 @@ func TestFilesystemFormatValidate(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		err := test.in.format.Validate()
-		if !reflect.DeepEqual(report.ReportFromError(test.out.err, report.EntryError), err) {
+		err := test.in.format.assertValid()
+		if !reflect.DeepEqual(test.out.err, err) {
 			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
 		}
 	}
 }
 
-func TestFilesystemValidate(t *testing.T) {
+func TestMkfsOptionsUnmarshalJSON(t *testing.T) {
+	type in struct {
+		data string
+	}
+	type out struct {
+		options MkfsOptions
+		err     error
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			in:  in{data: `["--label=ROOT"]`},
+			out: out{options: MkfsOptions([]string{"--label=ROOT"})},
+		},
+	}
+
+	for i, test := range tests {
+		var options MkfsOptions
+		err := json.Unmarshal([]byte(test.in.data), &options)
+		if !reflect.DeepEqual(test.out.err, err) {
+			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
+		}
+		if !reflect.DeepEqual(test.out.options, options) {
+			t.Errorf("#%d: bad format: want %#v, got %#v", i, test.out.options, options)
+		}
+	}
+}
+
+func TestMkfsOptionsUnmarshalYAML(t *testing.T) {
+	type in struct {
+		data string
+	}
+	type out struct {
+		options MkfsOptions
+		err     error
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			in:  in{data: `["--label=ROOT"]`},
+			out: out{options: MkfsOptions([]string{"--label=ROOT"})},
+		},
+	}
+
+	for i, test := range tests {
+		var options MkfsOptions
+		err := yaml.Unmarshal([]byte(test.in.data), &options)
+		if !reflect.DeepEqual(test.out.err, err) {
+			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
+		}
+		if !reflect.DeepEqual(test.out.options, options) {
+			t.Errorf("#%d: bad device: want %#v, got %#v", i, test.out.options, options)
+		}
+	}
+}
+
+func TestFilesystemUnmarshalJSON(t *testing.T) {
+	type in struct {
+		data string
+	}
+	type out struct {
+		filesystem Filesystem
+		err        error
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			in:  in{data: `{"mount": {"device": "/foo", "format": "ext4"}}`},
+			out: out{filesystem: Filesystem{Mount: &FilesystemMount{Device: "/foo", Format: "ext4"}}},
+		},
+		{
+			in:  in{data: `{"mount": {"format": "ext4"}}`},
+			out: out{err: ErrPathRelative},
+		},
+	}
+
+	for i, test := range tests {
+		var filesystem Filesystem
+		err := json.Unmarshal([]byte(test.in.data), &filesystem)
+		if !reflect.DeepEqual(test.out.err, err) {
+			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
+		}
+		if !reflect.DeepEqual(test.out.filesystem, filesystem) {
+			t.Errorf("#%d: bad filesystem: want %#v, got %#v", i, test.out.filesystem, filesystem)
+		}
+	}
+}
+
+func TestFilesystemUnmarshalYAML(t *testing.T) {
+	type in struct {
+		data string
+	}
+	type out struct {
+		filesystem Filesystem
+		err        error
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			in:  in{data: "mount:\n  device: /foo\n  format: ext4"},
+			out: out{filesystem: Filesystem{Mount: &FilesystemMount{Device: "/foo", Format: "ext4"}}},
+		},
+		{
+			in:  in{data: "mount:\n  format: ext4"},
+			out: out{err: ErrPathRelative},
+		},
+	}
+
+	for i, test := range tests {
+		var filesystem Filesystem
+		err := yaml.Unmarshal([]byte(test.in.data), &filesystem)
+		if !reflect.DeepEqual(test.out.err, err) {
+			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
+		}
+		if !reflect.DeepEqual(test.out.filesystem, filesystem) {
+			t.Errorf("#%d: bad filesystem: want %#v, got %#v", i, test.out.filesystem, filesystem)
+		}
+	}
+}
+
+func TestFilesystemAssertValid(t *testing.T) {
 	type in struct {
 		filesystem Filesystem
 	}
@@ -72,11 +275,23 @@ func TestFilesystemValidate(t *testing.T) {
 			out: out{},
 		},
 		{
-			in:  in{filesystem: Filesystem{Path: func(p Path) *Path { return &p }("/mount")}},
+			in:  in{filesystem: Filesystem{Mount: &FilesystemMount{Device: "/foo"}}},
+			out: out{err: ErrFilesystemInvalidFormat},
+		},
+		{
+			in:  in{filesystem: Filesystem{Mount: &FilesystemMount{Format: "ext4"}}},
+			out: out{err: ErrPathRelative},
+		},
+		{
+			in:  in{filesystem: Filesystem{Path: Path("/mount")}},
 			out: out{},
 		},
 		{
-			in:  in{filesystem: Filesystem{Path: func(p Path) *Path { return &p }("/mount"), Mount: &FilesystemMount{Device: "/foo", Format: "ext4"}}},
+			in:  in{filesystem: Filesystem{Path: Path("mount")}},
+			out: out{err: ErrPathRelative},
+		},
+		{
+			in:  in{filesystem: Filesystem{Path: Path("/mount"), Mount: &FilesystemMount{Device: "/foo", Format: "ext4"}}},
 			out: out{err: ErrFilesystemMountAndPath},
 		},
 		{
@@ -86,8 +301,8 @@ func TestFilesystemValidate(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		err := test.in.filesystem.Validate()
-		if !reflect.DeepEqual(report.ReportFromError(test.out.err, report.EntryError), err) {
+		err := test.in.filesystem.assertValid()
+		if !reflect.DeepEqual(test.out.err, err) {
 			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
 		}
 	}

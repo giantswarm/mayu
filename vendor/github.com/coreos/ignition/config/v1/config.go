@@ -22,7 +22,7 @@ import (
 
 	"github.com/coreos/ignition/config/v1/types"
 
-	"go4.org/errorutil"
+	"github.com/camlistore/camlistore/pkg/errorutil"
 )
 
 var (

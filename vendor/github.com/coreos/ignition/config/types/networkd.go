@@ -15,5 +15,5 @@
 package types
 
 type Networkd struct {
-	Units []NetworkdUnit `json:"units,omitempty"`
+	Units []NetworkdUnit `json:"units,omitempty" yaml:"units"`
 }

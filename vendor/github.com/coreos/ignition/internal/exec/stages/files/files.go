@@ -25,7 +25,6 @@ import (
 	"github.com/coreos/ignition/internal/exec/stages"
 	"github.com/coreos/ignition/internal/exec/util"
 	"github.com/coreos/ignition/internal/log"
-	"github.com/coreos/ignition/internal/resource"
 )
 
 const (
@@ -42,14 +41,11 @@ func init() {
 
 type creator struct{}
 
-func (creator) Create(logger *log.Logger, client *resource.HttpClient, root string) stages.Stage {
-	return &stage{
-		Util: util.Util{
-			DestDir: root,
-			Logger:  logger,
-		},
-		client: client,
-	}
+func (creator) Create(logger *log.Logger, root string) stages.Stage {
+	return &stage{util.Util{
+		DestDir: root,
+		Logger:  logger,
+	}}
 }
 
 func (creator) Name() string {
@@ -58,8 +54,6 @@ func (creator) Name() string {
 
 type stage struct {
 	util.Util
-
-	client *resource.HttpClient
 }
 
 func (stage) Name() string {
@@ -72,13 +66,13 @@ func (s stage) Run(config types.Config) bool {
 		return false
 	}
 
-	if err := s.createFilesystemsFiles(config); err != nil {
-		s.Logger.Crit("failed to create files: %v", err)
+	if err := s.createUnits(config); err != nil {
+		s.Logger.Crit("failed to create units: %v", err)
 		return false
 	}
 
-	if err := s.createUnits(config); err != nil {
-		s.Logger.Crit("failed to create units: %v", err)
+	if err := s.createFilesystemsFiles(config); err != nil {
+		s.Logger.Crit("failed to create files: %v", err)
 		return false
 	}
 
@@ -139,8 +133,8 @@ func (s stage) createFiles(fs types.Filesystem, files []types.File) error {
 	s.Logger.PushPrefix("createFiles")
 	defer s.Logger.PopPrefix()
 
-	var mnt string
-	if fs.Path == nil {
+	mnt := string(fs.Path)
+	if len(mnt) == 0 {
 		var err error
 		mnt, err = ioutil.TempDir("", "ignition-files")
 		if err != nil {
@@ -161,8 +155,6 @@ func (s stage) createFiles(fs types.Filesystem, files []types.File) error {
 			func() error { return syscall.Unmount(mnt, 0) },
 			"unmounting %q at %q", dev, mnt,
 		)
-	} else {
-		mnt = string(*fs.Path)
 	}
 
 	u := util.Util{
@@ -170,7 +162,7 @@ func (s stage) createFiles(fs types.Filesystem, files []types.File) error {
 		DestDir: mnt,
 	}
 	for _, f := range files {
-		file := util.RenderFile(s.Logger, s.client, f)
+		file := util.RenderFile(s.Logger, f)
 		if file == nil {
 			return fmt.Errorf("failed to resolve file %q", f.Path)
 		}
@@ -230,7 +222,7 @@ func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
 			f := util.FileFromUnitDropin(unit, dropin)
 			if err := s.Logger.LogOp(
 				func() error { return s.WriteFile(f) },
-				"writing drop-in %q at %q", dropin.Name, f.Path,
+				"writing dropin %q at %q", dropin.Name, f.Path,
 			); err != nil {
 				return err
 			}
@@ -249,7 +241,7 @@ func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
 		}
 
 		return nil
-	}, "processing unit %q", unit.Name)
+	}, "writing unit %q", unit.Name)
 }
 
 // writeNetworkdUnit creates the specified unit. If the contents of the unit or
@@ -269,7 +261,7 @@ func (s stage) writeNetworkdUnit(unit types.NetworkdUnit) error {
 		}
 
 		return nil
-	}, "processing unit %q", unit.Name)
+	}, "writing unit %q", unit.Name)
 }
 
 // createPasswd creates the users and groups as described in config.Passwd.

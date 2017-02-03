@@ -19,31 +19,56 @@ package gce
 
 import (
 	"net/http"
-	"net/url"
+	"time"
 
+	"github.com/coreos/ignition/config"
 	"github.com/coreos/ignition/config/types"
-	"github.com/coreos/ignition/config/validate/report"
 	"github.com/coreos/ignition/internal/log"
-	"github.com/coreos/ignition/internal/providers/util"
-	"github.com/coreos/ignition/internal/resource"
+	"github.com/coreos/ignition/internal/providers"
+	putil "github.com/coreos/ignition/internal/providers/util"
+	"github.com/coreos/ignition/internal/util"
+)
 
-	"golang.org/x/net/context"
+const (
+	initialBackoff = 100 * time.Millisecond
+	maxBackoff     = 30 * time.Second
+	userdataUrl    = "http://metadata.google.internal/computeMetadata/v1/instance/attributes/user-data"
 )
 
 var (
-	userdataUrl = url.URL{
-		Scheme: "http",
-		Host:   "metadata.google.internal",
-		Path:   "computeMetadata/v1/instance/attributes/user-data",
-	}
 	metadataHeader = http.Header{"Metadata-Flavor": []string{"Google"}}
 )
 
-func FetchConfig(logger *log.Logger, client *resource.HttpClient) (types.Config, report.Report, error) {
-	data, err := resource.FetchConfigWithHeader(logger, client, context.Background(), userdataUrl, metadataHeader)
-	if err != nil {
-		return types.Config{}, report.Report{}, err
-	}
+type Creator struct{}
 
-	return util.ParseConfig(logger, data)
+func (Creator) Create(logger *log.Logger) providers.Provider {
+	return &provider{
+		logger:  logger,
+		backoff: initialBackoff,
+		client:  util.NewHttpClient(logger),
+	}
+}
+
+type provider struct {
+	logger    *log.Logger
+	backoff   time.Duration
+	client    util.HttpClient
+	rawConfig []byte
+}
+
+func (p provider) FetchConfig() (types.Config, error) {
+	return config.Parse(p.rawConfig)
+}
+
+func (p *provider) IsOnline() bool {
+	p.rawConfig = p.client.FetchConfigWithHeader(userdataUrl, metadataHeader, http.StatusOK, http.StatusNotFound)
+	return (p.rawConfig != nil)
+}
+
+func (p provider) ShouldRetry() bool {
+	return true
+}
+
+func (p *provider) BackoffDuration() time.Duration {
+	return putil.ExpBackoff(&p.backoff, maxBackoff)
 }

@@ -15,59 +15,121 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
 	"path/filepath"
-
-	"github.com/coreos/ignition/config/validate/report"
 )
 
 type SystemdUnit struct {
-	Name     SystemdUnitName     `json:"name,omitempty"`
-	Enable   bool                `json:"enable,omitempty"`
-	Mask     bool                `json:"mask,omitempty"`
-	Contents string              `json:"contents,omitempty"`
-	DropIns  []SystemdUnitDropIn `json:"dropins,omitempty"`
+	Name     SystemdUnitName     `json:"name,omitempty"     yaml:"name"`
+	Enable   bool                `json:"enable,omitempty"   yaml:"enable"`
+	Mask     bool                `json:"mask,omitempty"     yaml:"mask"`
+	Contents string              `json:"contents,omitempty" yaml:"contents"`
+	DropIns  []SystemdUnitDropIn `json:"dropins,omitempty"  yaml:"dropins"`
 }
 
 type SystemdUnitDropIn struct {
-	Name     SystemdUnitDropInName `json:"name,omitempty"`
-	Contents string                `json:"contents,omitempty"`
+	Name     SystemdUnitDropInName `json:"name,omitempty"     yaml:"name"`
+	Contents string                `json:"contents,omitempty" yaml:"contents"`
 }
 
 type SystemdUnitName string
 
-func (n SystemdUnitName) Validate() report.Report {
+func (n *SystemdUnitName) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return n.unmarshal(unmarshal)
+}
+
+func (n *SystemdUnitName) UnmarshalJSON(data []byte) error {
+	return n.unmarshal(func(tn interface{}) error {
+		return json.Unmarshal(data, tn)
+	})
+}
+
+type systemdUnitName SystemdUnitName
+
+func (n *SystemdUnitName) unmarshal(unmarshal func(interface{}) error) error {
+	tn := systemdUnitName(*n)
+	if err := unmarshal(&tn); err != nil {
+		return err
+	}
+	*n = SystemdUnitName(tn)
+	return n.assertValid()
+}
+
+func (n SystemdUnitName) assertValid() error {
 	switch filepath.Ext(string(n)) {
 	case ".service", ".socket", ".device", ".mount", ".automount", ".swap", ".target", ".path", ".timer", ".snapshot", ".slice", ".scope":
-		return report.Report{}
+		return nil
 	default:
-		return report.ReportFromError(errors.New("invalid systemd unit extension"), report.EntryError)
+		return errors.New("invalid systemd unit extension")
 	}
 }
 
 type SystemdUnitDropInName string
 
-func (n SystemdUnitDropInName) Validate() report.Report {
+func (n *SystemdUnitDropInName) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return n.unmarshal(unmarshal)
+}
+
+func (n *SystemdUnitDropInName) UnmarshalJSON(data []byte) error {
+	return n.unmarshal(func(tn interface{}) error {
+		return json.Unmarshal(data, tn)
+	})
+}
+
+type systemdUnitDropInName SystemdUnitDropInName
+
+func (n *SystemdUnitDropInName) unmarshal(unmarshal func(interface{}) error) error {
+	tn := systemdUnitDropInName(*n)
+	if err := unmarshal(&tn); err != nil {
+		return err
+	}
+	*n = SystemdUnitDropInName(tn)
+	return n.assertValid()
+}
+
+func (n SystemdUnitDropInName) assertValid() error {
 	switch filepath.Ext(string(n)) {
 	case ".conf":
-		return report.Report{}
+		return nil
 	default:
-		return report.ReportFromError(errors.New("invalid systemd unit drop-in extension"), report.EntryError)
+		return errors.New("invalid systemd unit drop-in extension")
 	}
 }
 
 type NetworkdUnit struct {
-	Name     NetworkdUnitName `json:"name,omitempty"`
-	Contents string           `json:"contents,omitempty"`
+	Name     NetworkdUnitName `json:"name,omitempty"     yaml:"name"`
+	Contents string           `json:"contents,omitempty" yaml:"contents"`
 }
 
 type NetworkdUnitName string
 
-func (n NetworkdUnitName) Validate() report.Report {
+func (n *NetworkdUnitName) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return n.unmarshal(unmarshal)
+}
+
+func (n *NetworkdUnitName) UnmarshalJSON(data []byte) error {
+	return n.unmarshal(func(tn interface{}) error {
+		return json.Unmarshal(data, tn)
+	})
+}
+
+type networkdUnitName NetworkdUnitName
+
+func (n *NetworkdUnitName) unmarshal(unmarshal func(interface{}) error) error {
+	tn := networkdUnitName(*n)
+	if err := unmarshal(&tn); err != nil {
+		return err
+	}
+	*n = NetworkdUnitName(tn)
+	return n.assertValid()
+}
+
+func (n NetworkdUnitName) assertValid() error {
 	switch filepath.Ext(string(n)) {
 	case ".link", ".netdev", ".network":
-		return report.Report{}
+		return nil
 	default:
-		return report.ReportFromError(errors.New("invalid networkd unit extension"), report.EntryError)
+		return errors.New("invalid networkd unit extension")
 	}
 }
