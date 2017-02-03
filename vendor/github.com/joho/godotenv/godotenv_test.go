@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-var noopPresets = make(map[string]string)
-
 func parseAndCompare(t *testing.T, rawEnvLine string, expectedKey string, expectedValue string) {
 	key, value, _ := parseLine(rawEnvLine)
 	if key != expectedKey || value != expectedValue {
@@ -14,15 +12,11 @@ func parseAndCompare(t *testing.T, rawEnvLine string, expectedKey string, expect
 	}
 }
 
-func loadEnvAndCompareValues(t *testing.T, loader func(files ...string) error, envFileName string, expectedValues map[string]string, presets map[string]string) {
+func loadEnvAndCompareValues(t *testing.T, envFileName string, expectedValues map[string]string) {
 	// first up, clear the env
 	os.Clearenv()
 
-	for k, v := range presets {
-		os.Setenv(k, v)
-	}
-
-	err := loader(envFileName)
+	err := Load(envFileName)
 	if err != nil {
 		t.Fatalf("Error loading %v", envFileName)
 	}
@@ -44,25 +38,10 @@ func TestLoadWithNoArgsLoadsDotEnv(t *testing.T) {
 	}
 }
 
-func TestOverloadWithNoArgsOverloadsDotEnv(t *testing.T) {
-	err := Overload()
-	pathError := err.(*os.PathError)
-	if pathError == nil || pathError.Op != "open" || pathError.Path != ".env" {
-		t.Errorf("Didn't try and open .env by default")
-	}
-}
-
 func TestLoadFileNotFound(t *testing.T) {
 	err := Load("somefilethatwillneverexistever.env")
 	if err == nil {
 		t.Error("File wasn't found but Load didn't return an error")
-	}
-}
-
-func TestOverloadFileNotFound(t *testing.T) {
-	err := Overload("somefilethatwillneverexistever.env")
-	if err == nil {
-		t.Error("File wasn't found but Overload didn't return an error")
 	}
 }
 
@@ -92,34 +71,6 @@ func TestReadPlainEnv(t *testing.T) {
 	}
 }
 
-func TestLoadDoesNotOverride(t *testing.T) {
-	envFileName := "fixtures/plain.env"
-
-	// ensure NO overload
-	presets := map[string]string{
-		"OPTION_A": "do_not_override",
-	}
-
-	expectedValues := map[string]string{
-		"OPTION_A": "do_not_override",
-	}
-	loadEnvAndCompareValues(t, Load, envFileName, expectedValues, presets)
-}
-
-func TestOveroadDoesOverride(t *testing.T) {
-	envFileName := "fixtures/plain.env"
-
-	// ensure NO overload
-	presets := map[string]string{
-		"OPTION_A": "do_not_override",
-	}
-
-	expectedValues := map[string]string{
-		"OPTION_A": "1",
-	}
-	loadEnvAndCompareValues(t, Overload, envFileName, expectedValues, presets)
-}
-
 func TestLoadPlainEnv(t *testing.T) {
 	envFileName := "fixtures/plain.env"
 	expectedValues := map[string]string{
@@ -130,7 +81,7 @@ func TestLoadPlainEnv(t *testing.T) {
 		"OPTION_E": "5",
 	}
 
-	loadEnvAndCompareValues(t, Load, envFileName, expectedValues, noopPresets)
+	loadEnvAndCompareValues(t, envFileName, expectedValues)
 }
 
 func TestLoadExportedEnv(t *testing.T) {
@@ -140,7 +91,7 @@ func TestLoadExportedEnv(t *testing.T) {
 		"OPTION_B": "\n",
 	}
 
-	loadEnvAndCompareValues(t, Load, envFileName, expectedValues, noopPresets)
+	loadEnvAndCompareValues(t, envFileName, expectedValues)
 }
 
 func TestLoadEqualsEnv(t *testing.T) {
@@ -149,7 +100,7 @@ func TestLoadEqualsEnv(t *testing.T) {
 		"OPTION_A": "postgres://localhost:5432/database?sslmode=disable",
 	}
 
-	loadEnvAndCompareValues(t, Load, envFileName, expectedValues, noopPresets)
+	loadEnvAndCompareValues(t, envFileName, expectedValues)
 }
 
 func TestLoadQuotedEnv(t *testing.T) {
@@ -165,7 +116,7 @@ func TestLoadQuotedEnv(t *testing.T) {
 		"OPTION_H": "\n",
 	}
 
-	loadEnvAndCompareValues(t, Load, envFileName, expectedValues, noopPresets)
+	loadEnvAndCompareValues(t, envFileName, expectedValues)
 }
 
 func TestActualEnvVarsAreLeftAlone(t *testing.T) {

@@ -1,6 +1,6 @@
 # Mayu
 
-[![Build Status](https://api.travis-ci.org/giantswarm/mayu.svg)](https://travis-ci.org/giantswarm/mayu)
+[![CircleCI](https://circleci.com/gh/giantswarm/mayu.svg?&style=shield)](https://circleci.com/gh/giantswarm/mayu)
 [![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu)
 [![Go Report Card](https://goreportcard.com/badge/github.com/giantswarm/mayu)](https://goreportcard.com/report/github.com/giantswarm/mayu)
 [![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
