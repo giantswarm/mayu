@@ -32,8 +32,8 @@ bin/mayu:
 		-e CGOENABLED=0 \
 		-w /go/src/github.com/$(ORGANISATION)/$(PROJECT) \
 		golang:1.7.5 \
-		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o bin/mayu github.com/$(ORGANISATION)/$(PROJECT)
-		
+		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(GIT_COMMIT)" -o bin/mayu github.com/$(ORGANISATION)/$(PROJECT)
+
 bin/mayuctl:
 	docker run \
 		--rm \
@@ -44,8 +44,8 @@ bin/mayuctl:
 		-e CGOENABLED=0 \
 		-w /go/src/github.com/$(ORGANISATION)/$(PROJECT) \
 		golang:1.7.5 \
-		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o bin/mayuctl github.com/$(ORGANISATION)/$(PROJECT)/mayuctl
-		
+		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(GIT_COMMIT)" -o bin/mayuctl github.com/$(ORGANISATION)/$(PROJECT)/mayuctl
+
 bin-dist: all
 		mkdir -p bin-dist/tftproot
 		mkdir -p bin-dist/static_html
@@ -69,8 +69,8 @@ bin-dist: all
 
 release386: bin-dist
 		rm -rf bin
-		@GOARCH=386 $(MAKE) bin/mayu
-		@GOARCH=386 $(MAKE) bin/mayuctl
+		@GOOS=linux; GOARCH=386 $(MAKE) bin/mayu
+		@GOOS=linux; GOARCH=386 $(MAKE) bin/mayuctl
 		cp bin/mayu* bin-dist
 		cd bin-dist && rm -f $(PROJECT).*-linux-i386.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-i386.tar.gz --exclude='*.tar.gz' *
 
