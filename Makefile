@@ -32,8 +32,8 @@ bin/mayu:
 		-e CGOENABLED=0 \
 		-w /go/src/github.com/$(ORGANISATION)/$(PROJECT) \
 		golang:1.7.5 \
-		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o bin/mayu github.com/$(ORGANISATION)/$(PROJECT)
-		
+		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(GIT_COMMIT)" -o bin/mayu github.com/$(ORGANISATION)/$(PROJECT)
+
 bin/mayuctl:
 	docker run \
 		--rm \
@@ -44,8 +44,8 @@ bin/mayuctl:
 		-e CGOENABLED=0 \
 		-w /go/src/github.com/$(ORGANISATION)/$(PROJECT) \
 		golang:1.7.5 \
-		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o bin/mayuctl github.com/$(ORGANISATION)/$(PROJECT)/mayuctl
-		
+		go build -a -v -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(GIT_COMMIT)" -o bin/mayuctl github.com/$(ORGANISATION)/$(PROJECT)/mayuctl
+
 bin-dist: all
 		mkdir -p bin-dist/tftproot
 		mkdir -p bin-dist/static_html
