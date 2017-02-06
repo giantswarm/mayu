@@ -69,8 +69,8 @@ bin-dist: all
 
 release386: bin-dist
 		rm -rf bin
-		@GOARCH=386 $(MAKE) bin/mayu
-		@GOARCH=386 $(MAKE) bin/mayuctl
+		@GOOS=linux; GOARCH=386 $(MAKE) bin/mayu
+		@GOOS=linux; GOARCH=386 $(MAKE) bin/mayuctl
 		cp bin/mayu* bin-dist
 		cd bin-dist && rm -f $(PROJECT).*-linux-i386.tar.gz && tar czf $(PROJECT).$(VERSION)-linux-i386.tar.gz --exclude='*.tar.gz' *
 
