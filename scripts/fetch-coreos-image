@@ -17,7 +17,7 @@ wget -O ./images/${COREOS_VERSION}/coreos_pxe_image.cpio.gz  http://stable.relea
 echo "$COREOS_VERSION" > ./images/${COREOS_VERSION}/coreos-version
 
 mkdir -p ./images/${COREOS_VERSION}/usr/share/oem
-cp templates/first_stage_cloudconfig.yaml ./images/${COREOS_VERSION}/usr/share/oem/cloud-config.yml
+cp ../templates/first_stage_cloudconfig.yaml ./images/${COREOS_VERSION}/usr/share/oem/cloud-config.yml
 
 docker run --rm -v $(pwd)/images/${COREOS_VERSION}:/usr/code/images \
 	ubuntu:wily /bin/bash -c "apt-get update -y && apt-get install cpio && \
