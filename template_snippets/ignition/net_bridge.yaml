@@ -1,7 +1,8 @@
 {{define "net_bridge"}}
+networkd:
+  units:
   - name: 00-{{.Host.ConnectedNIC}}.network
-    runtime: false
-    content: |
+    contents: |
       [Match]
       Name={{.Host.ConnectedNIC}}
 
@@ -10,30 +11,23 @@
       Gateway={{.ClusterNetwork.Router}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
-
-  - name: 00-br0.netdev
-    runtime: true
-    content: |
+  - name: 30-br0.netdev
+    contents: |
       [NetDev]
       Name=br0
       Kind=bridge
-
   - name: 30-br0.network
-    runtime: true
-    content: |
+    contents: |
       [Match]
       Name=br0
-
       [Network]
       Address={{.Host.BridgeIP}}/24
       DHCPServer=yes
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
       IPMasquerade=yes
-
   - name: 99-nodhcp.network
-    runtime: false
-    content: |
+    contents: |
       [Match]
       Name=*
 

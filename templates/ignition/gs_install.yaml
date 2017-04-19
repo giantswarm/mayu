@@ -123,6 +123,7 @@ storage:
 
 {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
 {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "bridge"}}{{template "net_bridge" .}}{{end}}
 
 passwd:
   users:

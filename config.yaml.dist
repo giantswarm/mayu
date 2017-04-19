@@ -12,6 +12,9 @@ network:
   ip_range:
     start: 10.0.3.31
     end: 10.0.3.70
+  bridge_ip_range:
+    start: 12.0.3.31
+    end: 12.0.3.70
   dns: [8.8.8.8, 8.8.4.4]
   router: 10.0.3.251
   network_model: singlenic
