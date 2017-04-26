@@ -13,6 +13,8 @@ import (
 
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
+	"github.com/giantswarm/mayu/pxemgr"
+	"gopkg.in/yaml.v2"
 )
 
 const contentType = "application/json"
@@ -261,4 +263,39 @@ func (c *Client) Status(serial string) (hostmgr.Host, error) {
 	}
 
 	return host, fmt.Errorf("host %s not found.", serial)
+}
+
+func (c *Client) GetConfig() (string, error) {
+	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/mayu_config", c.Scheme, c.Host, c.Port))
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode > 399 {
+		return "", fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+
+	return string(body), nil
+}
+
+func (c *Client) SetConfig(conf pxemgr.Configuration) (error) {
+	data, err := yaml.Marshal(conf)
+	if err != nil {
+		return  err
+	}
+	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/mayu_config", c.Scheme, c.Host, c.Port), "text/plain", bytes.NewBuffer(data))
+	if err != nil {
+		return  err
+	}
+	if resp.StatusCode > 399 {
+		return  fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+	}
+
+	return  nil
 }

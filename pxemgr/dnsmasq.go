@@ -87,7 +87,7 @@ func (dnsmasq *DNSmasqInstance) Restart() error {
 	return dnsmasq.Start()
 }
 
-func (dnsmasq *DNSmasqInstance) updateConf(net network) error {
+func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 	glog.V(8).Infoln("updating Dnsmasq configuration")
 
 	tmpl, err := template.ParseFiles(dnsmasq.conf.Template)
@@ -96,7 +96,7 @@ func (dnsmasq *DNSmasqInstance) updateConf(net network) error {
 	}
 
 	tmplArgs := struct {
-		Network network
+		Network Network
 		Global  DNSmasqConfiguration
 	}{
 		Network: net,
