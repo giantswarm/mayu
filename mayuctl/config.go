@@ -25,7 +25,7 @@ var (
 
 func init() {
 	configCmd.PersistentFlags().StringVar(&configFlags.Method, "method", "get","Method - 'get' or 'set', default is get. Set method requires config-file flag.")
-	configCmd.PersistentFlags().StringVar(&configFlags.ConfigFile, "config-file","","file path to configfile, required when method is 'set', optional for 'get' (response is written to file)")
+	configCmd.PersistentFlags().StringVar(&configFlags.ConfigFile, "config-file","","File path to configfile, required when method is 'set', optional for 'get' (response is written to file)")
 }
 
 func configRun(cmd *cobra.Command, args []string) {
@@ -34,20 +34,18 @@ func configRun(cmd *cobra.Command, args []string) {
 
 		config, err := mayu.GetConfig()
 		if err != nil {
-			println("Error when fetching config", err)
+			println("ERROR: when fetching config from mayu", err)
 			os.Exit(1)
 		}
 		if configFlags.ConfigFile != "" {
 			err := ioutil.WriteFile(configFlags.ConfigFile, []byte(config), 0660)
 			if err != nil {
-				println("Error when saving config to file ", err)
+				println("ERROR: when saving config to file ", err)
 			}
 
 		} else {
 			fmt.Println(config)
 		}
-
-
 
 	} else if configFlags.Method == "set" {
 		if configFlags.ConfigFile == "" {
@@ -56,12 +54,12 @@ func configRun(cmd *cobra.Command, args []string) {
 		}
 		conf, err := pxemgr.LoadConfig(configFlags.ConfigFile)
 		if err != nil {
-			println("ERROR parsing config file: ", err)
+			println("ERROR: parsing config file: ", err)
 		}
 
 		err = mayu.SetConfig(conf)
 		if err != nil {
-			println("Error when setting config", err)
+			println("ERROR: when setting config in mayu", err)
 			os.Exit(1)
 		}
 
