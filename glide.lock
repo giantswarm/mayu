@@ -1,16 +1,16 @@
-hash: 7b3963fb29f130c2fa8dae26050e416872019ab643234cdae1c6dba9a3d4750a
-updated: 2017-02-03T16:06:45.842351395Z
+hash: 05e53b7068a5ec6dbcde9642a0a321c55ecc2d7627c3b392bf69a9722aafc722
+updated: 2017-04-27T10:38:57.242046603+02:00
 imports:
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/coreos/etcd
-  version: 8ba2897a21e4fc51b298ca553d251318425f93ae
+  version: e5b7ee2d03627ca33201da428b8110ef7c3e95f1
   subpackages:
   - client
   - pkg/pathutil
   - pkg/types
 - name: github.com/coreos/go-semver
-  version: 568e959cd89871e61434c1143528d9162da89ef2
+  version: 294930c1e79c64e7dbe360054274fdad492c8cf5
   subpackages:
   - semver
 - name: github.com/coreos/ignition
@@ -18,7 +18,7 @@ imports:
   subpackages:
   - config/types
 - name: github.com/golang/glog
-  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/handlers
@@ -28,21 +28,23 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/joho/godotenv
-  version: a01a834e1654b4c9ca5b3ad05159445cc9c7ad08
+  version: 726cc8b906e3d31c70a9671c90a13716a8d3f50d
+- name: github.com/juju/errgo
+  version: 08cceb5d0b5331634b9826762a8fd53b29b86ad8
 - name: github.com/ryanuber/columnize
   version: 983d3a5fab1bf04d1b412465d2d9f8430e2e917e
 - name: github.com/spf13/cobra
-  version: 35136c09d8da66b901337c6e86fd8e88a1a255bd
+  version: 65a708cee0a4424f4e353d031ce440643e312f92
 - name: github.com/spf13/pflag
-  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+  version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
 - name: github.com/ugorji/go
-  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
+  version: 98ef79d6c615fa258e892ed0b11c6e013712693e
   subpackages:
   - codec
 - name: golang.org/x/net
-  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  version: fb93926129b8ec0056f2f458b1f519654814edf0
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
+  version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
 testImports: []
