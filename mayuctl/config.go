@@ -40,7 +40,6 @@ func configRun(cmd *cobra.Command, args []string) {
 			if err != nil {
 				println("ERROR: when saving config to file ", err)
 			}
-
 		} else {
 			fmt.Println(config)
 		}
@@ -53,13 +52,11 @@ func configRun(cmd *cobra.Command, args []string) {
 		if err != nil {
 			println("ERROR: parsing config file: ", err)
 		}
-
 		err = mayu.SetConfig(conf)
 		if err != nil {
 			println("ERROR: when setting config in mayu", err)
 			os.Exit(1)
 		}
-
 	} else {
 		fmt.Printf("ERROR: unknow operation %s", configFlags.Method)
 		os.Exit(1)
