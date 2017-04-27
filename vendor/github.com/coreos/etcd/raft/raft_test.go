@@ -1246,6 +1246,55 @@ func TestHandleHeartbeatResp(t *testing.T) {
 	}
 }
 
+// TestRaftFreesReadOnlyMem ensures raft will free read request from
+// readOnly readIndexQueue and pendingReadIndex map.
+// related issue: https://github.com/coreos/etcd/issues/7571
+func TestRaftFreesReadOnlyMem(t *testing.T) {
+	sm := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	sm.becomeCandidate()
+	sm.becomeLeader()
+	sm.raftLog.commitTo(sm.raftLog.lastIndex())
+
+	ctx := []byte("ctx")
+
+	// leader starts linearizable read request.
+	// more info: raft dissertation 6.4, step 2.
+	sm.Step(pb.Message{From: 2, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: ctx}}})
+	msgs := sm.readMessages()
+	if len(msgs) != 1 {
+		t.Fatalf("len(msgs) = %d, want 1", len(msgs))
+	}
+	if msgs[0].Type != pb.MsgHeartbeat {
+		t.Fatalf("type = %v, want MsgHeartbeat", msgs[0].Type)
+	}
+	if !bytes.Equal(msgs[0].Context, ctx) {
+		t.Fatalf("Context = %v, want %v", msgs[0].Context, ctx)
+	}
+	if len(sm.readOnly.readIndexQueue) != 1 {
+		t.Fatalf("len(readIndexQueue) = %v, want 1", len(sm.readOnly.readIndexQueue))
+	}
+	if len(sm.readOnly.pendingReadIndex) != 1 {
+		t.Fatalf("len(pendingReadIndex) = %v, want 1", len(sm.readOnly.pendingReadIndex))
+	}
+	if _, ok := sm.readOnly.pendingReadIndex[string(ctx)]; !ok {
+		t.Fatalf("can't find context %v in pendingReadIndex ", ctx)
+	}
+
+	// heartbeat responses from majority of followers (1 in this case)
+	// acknowledge the authority of the leader.
+	// more info: raft dissertation 6.4, step 3.
+	sm.Step(pb.Message{From: 2, Type: pb.MsgHeartbeatResp, Context: ctx})
+	if len(sm.readOnly.readIndexQueue) != 0 {
+		t.Fatalf("len(readIndexQueue) = %v, want 0", len(sm.readOnly.readIndexQueue))
+	}
+	if len(sm.readOnly.pendingReadIndex) != 0 {
+		t.Fatalf("len(pendingReadIndex) = %v, want 0", len(sm.readOnly.pendingReadIndex))
+	}
+	if _, ok := sm.readOnly.pendingReadIndex[string(ctx)]; ok {
+		t.Fatalf("found context %v in pendingReadIndex, want none", ctx)
+	}
+}
+
 // TestMsgAppRespWaitReset verifies the resume behavior of a leader
 // MsgAppResp.
 func TestMsgAppRespWaitReset(t *testing.T) {
@@ -1853,6 +1902,77 @@ func TestReadOnlyOptionLeaseWithoutCheckQuorum(t *testing.T) {
 
 	if !bytes.Equal(rs.RequestCtx, ctx) {
 		t.Errorf("requestCtx = %v, want %v", rs.RequestCtx, ctx)
+	}
+}
+
+// TestReadOnlyForNewLeader ensures that a leader only accepts MsgReadIndex message
+// when it commits at least one log entry at it term.
+func TestReadOnlyForNewLeader(t *testing.T) {
+	cfg := newTestConfig(1, []uint64{1, 2, 3}, 10, 1,
+		&MemoryStorage{
+			ents:      []pb.Entry{{}, {Index: 1, Term: 1}, {Index: 2, Term: 1}},
+			hardState: pb.HardState{Commit: 1, Term: 1},
+		})
+	cfg.Applied = 1
+	a := newRaft(cfg)
+	cfg = newTestConfig(2, []uint64{1, 2, 3}, 10, 1,
+		&MemoryStorage{
+			ents:      []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}},
+			hardState: pb.HardState{Commit: 2, Term: 1},
+		})
+	cfg.Applied = 2
+	b := newRaft(cfg)
+	cfg = newTestConfig(2, []uint64{1, 2, 3}, 10, 1,
+		&MemoryStorage{
+			ents:      []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}},
+			hardState: pb.HardState{Commit: 2, Term: 1},
+		})
+	cfg.Applied = 2
+	c := newRaft(cfg)
+	nt := newNetwork(a, b, c)
+
+	// Drop MsgApp to forbid peer a to commit any log entry at its term after it becomes leader.
+	nt.ignore(pb.MsgApp)
+	// Force peer a to become leader.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if a.state != StateLeader {
+		t.Fatalf("state = %s, want %s", a.state, StateLeader)
+	}
+
+	// Ensure peer a drops read only request.
+	var windex uint64 = 4
+	wctx := []byte("ctx")
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: wctx}}})
+	if len(a.readStates) != 0 {
+		t.Fatalf("len(readStates) = %d, want zero", len(a.readStates))
+	}
+
+	nt.recover()
+
+	// Force peer a to commit a log entry at its term
+	for i := 0; i < a.heartbeatTimeout; i++ {
+		a.tick()
+	}
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+	if a.raftLog.committed != 4 {
+		t.Fatalf("committed = %d, want 4", a.raftLog.committed)
+	}
+	lastLogTerm := a.raftLog.zeroTermOnErrCompacted(a.raftLog.term(a.raftLog.committed))
+	if lastLogTerm != a.Term {
+		t.Fatalf("last log term = %d, want %d", lastLogTerm, a.Term)
+	}
+
+	// Ensure peer a accepts read only request after it commits a entry at its term.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: wctx}}})
+	if len(a.readStates) != 1 {
+		t.Fatalf("len(readStates) = %d, want 1", len(a.readStates))
+	}
+	rs := a.readStates[0]
+	if rs.Index != windex {
+		t.Fatalf("readIndex = %d, want %d", rs.Index, windex)
+	}
+	if !bytes.Equal(rs.RequestCtx, wctx) {
+		t.Fatalf("requestCtx = %v, want %v", rs.RequestCtx, wctx)
 	}
 }
 
