@@ -21,7 +21,7 @@ type PXEManagerConfiguration struct {
 	EtcdQuorumSize           int
 	EtcdDiscoveryUrl         string
 	EtcdEndpoint             string
-	EtcdCAFile		 string
+	EtcdCAFile               string
 	DNSmasqExecutable        string
 	DNSmasqTemplate          string
 	TFTPRoot                 string
@@ -59,9 +59,9 @@ type pxeManagerT struct {
 	defaultEtcdQuorumSize    int
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
-	etcdCAFile		 string
+	etcdCAFile               string
 	version                  string
-	configFile		 string
+	configFile               string
 
 	config  *Configuration
 	cluster *hostmgr.Cluster
@@ -110,7 +110,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		defaultEtcdQuorumSize:    c.EtcdQuorumSize,
 		etcdDiscoveryUrl:         c.EtcdDiscoveryUrl,
 		etcdEndpoint:             c.EtcdEndpoint,
-		etcdCAFile:		  c.EtcdCAFile,
+		etcdCAFile:               c.EtcdCAFile,
 		configFile:               c.ConfigFile,
 		version:                  c.Version,
 
@@ -349,14 +349,13 @@ func (mgr *pxeManagerT) thisHost() string {
 	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.httpPort)
 }
 
-func  (mgr *pxeManagerT) reloadConfig() {
+func (mgr *pxeManagerT) reloadConfig() {
 	newConf, err := LoadConfig(mgr.configFile)
 	if err != nil {
 		glog.Fatalln(err)
 	}
 	mgr.config = &newConf
 }
-
 
 func httpError(w http.ResponseWriter, msg string, status int) {
 	glog.Warningln(msg)

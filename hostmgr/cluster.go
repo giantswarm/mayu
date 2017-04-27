@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/client"
-	"github.com/golang/glog"
-	"golang.org/x/net/context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"github.com/coreos/etcd/client"
+	"github.com/golang/glog"
+	"golang.org/x/net/context"
 )
 
 const clusterConfFile = "cluster.json"
@@ -311,12 +311,12 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 
 		pemData, err := ioutil.ReadFile(etcdCAFile)
 		if err != nil {
-			return errors.New("Unable to read custom CA file: "+err.Error())
+			return errors.New("Unable to read custom CA file: " + err.Error())
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs:customCA},
-			Proxy: http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{RootCAs: customCA},
+			Proxy:           http.ProxyFromEnvironment,
 			Dial: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,

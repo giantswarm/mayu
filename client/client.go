@@ -14,6 +14,7 @@ import (
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
 	"github.com/giantswarm/mayu/pxemgr"
+	mayuerror "github.com/giantswarm/mayu/error"
 	"gopkg.in/yaml.v2"
 )
 
@@ -47,12 +48,12 @@ func (c *Client) BootComplete(serial string, host hostmgr.Host) error {
 	data, err := json.Marshal(host)
 
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/boot_complete", c.Scheme, c.Host, c.Port, serial), "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
 	return nil
@@ -64,17 +65,19 @@ func (c *Client) SetMetadata(serial, value string) error {
 		FleetMetadata: strings.Split(value, ","),
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_metadata", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -84,17 +87,19 @@ func (c *Client) SetProviderId(serial, value string) error {
 		ProviderId: value,
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_provider_id", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -104,17 +109,19 @@ func (c *Client) SetIPMIAddr(serial, value string) error {
 		IPMIAddr: net.ParseIP(value),
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_ipmi_addr", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -124,17 +131,19 @@ func (c *Client) SetEtcdClusterToken(serial, value string) error {
 		EtcdClusterToken: value,
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_etcd_cluster_token", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -142,24 +151,26 @@ func (c *Client) SetEtcdClusterToken(serial, value string) error {
 func (c *Client) SetState(serial, value string) error {
 	state, err := hostmgr.HostState(value)
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	data, err := json.Marshal(hostmgr.Host{
 		State: state,
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_state", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -167,24 +178,26 @@ func (c *Client) SetState(serial, value string) error {
 func (c *Client) SetCabinet(serial, value string) error {
 	cabinet, err := strconv.ParseUint(value, 10, 0)
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	data, err := json.Marshal(hostmgr.Host{
 		Cabinet: uint(cabinet),
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_cabinet", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -194,17 +207,19 @@ func (c *Client) Override(serial, property, value string) error {
 		Overrides: map[string]interface{}{property: value},
 	})
 	if err != nil {
-		return err
+		return mayuerror.MaskAny(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/override", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 399 {
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	return nil
 }
 
@@ -214,20 +229,21 @@ func (c *Client) List() ([]hostmgr.Host, error) {
 
 	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/hosts", c.Scheme, c.Host, c.Port))
 	if err != nil {
-		return list, err
+		return list, mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode > 399 {
-		return nil, fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return nil, mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return list, err
+		return list, mayuerror.MaskAny(err)
 	}
 
 	err = json.Unmarshal(body, &list)
 	if err != nil {
-		return list, err
+		return list, mayuerror.MaskAny(err)
 	}
 
 	return list, nil
@@ -239,21 +255,22 @@ func (c *Client) Status(serial string) (hostmgr.Host, error) {
 
 	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/hosts", c.Scheme, c.Host, c.Port))
 	if err != nil {
-		return host, err
-	}
-	if resp.StatusCode > 399 {
-		return host, fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return host, mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode > 399 {
+		return host, mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return host, err
+		return host, mayuerror.MaskAny(err)
 	}
 
 	list := []hostmgr.Host{}
 	err = json.Unmarshal(body, &list)
 	if err != nil {
-		return host, err
+		return host, mayuerror.MaskAny(err)
 	}
 
 	for _, host = range list {
@@ -268,34 +285,34 @@ func (c *Client) Status(serial string) (hostmgr.Host, error) {
 func (c *Client) GetConfig() (string, error) {
 	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/mayu_config", c.Scheme, c.Host, c.Port))
 	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode > 399 {
-		return "", fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return "", mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+	if resp.StatusCode > 399 {
+		return "", mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", mayuerror.MaskAny(err)
+	}
 
 	return string(body), nil
 }
 
-func (c *Client) SetConfig(conf pxemgr.Configuration) (error) {
+func (c *Client) SetConfig(conf pxemgr.Configuration) error {
 	data, err := yaml.Marshal(conf)
 	if err != nil {
-		return  err
+		return mayuerror.MaskAny(err)
 	}
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/mayu_config", c.Scheme, c.Host, c.Port), "text/plain", bytes.NewBuffer(data))
 	if err != nil {
-		return  err
+		return mayuerror.MaskAny(err)
 	}
 	if resp.StatusCode > 399 {
-		return  fmt.Errorf("invalid status code '%d'", resp.StatusCode)
+		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
-	return  nil
+	return nil
 }

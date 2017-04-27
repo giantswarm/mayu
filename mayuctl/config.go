@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
 	"fmt"
-	"os"
 	"github.com/giantswarm/mayu/pxemgr"
+	"github.com/spf13/cobra"
 	"io/ioutil"
+	"os"
 )
 
 type ConfigFlags struct {
-	Method string
+	Method     string
 	ConfigFile string
 }
 
@@ -24,14 +24,12 @@ var (
 )
 
 func init() {
-	configCmd.PersistentFlags().StringVar(&configFlags.Method, "method", "get","Method - 'get' or 'set', default is get. Set method requires config-file flag.")
-	configCmd.PersistentFlags().StringVar(&configFlags.ConfigFile, "config-file","","File path to configfile, required when method is 'set', optional for 'get' (response is written to file)")
+	configCmd.PersistentFlags().StringVar(&configFlags.Method, "method", "get", "Method - 'get' or 'set', default is get. Set method requires config-file flag.")
+	configCmd.PersistentFlags().StringVar(&configFlags.ConfigFile, "config-file", "", "File path to configfile, required when method is 'set', optional for 'get' (response is written to file)")
 }
 
 func configRun(cmd *cobra.Command, args []string) {
-
 	if configFlags.Method == "get" {
-
 		config, err := mayu.GetConfig()
 		if err != nil {
 			println("ERROR: when fetching config from mayu", err)
@@ -46,7 +44,6 @@ func configRun(cmd *cobra.Command, args []string) {
 		} else {
 			fmt.Println(config)
 		}
-
 	} else if configFlags.Method == "set" {
 		if configFlags.ConfigFile == "" {
 			println("ERROR: method set but no config-file passed")
@@ -64,7 +61,7 @@ func configRun(cmd *cobra.Command, args []string) {
 		}
 
 	} else {
-		fmt.Printf("ERROR: unknow operation %s",configFlags.Method)
+		fmt.Printf("ERROR: unknow operation %s", configFlags.Method)
 		os.Exit(1)
 	}
 }

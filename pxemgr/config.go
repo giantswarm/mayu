@@ -27,18 +27,14 @@ func LoadConfig(filePath string) (Configuration, error) {
 	return conf, err
 }
 
-func saveConfig(filePath string, conf Configuration) (error) {
-
+func saveConfig(filePath string, conf Configuration) error {
 	confBytes, err := yaml.Marshal(conf)
-
 	ioutil.WriteFile(filePath, confBytes, 0660)
 	if err != nil {
-		return  err
+		return err
 	}
-
 	return err
 }
-
 
 type Configuration struct {
 	DefaultCoreOSVersion string `yaml:"default_coreos_version"`

@@ -709,17 +709,14 @@ func (mgr *pxeManagerT) getMayuConfig(w http.ResponseWriter, r *http.Request) {
 
 func (mgr *pxeManagerT) setMayuConfig(w http.ResponseWriter, r *http.Request) {
 	var conf Configuration
-
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		panic(err)
 	}
 	defer r.Body.Close()
-
 	err = yaml.Unmarshal(data, &conf)
 	if err != nil {
 		panic(err)
-		return
 	}
 	// save config to file
 	saveConfig(mgr.configFile, conf)
