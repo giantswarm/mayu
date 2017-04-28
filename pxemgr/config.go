@@ -8,8 +8,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func loadConfig(filePath string) (configuration, error) {
-	conf := configuration{}
+func LoadConfig(filePath string) (Configuration, error) {
+	conf := Configuration{}
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -27,14 +27,23 @@ func loadConfig(filePath string) (configuration, error) {
 	return conf, err
 }
 
-type configuration struct {
+func saveConfig(filePath string, conf Configuration) error {
+	confBytes, err := yaml.Marshal(conf)
+	ioutil.WriteFile(filePath, confBytes, 0660)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+type Configuration struct {
 	DefaultCoreOSVersion string `yaml:"default_coreos_version"`
-	Network              network
-	Profiles             []profile
+	Network              Network
+	Profiles             []Profile
 	TemplatesEnv         map[string]interface{} `yaml:"templates_env"`
 }
 
-type profile struct {
+type Profile struct {
 	Quantity         int
 	Name             string
 	Tags             []string
@@ -43,7 +52,7 @@ type profile struct {
 	EtcdClusterToken string `yaml:"etcd_cluster_token"`
 }
 
-type network struct {
+type Network struct {
 	Interface      string
 	BindAddr       string `yaml:"bind_addr"`
 	BootstrapRange struct {

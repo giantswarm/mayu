@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -303,6 +303,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 		}
 
 		tmpb, berr := tmptx.CreateBucketIfNotExists(next)
+		tmpb.FillPercent = 0.9 // for seq write in for each
 		if berr != nil {
 			return berr
 		}
@@ -319,6 +320,8 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 					return err
 				}
 				tmpb = tmptx.Bucket(next)
+				tmpb.FillPercent = 0.9 // for seq write in for each
+
 				count = 0
 			}
 			return tmpb.Put(k, v)
@@ -334,7 +337,7 @@ func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, strin
 	if err != nil {
 		plog.Fatal(err)
 	}
-	tmpPath := path.Join(dir, "database")
+	tmpPath := filepath.Join(dir, "database")
 	return newBackend(tmpPath, batchInterval, batchLimit), tmpPath
 }
 

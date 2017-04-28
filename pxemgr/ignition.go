@@ -29,7 +29,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	ctx := struct {
 		Host             hostmgr.Host
 		EtcdDiscoveryUrl string
-		ClusterNetwork   network
+		ClusterNetwork   Network
 		MayuHost         string
 		MayuPort         int
 		MayuURL          string

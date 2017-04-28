@@ -114,6 +114,7 @@ func main() {
 	mainCmd.AddCommand(setCmd)
 	mainCmd.AddCommand(bootCompleteCmd)
 	mainCmd.AddCommand(overrideCmd)
+	mainCmd.AddCommand(configCmd)
 
 	mainCmd.Execute()
 }

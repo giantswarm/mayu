@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -263,7 +264,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 	ss := snap.New(cfg.SnapDir())
 
-	bepath := path.Join(cfg.SnapDir(), databaseFilename)
+	bepath := filepath.Join(cfg.SnapDir(), databaseFilename)
 	beExist := fileutil.Exist(bepath)
 
 	var be backend.Backend
@@ -459,7 +460,10 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 
-	srv.authStore = auth.NewAuthStore(srv.be)
+	srv.authStore = auth.NewAuthStore(srv.be,
+		func(index uint64) <-chan struct{} {
+			return srv.applyWait.Wait(index)
+		})
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
@@ -591,6 +595,7 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 type etcdProgress struct {
 	confState raftpb.ConfState
 	snapi     uint64
+	appliedt  uint64
 	appliedi  uint64
 }
 
@@ -663,6 +668,7 @@ func (s *EtcdServer) run() {
 	ep := etcdProgress{
 		confState: snap.Metadata.ConfState,
 		snapi:     snap.Metadata.Index,
+		appliedt:  snap.Metadata.Term,
 		appliedi:  snap.Metadata.Index,
 	}
 
@@ -762,7 +768,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
-		merged := s.createMergedSnapshotMessage(m, ep.appliedi, ep.confState)
+		merged := s.createMergedSnapshotMessage(m, ep.appliedt, ep.appliedi, ep.confState)
 		s.sendMergedSnap(merged)
 	default:
 	}
@@ -786,7 +792,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Panicf("get database snapshot file path error: %v", err)
 	}
 
-	fn := path.Join(s.Cfg.SnapDir(), databaseFilename)
+	fn := filepath.Join(s.Cfg.SnapDir(), databaseFilename)
 	if err := os.Rename(snapfn, fn); err != nil {
 		plog.Panicf("rename snapshot file error: %v", err)
 	}
@@ -864,6 +870,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}
 	plog.Info("finished adding peers from new cluster configuration into network...")
 
+	ep.appliedt = apply.snapshot.Metadata.Term
 	ep.appliedi = apply.snapshot.Metadata.Index
 	ep.snapi = ep.appliedi
 	ep.confState = apply.snapshot.Metadata.ConfState
@@ -885,7 +892,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 		return
 	}
 	var shouldstop bool
-	if ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
+	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1019,7 +1026,7 @@ func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) err
 	// in the state machine layer
 	// However, both of membership change and role management requires the root privilege.
 	// So careful operation by admins can prevent the problem.
-	authInfo, err := s.authInfoFromCtx(ctx)
+	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
 	if err != nil {
 		return err
 	}
@@ -1239,9 +1246,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 // apply takes entries received from Raft (after it has been committed) and
 // applies them to the current state of the EtcdServer.
 // The given entries should not be empty.
-func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint64, bool) {
-	var applied uint64
-	var shouldstop bool
+func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (appliedt uint64, appliedi uint64, shouldStop bool) {
 	for i := range es {
 		e := es[i]
 		switch e.Type {
@@ -1251,16 +1256,17 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState)
-			shouldstop = shouldstop || removedSelf
+			shouldStop = shouldStop || removedSelf
 			s.w.Trigger(cc.ID, err)
 		default:
 			plog.Panicf("entry type should be either EntryNormal or EntryConfChange")
 		}
 		atomic.StoreUint64(&s.r.index, e.Index)
 		atomic.StoreUint64(&s.r.term, e.Term)
-		applied = e.Index
+		appliedt = e.Term
+		appliedi = e.Index
 	}
-	return applied, shouldstop
+	return appliedt, appliedi, shouldStop
 }
 
 // applyEntryNormal apples an EntryNormal type raftpb request to the EtcdServer

@@ -1,18 +1,16 @@
-/*
-A go port of the ruby dotenv library (https://github.com/bkeepers/dotenv)
-
-Examples/readme can be found on the github page at https://github.com/joho/godotenv
-
-The TL;DR is that you make a .env file that looks something like
-
-		SOME_ENV_VAR=somevalue
-
-and then in your go code you can call
-
-		godotenv.Load()
-
-and all the env vars declared in .env will be avaiable through os.Getenv("SOME_ENV_VAR")
-*/
+// Package godotenv is a go port of the ruby dotenv library (https://github.com/bkeepers/dotenv)
+//
+// Examples/readme can be found on the github page at https://github.com/joho/godotenv
+//
+// The TL;DR is that you make a .env file that looks something like
+//
+// 		SOME_ENV_VAR=somevalue
+//
+// and then in your go code you can call
+//
+// 		godotenv.Load()
+//
+// and all the env vars declared in .env will be avaiable through os.Getenv("SOME_ENV_VAR")
 package godotenv
 
 import (
@@ -23,22 +21,22 @@ import (
 	"strings"
 )
 
-/*
-	Call this function as close as possible to the start of your program (ideally in main)
-
-	If you call Load without any args it will default to loading .env in the current path
-
-	You can otherwise tell it which files to load (there can be more than one) like
-
-		godotenv.Load("fileone", "filetwo")
-
-	It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env file to set dev vars or sensible defaults
-*/
+// Load will read your env file(s) and load them into ENV for this process.
+//
+// Call this function as close as possible to the start of your program (ideally in main)
+//
+// If you call Load without any args it will default to loading .env in the current path
+//
+// You can otherwise tell it which files to load (there can be more than one) like
+//
+//		godotenv.Load("fileone", "filetwo")
+//
+// It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env file to set dev vars or sensible defaults
 func Load(filenames ...string) (err error) {
 	filenames = filenamesOrDefault(filenames)
 
 	for _, filename := range filenames {
-		err = loadFile(filename)
+		err = loadFile(filename, false)
 		if err != nil {
 			return // return early on a spazout
 		}
@@ -46,10 +44,31 @@ func Load(filenames ...string) (err error) {
 	return
 }
 
-/*
-  Read all env (with same file loading semantics as Load) but return values as
-  a map rather than automatically writing values into env
-*/
+// Overload will read your env file(s) and load them into ENV for this process.
+//
+// Call this function as close as possible to the start of your program (ideally in main)
+//
+// If you call Overload without any args it will default to loading .env in the current path
+//
+// You can otherwise tell it which files to load (there can be more than one) like
+//
+//		godotenv.Overload("fileone", "filetwo")
+//
+// It's important to note this WILL OVERRIDE an env variable that already exists - consider the .env file to forcefilly set all vars.
+func Overload(filenames ...string) (err error) {
+	filenames = filenamesOrDefault(filenames)
+
+	for _, filename := range filenames {
+		err = loadFile(filename, true)
+		if err != nil {
+			return // return early on a spazout
+		}
+	}
+	return
+}
+
+// Read all env (with same file loading semantics as Load) but return values as
+// a map rather than automatically writing values into env
 func Read(filenames ...string) (envMap map[string]string, err error) {
 	filenames = filenamesOrDefault(filenames)
 	envMap = make(map[string]string)
@@ -70,15 +89,13 @@ func Read(filenames ...string) (envMap map[string]string, err error) {
 	return
 }
 
-/*
-  Loads env vars from the specified filenames (empty map falls back to default)
-  then executes the cmd specified.
-
-  Simply hooks up os.Stdin/err/out to the command and calls Run()
-
-  If you want more fine grained control over your command it's recommended
-  that you use `Load()` or `Read()` and the `os/exec` package yourself.
-*/
+// Exec loads env vars from the specified filenames (empty map falls back to default)
+// then executes the cmd specified.
+//
+// Simply hooks up os.Stdin/err/out to the command and calls Run()
+//
+// If you want more fine grained control over your command it's recommended
+// that you use `Load()` or `Read()` and the `os/exec` package yourself.
 func Exec(filenames []string, cmd string, cmdArgs []string) error {
 	Load(filenames...)
 
@@ -92,22 +109,23 @@ func Exec(filenames []string, cmd string, cmdArgs []string) error {
 func filenamesOrDefault(filenames []string) []string {
 	if len(filenames) == 0 {
 		return []string{".env"}
-	} else {
-		return filenames
 	}
+	return filenames
 }
 
-func loadFile(filename string) (err error) {
+func loadFile(filename string, overload bool) error {
 	envMap, err := readFile(filename)
 	if err != nil {
-		return
+		return err
 	}
 
 	for key, value := range envMap {
-		os.Setenv(key, value)
+		if os.Getenv(key) == "" || overload {
+			os.Setenv(key, value)
+		}
 	}
 
-	return
+	return nil
 }
 
 func readFile(filename string) (envMap map[string]string, err error) {
@@ -125,13 +143,19 @@ func readFile(filename string) (envMap map[string]string, err error) {
 		lines = append(lines, scanner.Text())
 	}
 
+	if err = scanner.Err(); err != nil {
+		return
+	}
+
 	for _, fullLine := range lines {
 		if !isIgnoredLine(fullLine) {
-			key, value, err := parseLine(fullLine)
+			var key, value string
+			key, value, err = parseLine(fullLine)
 
-			if err == nil && os.Getenv(key) == "" {
-				envMap[key] = value
+			if err != nil {
+				return
 			}
+			envMap[key] = value
 		}
 	}
 	return
@@ -147,7 +171,7 @@ func parseLine(line string) (key string, value string, err error) {
 	if strings.Contains(line, "#") {
 		segmentsBetweenHashes := strings.Split(line, "#")
 		quotesAreOpen := false
-		segmentsToKeep := make([]string, 0)
+		var segmentsToKeep []string
 		for _, segment := range segmentsBetweenHashes {
 			if strings.Count(segment, "\"") == 1 || strings.Count(segment, "'") == 1 {
 				if quotesAreOpen {

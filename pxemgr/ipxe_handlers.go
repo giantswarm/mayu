@@ -17,6 +17,8 @@ import (
 	"github.com/giantswarm/mayu/infopusher/machinedata"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 )
 
 const (
@@ -695,4 +697,29 @@ func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
 	}
 
 	return coreOSversion
+}
+
+func (mgr *pxeManagerT) getMayuConfig(w http.ResponseWriter, r *http.Request) {
+	confBytes, err := yaml.Marshal(mgr.config)
+	if err != nil {
+		return
+	}
+	io.WriteString(w, string(confBytes))
+}
+
+func (mgr *pxeManagerT) setMayuConfig(w http.ResponseWriter, r *http.Request) {
+	var conf Configuration
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+	err = yaml.Unmarshal(data, &conf)
+	if err != nil {
+		panic(err)
+	}
+	// save config to file
+	saveConfig(mgr.configFile, conf)
+	// reload current config
+	mgr.reloadConfig()
 }

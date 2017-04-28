@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"strings"
 
+	"crypto/tls"
+	"crypto/x509"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"crypto/x509"
-	"crypto/tls"
 )
 
 type EtcdNode struct {
@@ -108,7 +108,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	}
 	u, err := url.Parse(mgr.etcdEndpoint)
 	if err != nil {
-		return nil, errors.New("invalid etcd-endpoint: "+err.Error())
+		return nil, errors.New("invalid etcd-endpoint: " + err.Error())
 	}
 
 	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))
@@ -120,11 +120,11 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 
 		pemData, err := ioutil.ReadFile(mgr.etcdCAFile)
 		if err != nil {
-			return nil, errors.New("unable to read custom CA file: "+err.Error())
+			return nil, errors.New("unable to read custom CA file: " + err.Error())
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs:customCA},
+			TLSClientConfig: &tls.Config{RootCAs: customCA},
 		}
 	}
 
@@ -140,7 +140,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 
 		copyHeader(outreq.Header, r.Header)
 
-		client := http.Client{Transport:transport}
+		client := http.Client{Transport: transport}
 		resp, err := client.Do(outreq)
 		if err != nil {
 			return nil, err

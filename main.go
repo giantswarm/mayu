@@ -43,7 +43,7 @@ const (
 	DefaultEtcdQuorumSize           int    = 3
 	DefaultEtcdDiscoveryUrl         string = ""
 	DefaultEtcdEndpoint             string = "http://127.0.0.1:2379"
-	DefaultEtcdCA			string = ""
+	DefaultEtcdCA                   string = ""
 )
 
 type MayuFlags struct {
@@ -74,7 +74,7 @@ type MayuFlags struct {
 	etcdQuorumSize           int
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
-	etcdCAfile		 string
+	etcdCAfile               string
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
@@ -228,7 +228,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		EtcdQuorumSize:           globalFlags.etcdQuorumSize,
 		EtcdDiscoveryUrl:         globalFlags.etcdDiscoveryUrl,
 		EtcdEndpoint:             globalFlags.etcdEndpoint,
-		EtcdCAFile:		  globalFlags.etcdCAfile,
+		EtcdCAFile:               globalFlags.etcdCAfile,
 		DNSmasqExecutable:        globalFlags.dnsmasq,
 		DNSmasqTemplate:          globalFlags.dnsmasqTemplate,
 		TFTPRoot:                 globalFlags.tFTPRoot,

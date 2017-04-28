@@ -21,7 +21,7 @@ type PXEManagerConfiguration struct {
 	EtcdQuorumSize           int
 	EtcdDiscoveryUrl         string
 	EtcdEndpoint             string
-	EtcdCAFile		 string
+	EtcdCAFile               string
 	DNSmasqExecutable        string
 	DNSmasqTemplate          string
 	TFTPRoot                 string
@@ -59,10 +59,11 @@ type pxeManagerT struct {
 	defaultEtcdQuorumSize    int
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
-	etcdCAFile		 string
+	etcdCAFile               string
 	version                  string
+	configFile               string
 
-	config  *configuration
+	config  *Configuration
 	cluster *hostmgr.Cluster
 	DNSmasq *DNSmasqInstance
 
@@ -72,7 +73,7 @@ type pxeManagerT struct {
 }
 
 func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManagerT, error) {
-	conf, err := loadConfig(c.ConfigFile)
+	conf, err := LoadConfig(c.ConfigFile)
 	if err != nil {
 		glog.Fatalln(err)
 	}
@@ -109,7 +110,8 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		defaultEtcdQuorumSize:    c.EtcdQuorumSize,
 		etcdDiscoveryUrl:         c.EtcdDiscoveryUrl,
 		etcdEndpoint:             c.EtcdEndpoint,
-		etcdCAFile:		  c.EtcdCAFile,
+		etcdCAFile:               c.EtcdCAFile,
+		configFile:               c.ConfigFile,
 		version:                  c.Version,
 
 		config:  &conf,
@@ -211,6 +213,9 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
 	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
+
+	mgr.router.Methods("GET").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.getMayuConfig)
+	mgr.router.Methods("PUT").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.setMayuConfig)
 
 	// etcd discovery
 	if mgr.useInternalEtcdDiscovery {
@@ -342,6 +347,14 @@ func (mgr *pxeManagerT) thisHost() string {
 	}
 
 	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.httpPort)
+}
+
+func (mgr *pxeManagerT) reloadConfig() {
+	newConf, err := LoadConfig(mgr.configFile)
+	if err != nil {
+		glog.Fatalln(err)
+	}
+	mgr.config = &newConf
 }
 
 func httpError(w http.ResponseWriter, msg string, status int) {

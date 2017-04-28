@@ -55,7 +55,7 @@ func (mgr *pxeManagerT) WriteLastStageCC(host hostmgr.Host, wr io.Writer) error 
 	ctx := struct {
 		Host             hostmgr.Host
 		EtcdDiscoveryUrl string
-		ClusterNetwork   network
+		ClusterNetwork   Network
 		MayuHost         string
 		MayuPort         int
 		MayuURL          string
