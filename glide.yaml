@@ -25,3 +25,5 @@ import:
 - package: gopkg.in/yaml.v2
 - package: github.com/juju/errgo
 - package: github.com/coreos/go-semver
+  subpackages:
+  - semver
