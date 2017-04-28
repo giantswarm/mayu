@@ -16,27 +16,25 @@ package exec
 
 import (
 	"encoding/json"
-	"errors"
 	"io/ioutil"
-	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/coreos/ignition/config"
 	"github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/config/validate/report"
 	"github.com/coreos/ignition/internal/exec/stages"
+	"github.com/coreos/ignition/internal/exec/util"
 	"github.com/coreos/ignition/internal/log"
 	"github.com/coreos/ignition/internal/providers"
-	putil "github.com/coreos/ignition/internal/providers/util"
-	"github.com/coreos/ignition/internal/util"
+	"github.com/coreos/ignition/internal/providers/cmdline"
+	"github.com/coreos/ignition/internal/resource"
+
+	"golang.org/x/net/context"
 )
 
 const (
 	DefaultOnlineTimeout = time.Minute
-)
-
-var (
-	ErrSchemeUnsupported = errors.New("unsupported url scheme")
-	ErrNetworkFailure    = errors.New("network failure")
 )
 
 var (
@@ -45,7 +43,7 @@ var (
 		Storage: types.Storage{
 			Filesystems: []types.Filesystem{{
 				Name: "root",
-				Path: "/sysroot",
+				Path: func(p types.Path) *types.Path { return &p }("/sysroot"),
 			}},
 		},
 	}
@@ -53,35 +51,40 @@ var (
 
 // Engine represents the entity that fetches and executes a configuration.
 type Engine struct {
-	ConfigCache   string
-	OnlineTimeout time.Duration
-	Logger        *log.Logger
-	Root          string
-	Provider      providers.Provider
-	OemConfig     types.Config
+	ConfigCache       string
+	Logger            *log.Logger
+	Root              string
+	FetchFunc         providers.FuncFetchConfig
+	OemBaseConfig     types.Config
+	DefaultUserConfig types.Config
+
+	client resource.HttpClient
 }
 
 // Run executes the stage of the given name. It returns true if the stage
 // successfully ran and false if there were any errors.
 func (e Engine) Run(stageName string) bool {
+	e.client = resource.NewHttpClient(e.Logger)
+
 	cfg, err := e.acquireConfig()
 	switch err {
-	case config.ErrEmpty, nil:
-		e.Logger.PushPrefix(stageName)
-		defer e.Logger.PopPrefix()
-		return stages.Get(stageName).Create(e.Logger, e.Root).Run(config.Append(config.Append(baseConfig, e.OemConfig), cfg))
-	case config.ErrCloudConfig, config.ErrScript:
-		e.Logger.Info("%v: ignoring and exiting...", err)
-		return true
+	case nil:
+	case config.ErrCloudConfig, config.ErrScript, config.ErrEmpty:
+		e.Logger.Info("%v: ignoring user-provided config", err)
+		cfg = e.DefaultUserConfig
 	default:
 		e.Logger.Crit("failed to acquire config: %v", err)
 		return false
 	}
+
+	e.Logger.PushPrefix(stageName)
+	defer e.Logger.PopPrefix()
+	return stages.Get(stageName).Create(e.Logger, &e.client, e.Root).Run(config.Append(baseConfig, config.Append(e.OemBaseConfig, cfg)))
 }
 
 // acquireConfig returns the configuration, first checking a local cache
 // before attempting to fetch it from the provider.
-func (e Engine) acquireConfig() (cfg types.Config, err error) {
+func (e *Engine) acquireConfig() (cfg types.Config, err error) {
 	// First try read the config @ e.ConfigCache.
 	b, err := ioutil.ReadFile(e.ConfigCache)
 	if err == nil {
@@ -97,7 +100,6 @@ func (e Engine) acquireConfig() (cfg types.Config, err error) {
 		e.Logger.Crit("failed to fetch config: %s", err)
 		return
 	}
-	e.Logger.Debug("fetched config: %+v", cfg)
 
 	// Populate the config cache.
 	b, err = json.Marshal(cfg)
@@ -113,24 +115,24 @@ func (e Engine) acquireConfig() (cfg types.Config, err error) {
 	return
 }
 
-// fetchProviderConfig returns the configuration from the engine's provider
-// returning an error if the provider is unavailable. This will also render the
-// config (see renderConfig) before returning.
+// fetchProviderConfig returns the externally-provided configuration. It first
+// checks to see if the command-line option is present. If so, it uses that
+// source for the configuration. If the command-line option is not present, it
+// check's the engine's provider. An error is returned if the provider is
+// unavailable. This will also render the config (see renderConfig) before
+// returning.
 func (e Engine) fetchProviderConfig() (types.Config, error) {
-	if err := putil.WaitUntilOnline(e.Provider, e.OnlineTimeout); err != nil {
+	cfg, r, err := cmdline.FetchConfig(e.Logger, &e.client)
+	if err == providers.ErrNoProvider {
+		cfg, r, err = e.FetchFunc(e.Logger, &e.client)
+	}
+
+	e.logReport(r)
+	if err != nil {
 		return types.Config{}, err
 	}
 
-	cfg, err := e.Provider.FetchConfig()
-	switch err {
-	case config.ErrDeprecated:
-		e.Logger.Warning("%v: the provided config format is deprecated and will not be supported in the future", err)
-		fallthrough
-	case nil:
-		return e.renderConfig(cfg)
-	default:
-		return types.Config{}, err
-	}
+	return e.renderConfig(cfg)
 }
 
 // renderConfig evaluates "ignition.config.replace" and "ignition.config.append"
@@ -139,7 +141,7 @@ func (e Engine) fetchProviderConfig() (types.Config, error) {
 // "ignition.config.append" is set, each of the referenced configs will be
 // evaluated and appended to the provided config. If neither option is set, the
 // provided config will be returned unmodified.
-func (e Engine) renderConfig(cfg types.Config) (types.Config, error) {
+func (e *Engine) renderConfig(cfg types.Config) (types.Config, error) {
 	if cfgRef := cfg.Ignition.Config.Replace; cfgRef != nil {
 		return e.fetchReferencedConfig(*cfgRef)
 	}
@@ -159,26 +161,35 @@ func (e Engine) renderConfig(cfg types.Config) (types.Config, error) {
 // fetchReferencedConfig fetches, renders, and attempts to verify the requested
 // config.
 func (e Engine) fetchReferencedConfig(cfgRef types.ConfigReference) (types.Config, error) {
-	var rawCfg []byte
-	switch cfgRef.Source.Scheme {
-	case "http":
-		rawCfg = util.NewHttpClient(e.Logger).
-			FetchConfig(cfgRef.Source.String(), http.StatusOK, http.StatusNoContent)
-		if rawCfg == nil {
-			return types.Config{}, ErrNetworkFailure
-		}
-	default:
-		return types.Config{}, ErrSchemeUnsupported
+	rawCfg, err := resource.Fetch(e.Logger, &e.client, context.Background(), url.URL(cfgRef.Source))
+	if err != nil {
+		return types.Config{}, err
 	}
 
 	if err := util.AssertValid(cfgRef.Verification, rawCfg); err != nil {
 		return types.Config{}, err
 	}
 
-	cfg, err := config.Parse(rawCfg)
+	cfg, r, err := config.Parse(rawCfg)
+	e.logReport(r)
 	if err != nil {
 		return types.Config{}, err
 	}
 
 	return e.renderConfig(cfg)
+}
+
+func (e Engine) logReport(r report.Report) {
+	for _, entry := range r.Entries {
+		switch entry.Kind {
+		case report.EntryError:
+			e.Logger.Crit("%v", entry)
+		case report.EntryWarning:
+			e.Logger.Warning("%v", entry)
+		case report.EntryDeprecated:
+			e.Logger.Warning("%v: the provided config format is deprecated and will not be supported in the future.", entry)
+		case report.EntryInfo:
+			e.Logger.Info("%v", entry)
+		}
+	}
 }

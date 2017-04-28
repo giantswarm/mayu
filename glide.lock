@@ -1,8 +1,6 @@
-hash: 4e946390e9c76ff13f431bc76d1b7185cb58e40e7e824f4bb179625c1e5ab947
-updated: 2017-04-28T12:17:57.27903305+02:00
+hash: 6876c7ee22b6522e7adf4027daba5845d35ac74b8bc1f812207843a3ab12da7b
+updated: 2017-04-28T15:42:29.551264027+02:00
 imports:
-- name: github.com/alecthomas/units
-  version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/coreos/etcd
   version: e5b7ee2d03627ca33201da428b8110ef7c3e95f1
   subpackages:
@@ -10,15 +8,27 @@ imports:
   - pkg/pathutil
   - pkg/types
 - name: github.com/coreos/go-semver
-  version: 294930c1e79c64e7dbe360054274fdad492c8cf5
+  version: 568e959cd89871e61434c1143528d9162da89ef2
   subpackages:
   - semver
+- name: github.com/coreos/go-systemd
+  version: 48702e0da86bd25e76cfef347e2adeb434a0d0a6
+  subpackages:
+  - daemon
+  - journal
+  - unit
+  - util
 - name: github.com/coreos/ignition
-  version: 4e26b268eabaaa746c42418084e3169d9d3d87a5
+  version: f8d31e31361479ea4b0bc6704514d87c475160db
   subpackages:
   - config/types
+  - config/validate/report
+- name: github.com/cpuguy83/go-md2man
+  version: a65d4d2de4d5f7c74868dfa9b202a3c8be315aaa
+  subpackages:
+  - md2man
 - name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/handlers
@@ -31,20 +41,26 @@ imports:
   version: 726cc8b906e3d31c70a9671c90a13716a8d3f50d
 - name: github.com/juju/errgo
   version: 08cceb5d0b5331634b9826762a8fd53b29b86ad8
+- name: github.com/russross/blackfriday
+  version: b253417e1cb644d645a0a3bb1fa5034c8030127c
 - name: github.com/ryanuber/columnize
   version: 983d3a5fab1bf04d1b412465d2d9f8430e2e917e
+- name: github.com/shurcooL/sanitized_anchor_name
+  version: 79c90efaf01eddc01945af5bc1797859189b830b
 - name: github.com/spf13/cobra
-  version: 65a708cee0a4424f4e353d031ce440643e312f92
+  version: 83773614293e6c9406454a53ce5e263500ce6e44
 - name: github.com/spf13/pflag
-  version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
+  version: 2300d0f8576fe575f71aaa5b9bbe4e1b0dc2eb51
 - name: github.com/ugorji/go
-  version: 98ef79d6c615fa258e892ed0b11c6e013712693e
+  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
+- name: github.com/vincent-petithory/dataurl
+  version: 9a301d65acbb728fcc3ace14f45f511a4cfeea9c
 - name: golang.org/x/net
-  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []
