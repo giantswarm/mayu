@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	mayuerror "github.com/giantswarm/mayu/error"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/logging"
 	"github.com/golang/glog"
@@ -28,8 +29,9 @@ type PXEManagerConfiguration struct {
 	NoTLS                    bool
 	TLSCertFile              string
 	TLSKeyFile               string
-	HTTPPort                 int
-	HTTPBindAddress          string
+	APIPort                  int
+	PXEPort                  int
+	BindAddress              string
 	YochuPath                string
 	StaticHTMLPath           string
 	TemplateSnippets         string
@@ -43,8 +45,9 @@ type PXEManagerConfiguration struct {
 
 type pxeManagerT struct {
 	noTLS                    bool
-	httpPort                 int
-	httpBindAddress          string
+	apiPort                  int
+	pxePort                  int
+	bindAddress              string
 	tlsCertFile              string
 	tlsKeyFile               string
 	yochuPath                string
@@ -69,7 +72,8 @@ type pxeManagerT struct {
 
 	mu *sync.Mutex
 
-	router *mux.Router
+	apiRouter *mux.Router
+	pxeRouter *mux.Router
 }
 
 func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManagerT, error) {
@@ -80,6 +84,10 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 
 	if conf.DefaultCoreOSVersion == "" {
 		glog.Fatalf("No default_coreos_version specified in %s\n", c.ConfigFile)
+	}
+
+	if c.APIPort == c.PXEPort {
+		glog.Fatalln("API port and PXE port cannot be same")
 	}
 
 	if c.EtcdDiscoveryUrl != "" && c.UseInternalEtcdDiscovery {
@@ -94,8 +102,9 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 
 	mgr := &pxeManagerT{
 		noTLS:                    c.NoTLS,
-		httpPort:                 c.HTTPPort,
-		httpBindAddress:          c.HTTPBindAddress,
+		apiPort:                  c.APIPort,
+		pxePort:                  c.PXEPort,
+		bindAddress:              c.BindAddress,
 		tlsCertFile:              c.TLSCertFile,
 		tlsKeyFile:               c.TLSKeyFile,
 		yochuPath:                c.YochuPath,
@@ -120,8 +129,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			Executable: c.DNSmasqExecutable,
 			Template:   c.DNSmasqTemplate,
 			TFTPRoot:   c.TFTPRoot,
-			NoTLS:      c.NoTLS,
-			HTTPPort:   c.HTTPPort,
+			PXEPort:    c.PXEPort,
 		}),
 		mu: new(sync.Mutex),
 	}
@@ -174,7 +182,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 	}
 
 	if mgr.useInternalEtcdDiscovery {
-		mgr.etcdDiscoveryUrl = mgr.thisHost() + "/etcd"
+		mgr.etcdDiscoveryUrl = mgr.apiURL() + "/etcd"
 	}
 
 	return mgr, nil
@@ -187,77 +195,97 @@ func withSerialParam(serialHandler func(serial string, w http.ResponseWriter, r 
 	}
 }
 
-func (mgr *pxeManagerT) startIPXEserver() error {
-	mgr.router = mux.NewRouter()
+func (mgr *pxeManagerT) startIPXEserver(errChan chan error) {
+	mgr.pxeRouter = mux.NewRouter()
 
 	// first stage ipxe boot script
-	mgr.router.Methods("GET").PathPrefix("/ipxebootscript").HandlerFunc(mgr.ipxeBootScript)
-	mgr.router.Methods("GET").PathPrefix("/first-stage-script/{serial}").HandlerFunc(mgr.firstStageScriptGenerator)
+	mgr.pxeRouter.Methods("GET").PathPrefix("/ipxebootscript").HandlerFunc(mgr.ipxeBootScript)
+	mgr.pxeRouter.Methods("GET").PathPrefix("/first-stage-script/{serial}").HandlerFunc(mgr.firstStageScriptGenerator)
 
 	// used by the first-stage-script:
-	mgr.router.Methods("GET").PathPrefix("/hostinfo-helper").HandlerFunc(mgr.infoPusher)
+	mgr.pxeRouter.Methods("GET").PathPrefix("/hostinfo-helper").HandlerFunc(mgr.infoPusher)
 
 	if mgr.useIgnition {
-		mgr.router.Methods("POST").PathPrefix("/final-ignition-config.json").HandlerFunc(mgr.configGenerator)
+		mgr.pxeRouter.Methods("POST").PathPrefix("/final-ignition-config.json").HandlerFunc(mgr.configGenerator)
 	} else {
-		mgr.router.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
-	}
-
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/boot_complete").HandlerFunc(withSerialParam(mgr.bootComplete))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_installed").HandlerFunc(withSerialParam(mgr.setInstalled))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_metadata").HandlerFunc(withSerialParam(mgr.setMetadata))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/mark_fresh").HandlerFunc(withSerialParam(mgr.markFresh))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_provider_id").HandlerFunc(withSerialParam(mgr.setProviderId))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_ipmi_addr").HandlerFunc(withSerialParam(mgr.setIPMIAddr))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_cabinet").HandlerFunc(withSerialParam(mgr.setCabinet))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
-	mgr.router.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
-
-	mgr.router.Methods("GET").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.getMayuConfig)
-	mgr.router.Methods("PUT").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.setMayuConfig)
-
-	// etcd discovery
-	if mgr.useInternalEtcdDiscovery {
-		etcdRouter := mgr.router.PathPrefix("/etcd").Subrouter()
-		mgr.defineEtcdDiscoveryRoutes(etcdRouter)
+		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 	}
 
 	// boring stuff
-	mgr.router.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
-	mgr.router.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
+	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
 	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
-	mgr.router.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(mgr.yochuPath))))
+	mgr.pxeRouter.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(mgr.yochuPath))))
 
 	// add welcome handler for debugging
-	mgr.router.Path("/").HandlerFunc(mgr.welcomeHandler)
+	mgr.pxeRouter.Path("/").HandlerFunc(mgr.welcomeHandler)
 
 	// serve static files like infopusher and mayuctl etc.
-	mgr.router.PathPrefix("/").Handler(http.FileServer(http.Dir(mgr.staticHTMLPath)))
+	mgr.pxeRouter.PathPrefix("/").Handler(http.FileServer(http.Dir(mgr.staticHTMLPath)))
 
 	glogWrapper := logging.NewGlogWrapper(8)
-	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.router)
+	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.pxeRouter)
 
-	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.httpBindAddress, mgr.httpPort))
+	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
 
-	if mgr.noTLS {
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.httpBindAddress, mgr.httpPort), loggedRouter)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", mgr.httpBindAddress, mgr.httpPort), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
-		if err != nil {
-			return err
-		}
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.bindAddress, mgr.pxePort), loggedRouter)
+	if err != nil {
+		errChan <- mayuerror.MaskAny(err)
+		return
+	}
+	errChan <- nil
+}
+
+func (mgr *pxeManagerT) startAPIserver(errChan chan error) {
+	mgr.apiRouter = mux.NewRouter()
+
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/boot_complete").HandlerFunc(withSerialParam(mgr.bootComplete))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_installed").HandlerFunc(withSerialParam(mgr.setInstalled))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_metadata").HandlerFunc(withSerialParam(mgr.setMetadata))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/mark_fresh").HandlerFunc(withSerialParam(mgr.markFresh))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_provider_id").HandlerFunc(withSerialParam(mgr.setProviderId))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_ipmi_addr").HandlerFunc(withSerialParam(mgr.setIPMIAddr))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_cabinet").HandlerFunc(withSerialParam(mgr.setCabinet))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
+
+	mgr.apiRouter.Methods("GET").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.getMayuConfig)
+	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.setMayuConfig)
+
+	mgr.apiRouter.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
+	// etcd discovery
+	if mgr.useInternalEtcdDiscovery {
+		etcdRouter := mgr.apiRouter.PathPrefix("/etcd").Subrouter()
+		mgr.defineEtcdDiscoveryRoutes(etcdRouter)
 	}
 
-	return nil
+	// add welcome handler for debugging
+	mgr.apiRouter.Path("/").HandlerFunc(mgr.welcomeHandler)
+
+	glogWrapper := logging.NewGlogWrapper(8)
+	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.apiRouter)
+
+	glog.V(8).Infoln(fmt.Sprintf("starting API server at %s:%d", mgr.bindAddress, mgr.apiPort))
+
+	if mgr.noTLS {
+		err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.bindAddress, mgr.apiPort), loggedRouter)
+		if err != nil {
+			errChan <- mayuerror.MaskAny(err)
+			return
+		}
+	} else {
+		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", mgr.bindAddress, mgr.apiPort), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
+		if err != nil {
+			errChan <- mayuerror.MaskAny(err)
+			return
+		}
+	}
+	errChan <- nil
 }
 
 func (mgr *pxeManagerT) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	mgr.router.ServeHTTP(w, r)
+	mgr.apiRouter.ServeHTTP(w, r)
 }
 
 func (mgr *pxeManagerT) updateDNSmasqs() error {
@@ -301,7 +329,11 @@ func (mgr *pxeManagerT) Start() error {
 		return err
 	}
 
-	return mgr.startIPXEserver()
+	errChan := make(chan error)
+	go mgr.startIPXEserver(errChan)
+	go mgr.startAPIserver(errChan)
+
+	return <-errChan
 }
 
 func (mgr *pxeManagerT) getNextProfile() string {
@@ -340,13 +372,17 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 	return net.IP{}
 }
 
-func (mgr *pxeManagerT) thisHost() string {
+func (mgr *pxeManagerT) apiURL() string {
 	scheme := "https"
 	if mgr.noTLS {
 		scheme = "http"
 	}
 
-	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.httpPort)
+	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.apiPort)
+}
+
+func (mgr *pxeManagerT) pxeURL() string {
+	return fmt.Sprintf("http://%s:%d", mgr.config.Network.BindAddr, mgr.pxePort)
 }
 
 func (mgr *pxeManagerT) reloadConfig() {

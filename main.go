@@ -35,7 +35,8 @@ const (
 	DefaultIgnitionTemplateSnippets string = "./template_snippets/ignition"
 	DefaultDNSMasq                  string = "/usr/sbin/dnsmasq"
 	DefaultImagesCacheDir           string = "./images"
-	DefaultHTTPPort                 int    = 4080
+	DefaultAPIPort                  int    = 4080
+	DefaultPXEPort                  int    = 4081
 	DefaultHTTPBindAddress          string = "0.0.0.0"
 	DefaultTLSCertFile              string = ""
 	DefaultTLSKeyFile               string = ""
@@ -66,8 +67,9 @@ type MayuFlags struct {
 	dnsmasq                  string
 	dnsmasqTemplate          string
 	imagesCacheDir           string
-	httpPort                 int
-	httpBindAddress          string
+	apiPort                  int
+	pxePort                  int
+	bindAddress              string
 	tlsCertFile              string
 	tlsKeyFile               string
 	useInternalEtcdDiscovery bool
@@ -125,8 +127,9 @@ func init() {
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig or Ignition template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
 	pf.StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for CoreOS images")
-	pf.IntVar(&globalFlags.httpPort, "http-port", DefaultHTTPPort, "HTTP port Mayu listens on")
-	pf.StringVar(&globalFlags.httpBindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
+	pf.IntVar(&globalFlags.apiPort, "api-port", DefaultAPIPort, "API HTTP port Mayu listens on")
+	pf.IntVar(&globalFlags.pxePort, "pxe-port", DefaultPXEPort, "PXE HTTP port Mayu listens on")
+	pf.StringVar(&globalFlags.bindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
 	pf.StringVar(&globalFlags.tlsCertFile, "tls-cert-file", DefaultTLSCertFile, "Path to tls certificate file")
 	pf.StringVar(&globalFlags.tlsKeyFile, "tls-key-file", DefaultTLSKeyFile, "Path to tls key file")
 	pf.BoolVar(&globalFlags.useInternalEtcdDiscovery, "use-internal-etcd-discovery", DefaultUseInternalEtcdDiscovery, "Use the internal etcd discovery")
@@ -233,8 +236,9 @@ func mainRun(cmd *cobra.Command, args []string) {
 		DNSmasqTemplate:          globalFlags.dnsmasqTemplate,
 		TFTPRoot:                 globalFlags.tFTPRoot,
 		NoTLS:                    globalFlags.noTLS,
-		HTTPPort:                 globalFlags.httpPort,
-		HTTPBindAddress:          globalFlags.httpBindAddress,
+		APIPort:                  globalFlags.apiPort,
+		PXEPort:                  globalFlags.pxePort,
+		BindAddress:              globalFlags.bindAddress,
 		TLSCertFile:              globalFlags.tlsCertFile,
 		TLSKeyFile:               globalFlags.tlsKeyFile,
 		YochuPath:                globalFlags.yochuPath,

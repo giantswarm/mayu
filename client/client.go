@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	mayuerror "github.com/giantswarm/mayu/error"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
 	"github.com/giantswarm/mayu/pxemgr"
-	mayuerror "github.com/giantswarm/mayu/error"
 	"gopkg.in/yaml.v2"
 )
 

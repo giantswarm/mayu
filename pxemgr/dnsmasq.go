@@ -14,8 +14,7 @@ type DNSmasqConfiguration struct {
 	Executable string
 	Template   string
 	TFTPRoot   string
-	NoTLS      bool
-	HTTPPort   int
+	PXEPort    int
 }
 
 type DNSmasqInstance struct {

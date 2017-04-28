@@ -36,8 +36,8 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString("#!ipxe\n")
-	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.thisHost(), mgr.thisHost(), mgr.thisHost()+"/first-stage-script/__SERIAL__"))
-	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.thisHost()))
+	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
+	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
@@ -48,17 +48,17 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 	serial := strings.ToLower(params["serial"])
 	glog.V(2).Infof("generating a first stage script for '%s'\n", serial)
 
-	infoHelperURL := mgr.thisHost() + "/hostinfo-helper"
-	cloudConfigURL := mgr.thisHost() + "/final-cloud-config.yaml"
+	infoHelperURL := mgr.pxeURL() + "/hostinfo-helper"
+	cloudConfigURL := mgr.pxeURL() + "/final-cloud-config.yaml"
 	ignitionConfigURL := ""
-	setInstalledURL := mgr.thisHost() + "/admin/host/__SERIAL__/set_installed"
-	installImageURL := mgr.thisHost() + "/images/" + serial + "/install_image.bin.bz2"
+	setInstalledURL := mgr.pxeURL() + "/admin/host/__SERIAL__/set_installed"
+	installImageURL := mgr.pxeURL() + "/images/" + serial + "/install_image.bin.bz2"
 	host := mgr.maybeCreateHost(serial)
 
 	if mgr.useIgnition {
-		glog.V(2).Infof("passing Ignition parameter to kernel '%s'\n", mgr.thisHost()+"/final-ignition-config.json")
+		glog.V(2).Infof("passing Ignition parameter to kernel '%s'\n", mgr.pxeURL()+"/final-ignition-config.json")
 		cloudConfigURL = ""
-		ignitionConfigURL = mgr.thisHost() + "/final-ignition-config.json"
+		ignitionConfigURL = mgr.pxeURL() + "/final-ignition-config.json"
 	}
 
 	ctx := struct {
@@ -76,7 +76,7 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 		IgnitionConfigURL: ignitionConfigURL,
 		InstallImageURL:   installImageURL,
 		SetInstalledURL:   setInstalledURL,
-		MayuURL:           mgr.thisHost(),
+		MayuURL:           mgr.apiURL(),
 		MayuVersion:       mgr.version,
 		MachineID:         host.MachineID,
 	}
