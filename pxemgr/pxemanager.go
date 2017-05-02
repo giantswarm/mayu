@@ -14,6 +14,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"net/url"
 )
 
 type PXEManagerConfiguration struct {
@@ -211,7 +212,7 @@ func (mgr *pxeManagerT) startIPXEserver(errChan chan error) {
 		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 	}
 
-	// boring stuff
+	// endpoint for fetching coreos images defined by machine serial number
 	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
 	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
@@ -228,7 +229,7 @@ func (mgr *pxeManagerT) startIPXEserver(errChan chan error) {
 
 	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
 
-	err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.bindAddress, mgr.pxePort), loggedRouter)
+	err := http.ListenAndServe(net.JoinHostPort( mgr.bindAddress, mgr.pxePort), loggedRouter)
 	if err != nil {
 		errChan <- mayuerror.MaskAny(err)
 		return
@@ -238,7 +239,7 @@ func (mgr *pxeManagerT) startIPXEserver(errChan chan error) {
 
 func (mgr *pxeManagerT) startAPIserver(errChan chan error) {
 	mgr.apiRouter = mux.NewRouter()
-
+	//  api endpoint for setting metadata of machine
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/boot_complete").HandlerFunc(withSerialParam(mgr.bootComplete))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_installed").HandlerFunc(withSerialParam(mgr.setInstalled))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_metadata").HandlerFunc(withSerialParam(mgr.setMetadata))
@@ -249,10 +250,10 @@ func (mgr *pxeManagerT) startAPIserver(errChan chan error) {
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
-
+	// get and set operations for mayu config
 	mgr.apiRouter.Methods("GET").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.getMayuConfig)
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.setMayuConfig)
-
+	// list all machines/hosts method
 	mgr.apiRouter.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
 	// etcd discovery
 	if mgr.useInternalEtcdDiscovery {
@@ -269,13 +270,13 @@ func (mgr *pxeManagerT) startAPIserver(errChan chan error) {
 	glog.V(8).Infoln(fmt.Sprintf("starting API server at %s:%d", mgr.bindAddress, mgr.apiPort))
 
 	if mgr.noTLS {
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", mgr.bindAddress, mgr.apiPort), loggedRouter)
+		err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, mgr.apiPort), loggedRouter)
 		if err != nil {
 			errChan <- mayuerror.MaskAny(err)
 			return
 		}
 	} else {
-		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", mgr.bindAddress, mgr.apiPort), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
+		err := http.ListenAndServeTLS(net.JoinHostPort(mgr.bindAddress, mgr.apiPort), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
 		if err != nil {
 			errChan <- mayuerror.MaskAny(err)
 			return
@@ -377,12 +378,11 @@ func (mgr *pxeManagerT) apiURL() string {
 	if mgr.noTLS {
 		scheme = "http"
 	}
-
-	return fmt.Sprintf("%s://%s:%d", scheme, mgr.config.Network.BindAddr, mgr.apiPort)
+	return url.URL{Scheme:scheme, Host:net.JoinHostPort(mgr.config.Network.BindAddr, mgr.apiPort)}.String()
 }
 
 func (mgr *pxeManagerT) pxeURL() string {
-	return fmt.Sprintf("http://%s:%d", mgr.config.Network.BindAddr, mgr.pxePort)
+	return url.URL{Scheme:"http", Host:net.JoinHostPort(mgr.config.Network.BindAddr, mgr.pxePort)}.String()
 }
 
 func (mgr *pxeManagerT) reloadConfig() {
