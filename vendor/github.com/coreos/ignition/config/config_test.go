@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/ignition/config/types"
 	v1 "github.com/coreos/ignition/config/v1"
+	v2_0 "github.com/coreos/ignition/config/v2_0/types"
 )
 
 func TestParse(t *testing.T) {
@@ -37,7 +38,7 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			in:  in{config: []byte(`{"ignitionVersion": 1}`)},
-			out: out{err: ErrDeprecated},
+			out: out{config: types.Config{Ignition: types.Ignition{Version: types.IgnitionVersion(v2_0.MaxVersion)}}},
 		},
 		{
 			in:  in{config: []byte(`{"ignition": {"version": "1.0.0"}}`)},
@@ -45,15 +46,19 @@ func TestParse(t *testing.T) {
 		},
 		{
 			in:  in{config: []byte(`{"ignition": {"version": "2.0.0"}}`)},
-			out: out{config: types.Config{Ignition: types.Ignition{Version: types.IgnitionVersion{Major: 2, Minor: 0}}}},
+			out: out{config: types.Config{Ignition: types.Ignition{Version: types.IgnitionVersion(types.MaxVersion)}}},
+		},
+		{
+			in:  in{config: []byte(`{"ignition": {"version": "2.1.0-experimental"}}`)},
+			out: out{config: types.Config{Ignition: types.Ignition{Version: types.IgnitionVersion(types.MaxVersion)}}},
 		},
 		{
 			in:  in{config: []byte(`{"ignition": {"version": "2.1.0"}}`)},
-			out: out{err: types.ErrNewVersion},
+			out: out{err: ErrInvalid},
 		},
 		{
 			in:  in{config: []byte(`{}`)},
-			out: out{err: types.ErrOldVersion},
+			out: out{err: ErrInvalid},
 		},
 		{
 			in:  in{config: []byte{}},
@@ -91,7 +96,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		config, err := Parse(test.in.config)
+		config, _, err := Parse(test.in.config)
 		if test.out.err != err {
 			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.err, err)
 		}

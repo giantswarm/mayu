@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
+	"github.com/inconshreveable/mousetrap"
 	flag "github.com/spf13/pflag"
 )
 
@@ -90,8 +92,6 @@ type Command struct {
 	PersistentPostRun func(cmd *Command, args []string)
 	// PersistentPostRunE: PersistentPostRun but returns an error
 	PersistentPostRunE func(cmd *Command, args []string) error
-	// DisableAutoGenTag remove
-	DisableAutoGenTag bool
 	// Commands is the list of commands supported by this program.
 	commands []*Command
 	// Parent Command for this command
@@ -473,29 +473,15 @@ func (c *Command) SuggestionsFor(typedName string) []string {
 	return suggestions
 }
 
-func (c *Command) VisitParents(fn func(*Command)) {
-	var traverse func(*Command) *Command
-
-	traverse = func(x *Command) *Command {
-		if x != c {
-			fn(x)
-		}
-		if x.HasParent() {
-			return traverse(x.parent)
-		}
-		return x
-	}
-	traverse(c)
-}
-
 func (c *Command) Root() *Command {
 	var findRoot func(*Command) *Command
 
 	findRoot = func(x *Command) *Command {
 		if x.HasParent() {
 			return findRoot(x.parent)
+		} else {
+			return x
 		}
-		return x
 	}
 
 	return findRoot(c)
@@ -611,21 +597,19 @@ func (c *Command) errorMsgFromParse() string {
 // Call execute to use the args (os.Args[1:] by default)
 // and run through the command tree finding appropriate matches
 // for commands and then corresponding flags.
-func (c *Command) Execute() error {
-	_, err := c.ExecuteC()
-	return err
-}
-
-func (c *Command) ExecuteC() (cmd *Command, err error) {
+func (c *Command) Execute() (err error) {
 
 	// Regardless of what command execute is called on, run on Root only
 	if c.HasParent() {
-		return c.Root().ExecuteC()
+		return c.Root().Execute()
 	}
 
-	// windows hook
-	if preExecHookFn != nil {
-		preExecHookFn(c)
+	if EnableWindowsMouseTrap && runtime.GOOS == "windows" {
+		if mousetrap.StartedByExplorer() {
+			c.Print(MousetrapHelpText)
+			time.Sleep(5 * time.Second)
+			os.Exit(1)
+		}
 	}
 
 	// initialize help as the last point possible to allow for user
@@ -634,8 +618,7 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 
 	var args []string
 
-	// Workaround FAIL with "go test -v" or "cobra.test -test.v", see #155
-	if c.args == nil && filepath.Base(os.Args[0]) != "cobra.test" {
+	if len(c.args) == 0 {
 		args = os.Args[1:]
 	} else {
 		args = c.args
@@ -651,31 +634,28 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 			c.Println("Error:", err.Error())
 			c.Printf("Run '%v --help' for usage.\n", c.CommandPath())
 		}
-		return c, err
+		return err
 	}
+
 	err = cmd.execute(flags)
 	if err != nil {
-		// Always show help if requested, even if SilenceErrors is in
-		// effect
-		if err == flag.ErrHelp {
-			cmd.HelpFunc()(cmd, args)
-			return cmd, nil
-		}
-
-		// If root command has SilentErrors flagged,
-		// all subcommands should respect it
-		if !cmd.SilenceErrors && !c.SilenceErrors {
-			c.Println("Error:", err.Error())
-		}
-
 		// If root command has SilentUsage flagged,
 		// all subcommands should respect it
 		if !cmd.SilenceUsage && !c.SilenceUsage {
 			c.Println(cmd.UsageString())
 		}
-		return cmd, err
+		// If root command has SilentErrors flagged,
+		// all subcommands should respect it
+		if !cmd.SilenceErrors && !c.SilenceErrors {
+			if err == flag.ErrHelp {
+				cmd.HelpFunc()(cmd, args)
+				return nil
+			}
+			c.Println("Error:", err.Error())
+		}
+		return err
 	}
-	return cmd, nil
+	return
 }
 
 func (c *Command) initHelpFlag() {
@@ -744,7 +724,7 @@ func (c *Command) AddCommand(cmds ...*Command) {
 		if nameLen > c.commandsMaxNameLen {
 			c.commandsMaxNameLen = nameLen
 		}
-		// If global normalization function exists, update all children
+		// If glabal normalization function exists, update all children
 		if c.globNormFunc != nil {
 			x.SetGlobalNormalizationFunc(c.globNormFunc)
 		}
