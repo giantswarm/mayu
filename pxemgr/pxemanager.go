@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"net/url"
+	"strconv"
 )
 
 type PXEManagerConfiguration struct {
@@ -229,7 +230,7 @@ func (mgr *pxeManagerT) startIPXEserver(errChan chan error) {
 
 	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
 
-	err := http.ListenAndServe(net.JoinHostPort( mgr.bindAddress, mgr.pxePort), loggedRouter)
+	err := http.ListenAndServe(net.JoinHostPort( mgr.bindAddress, strconv.Itoa(mgr.pxePort)), loggedRouter)
 	if err != nil {
 		errChan <- mayuerror.MaskAny(err)
 		return
@@ -270,13 +271,13 @@ func (mgr *pxeManagerT) startAPIserver(errChan chan error) {
 	glog.V(8).Infoln(fmt.Sprintf("starting API server at %s:%d", mgr.bindAddress, mgr.apiPort))
 
 	if mgr.noTLS {
-		err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, mgr.apiPort), loggedRouter)
+		err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.apiPort)), loggedRouter)
 		if err != nil {
 			errChan <- mayuerror.MaskAny(err)
 			return
 		}
 	} else {
-		err := http.ListenAndServeTLS(net.JoinHostPort(mgr.bindAddress, mgr.apiPort), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
+		err := http.ListenAndServeTLS(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.apiPort)), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
 		if err != nil {
 			errChan <- mayuerror.MaskAny(err)
 			return
@@ -378,11 +379,13 @@ func (mgr *pxeManagerT) apiURL() string {
 	if mgr.noTLS {
 		scheme = "http"
 	}
-	return url.URL{Scheme:scheme, Host:net.JoinHostPort(mgr.config.Network.BindAddr, mgr.apiPort)}.String()
+	u := url.URL{Scheme:scheme, Host:net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.apiPort))}
+	return u.String()
 }
 
 func (mgr *pxeManagerT) pxeURL() string {
-	return url.URL{Scheme:"http", Host:net.JoinHostPort(mgr.config.Network.BindAddr, mgr.pxePort)}.String()
+	u := url.URL{Scheme:"http", Host:net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort))}
+	return u.String()
 }
 
 func (mgr *pxeManagerT) reloadConfig() {
