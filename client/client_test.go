@@ -413,8 +413,8 @@ func Test_Client_013(t *testing.T) {
 		t.Fatalf("Client.List returned error: %#v", err)
 	}
 
-	if reflect.DeepEqual(list, expectedList) {
-		t.Fatalf("expected list to be '%s', got '%s'", expectedList, list)
+	if !reflect.DeepEqual(list, expectedList) {
+		t.Fatalf("expected %#v got %#v", expectedList, list)
 	}
 
 	assertMethod(t, response, "GET")
@@ -502,8 +502,8 @@ func Test_Client_016(t *testing.T) {
 		t.Fatalf("Client.Status returned error: %#v", err)
 	}
 
-	if reflect.DeepEqual(host, expectedHost) {
-		t.Fatalf("expected host to be '%s', got '%s'", expectedHost, host)
+	if !reflect.DeepEqual(host, expectedHost) {
+		t.Fatalf("expected %#v got %#v", expectedHost, host)
 	}
 
 	assertMethod(t, response, "GET")
