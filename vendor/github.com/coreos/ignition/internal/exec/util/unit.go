@@ -15,7 +15,9 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -29,31 +31,34 @@ const (
 
 func FileFromSystemdUnit(unit types.SystemdUnit) *File {
 	return &File{
-		Path:     types.Path(filepath.Join(SystemdUnitsPath(), string(unit.Name))),
-		Contents: []byte(unit.Contents),
-		Mode:     DefaultFilePermissions,
+		Path:       types.Path(filepath.Join(SystemdUnitsPath(), string(unit.Name))),
+		ReadCloser: ioutil.NopCloser(bytes.NewReader([]byte(unit.Contents))),
+		Mode:       DefaultFilePermissions,
 	}
 }
 
 func FileFromNetworkdUnit(unit types.NetworkdUnit) *File {
 	return &File{
-		Path:     types.Path(filepath.Join(NetworkdUnitsPath(), string(unit.Name))),
-		Contents: []byte(unit.Contents),
-		Mode:     DefaultFilePermissions,
+		Path:       types.Path(filepath.Join(NetworkdUnitsPath(), string(unit.Name))),
+		ReadCloser: ioutil.NopCloser(bytes.NewReader([]byte(unit.Contents))),
+		Mode:       DefaultFilePermissions,
 	}
 }
 
 func FileFromUnitDropin(unit types.SystemdUnit, dropin types.SystemdUnitDropIn) *File {
 	return &File{
-		Path:     types.Path(filepath.Join(SystemdDropinsPath(string(unit.Name)), string(dropin.Name))),
-		Contents: []byte(dropin.Contents),
-		Mode:     DefaultFilePermissions,
+		Path:       types.Path(filepath.Join(SystemdDropinsPath(string(unit.Name)), string(dropin.Name))),
+		ReadCloser: ioutil.NopCloser(bytes.NewReader([]byte(dropin.Contents))),
+		Mode:       DefaultFilePermissions,
 	}
 }
 
 func (u Util) MaskUnit(unit types.SystemdUnit) error {
 	path := u.JoinPath(SystemdUnitsPath(), string(unit.Name))
-	if err := mkdirForFile(path); err != nil {
+	if err := MkdirForFile(path); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(path); err != nil {
 		return err
 	}
 	return os.Symlink("/dev/null", path)
@@ -61,7 +66,7 @@ func (u Util) MaskUnit(unit types.SystemdUnit) error {
 
 func (u Util) EnableUnit(unit types.SystemdUnit) error {
 	path := u.JoinPath(presetPath)
-	if err := mkdirForFile(path); err != nil {
+	if err := MkdirForFile(path); err != nil {
 		return err
 	}
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, DefaultPresetPermissions)

@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"sort"
 	"syscall"
 
 	"github.com/coreos/ignition/config/types"
 	"github.com/coreos/ignition/internal/exec/stages"
 	"github.com/coreos/ignition/internal/exec/util"
 	"github.com/coreos/ignition/internal/log"
+	"github.com/coreos/ignition/internal/resource"
 )
 
 const (
@@ -41,11 +44,14 @@ func init() {
 
 type creator struct{}
 
-func (creator) Create(logger *log.Logger, root string) stages.Stage {
-	return &stage{util.Util{
-		DestDir: root,
-		Logger:  logger,
-	}}
+func (creator) Create(logger *log.Logger, client *resource.HttpClient, root string) stages.Stage {
+	return &stage{
+		Util: util.Util{
+			DestDir: root,
+			Logger:  logger,
+		},
+		client: client,
+	}
 }
 
 func (creator) Name() string {
@@ -54,6 +60,8 @@ func (creator) Name() string {
 
 type stage struct {
 	util.Util
+
+	client *resource.HttpClient
 }
 
 func (stage) Name() string {
@@ -66,34 +74,34 @@ func (s stage) Run(config types.Config) bool {
 		return false
 	}
 
-	if err := s.createUnits(config); err != nil {
-		s.Logger.Crit("failed to create units: %v", err)
+	if err := s.createFilesystemsEntries(config); err != nil {
+		s.Logger.Crit("failed to create files: %v", err)
 		return false
 	}
 
-	if err := s.createFilesystemsFiles(config); err != nil {
-		s.Logger.Crit("failed to create files: %v", err)
+	if err := s.createUnits(config); err != nil {
+		s.Logger.Crit("failed to create units: %v", err)
 		return false
 	}
 
 	return true
 }
 
-// createFilesystemsFiles creates the files described in config.Storage.Filesystems.
-func (s stage) createFilesystemsFiles(config types.Config) error {
+// createFilesystemsEntries creates the files described in config.Storage.{Files,Directories}.
+func (s stage) createFilesystemsEntries(config types.Config) error {
 	if len(config.Storage.Filesystems) == 0 {
 		return nil
 	}
 	s.Logger.PushPrefix("createFilesystemsFiles")
 	defer s.Logger.PopPrefix()
 
-	fileMap, err := s.mapFilesToFilesystems(config)
+	entryMap, err := s.mapEntriesToFilesystems(config)
 	if err != nil {
 		return err
 	}
 
-	for fs, f := range fileMap {
-		if err := s.createFiles(fs, f); err != nil {
+	for fs, f := range entryMap {
+		if err := s.createEntries(fs, f); err != nil {
 			return fmt.Errorf("failed to create files: %v", err)
 		}
 	}
@@ -101,40 +109,130 @@ func (s stage) createFilesystemsFiles(config types.Config) error {
 	return nil
 }
 
-// mapFilesToFilesystems builds a map of filesystems to files. If multiple
-// definitions of the same filesystem are present, only the final definition is
-// used.
-func (s stage) mapFilesToFilesystems(config types.Config) (map[types.Filesystem][]types.File, error) {
-	files := map[string][]types.File{}
-	for _, f := range config.Storage.Files {
-		files[f.Filesystem] = append(files[f.Filesystem], f)
+// filesystemEntry represent a thing that knows how to create itself.
+type filesystemEntry interface {
+	create(l *log.Logger, c *resource.HttpClient, u util.Util) error
+}
+
+type fileEntry types.File
+
+func (tmp fileEntry) create(l *log.Logger, c *resource.HttpClient, u util.Util) error {
+	f := types.File(tmp)
+	file := util.RenderFile(l, c, f)
+	if file == nil {
+		return fmt.Errorf("failed to resolve file %q", f.Path)
 	}
 
+	if err := l.LogOp(
+		func() error { return u.WriteFile(file) },
+		"writing file %q", string(f.Path),
+	); err != nil {
+		return fmt.Errorf("failed to create file %q: %v", file.Path, err)
+	}
+
+	return nil
+}
+
+type dirEntry types.Directory
+
+func (tmp dirEntry) create(l *log.Logger, _ *resource.HttpClient, u util.Util) error {
+	d := types.Directory(tmp)
+	err := l.LogOp(func() error {
+		path := filepath.Clean(u.JoinPath(string(d.Path)))
+
+		// Build a list of paths to create. Since os.MkdirAll only sets the mode for new directories and not the
+		// ownership, we need to determine which directories will be created so we don't chown something that already
+		// exists.
+		newPaths := []string{}
+		for p := path; p != "/"; p = filepath.Dir(p) {
+			_, err := os.Stat(p)
+			if err == nil {
+				break
+			}
+			if !os.IsNotExist(err) {
+				return err
+			}
+			newPaths = append(newPaths, p)
+		}
+
+		if err := os.MkdirAll(path, os.FileMode(d.Mode)); err != nil {
+			return err
+		}
+
+		for _, newPath := range newPaths {
+			if err := os.Chmod(newPath, os.FileMode(d.Mode)); err != nil {
+				return err
+			}
+			if err := os.Chown(newPath, d.User.Id, d.Group.Id); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, "creating directory %q", string(d.Path))
+	if err != nil {
+		return fmt.Errorf("failed to create directory %q: %v", d.Path, err)
+	}
+
+	return nil
+}
+
+// ByDirectorySegments is used to sort directories so /foo gets created before /foo/bar if they are both specified.
+type ByDirectorySegments []types.Directory
+
+func (lst ByDirectorySegments) Len() int { return len(lst) }
+
+func (lst ByDirectorySegments) Swap(i, j int) {
+	lst[i], lst[j] = lst[j], lst[i]
+}
+
+func (lst ByDirectorySegments) Less(i, j int) bool {
+	return lst[i].Depth() < lst[j].Depth()
+}
+
+// mapEntriesToFilesystems builds a map of filesystems to files. If multiple
+// definitions of the same filesystem are present, only the final definition is
+// used. The directories are sorted to ensure /foo gets created before /foo/bar.
+func (s stage) mapEntriesToFilesystems(config types.Config) (map[types.Filesystem][]filesystemEntry, error) {
 	filesystems := map[string]types.Filesystem{}
 	for _, fs := range config.Storage.Filesystems {
 		filesystems[fs.Name] = fs
 	}
 
-	fileMap := map[types.Filesystem][]types.File{}
-	for fsn, f := range files {
-		if fs, ok := filesystems[fsn]; ok {
-			fileMap[fs] = append(fileMap[fs], f...)
+	entryMap := map[types.Filesystem][]filesystemEntry{}
+
+	// Sort directories to ensure /a gets created before /a/b.
+	sortedDirs := config.Storage.Directories
+	sort.Sort(ByDirectorySegments(sortedDirs))
+
+	// Add directories first to ensure they are created before files.
+	for _, d := range sortedDirs {
+		if fs, ok := filesystems[d.Filesystem]; ok {
+			entryMap[fs] = append(entryMap[fs], dirEntry(d))
 		} else {
-			s.Logger.Crit("the filesystem (%q), was not defined", fsn)
+			s.Logger.Crit("the filesystem (%q), was not defined", d.Filesystem)
 			return nil, ErrFilesystemUndefined
 		}
 	}
 
-	return fileMap, nil
+	for _, f := range config.Storage.Files {
+		if fs, ok := filesystems[f.Filesystem]; ok {
+			entryMap[fs] = append(entryMap[fs], fileEntry(f))
+		} else {
+			s.Logger.Crit("the filesystem (%q), was not defined", f.Filesystem)
+			return nil, ErrFilesystemUndefined
+		}
+	}
+
+	return entryMap, nil
 }
 
-// createFiles creates any files listed for the filesystem in fs.Files.
-func (s stage) createFiles(fs types.Filesystem, files []types.File) error {
+// createEntries creates any files or directories listed for the filesystem in Storage.{Files,Directories}.
+func (s stage) createEntries(fs types.Filesystem, files []filesystemEntry) error {
 	s.Logger.PushPrefix("createFiles")
 	defer s.Logger.PopPrefix()
 
-	mnt := string(fs.Path)
-	if len(mnt) == 0 {
+	var mnt string
+	if fs.Path == nil {
 		var err error
 		mnt, err = ioutil.TempDir("", "ignition-files")
 		if err != nil {
@@ -155,23 +253,18 @@ func (s stage) createFiles(fs types.Filesystem, files []types.File) error {
 			func() error { return syscall.Unmount(mnt, 0) },
 			"unmounting %q at %q", dev, mnt,
 		)
+	} else {
+		mnt = string(*fs.Path)
 	}
 
 	u := util.Util{
 		Logger:  s.Logger,
 		DestDir: mnt,
 	}
-	for _, f := range files {
-		file := util.RenderFile(s.Logger, f)
-		if file == nil {
-			return fmt.Errorf("failed to resolve file %q", f.Path)
-		}
 
-		if err := s.Logger.LogOp(
-			func() error { return u.WriteFile(file) },
-			"writing file %q", string(f.Path),
-		); err != nil {
-			return fmt.Errorf("failed to create file %q: %v", file.Path, err)
+	for _, e := range files {
+		if err := e.create(s.Logger, s.client, u); err != nil {
+			return err
 		}
 	}
 
@@ -222,7 +315,7 @@ func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
 			f := util.FileFromUnitDropin(unit, dropin)
 			if err := s.Logger.LogOp(
 				func() error { return s.WriteFile(f) },
-				"writing dropin %q at %q", dropin.Name, f.Path,
+				"writing drop-in %q at %q", dropin.Name, f.Path,
 			); err != nil {
 				return err
 			}
@@ -241,7 +334,7 @@ func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
 		}
 
 		return nil
-	}, "writing unit %q", unit.Name)
+	}, "processing unit %q", unit.Name)
 }
 
 // writeNetworkdUnit creates the specified unit. If the contents of the unit or
@@ -261,7 +354,7 @@ func (s stage) writeNetworkdUnit(unit types.NetworkdUnit) error {
 		}
 
 		return nil
-	}, "writing unit %q", unit.Name)
+	}, "processing unit %q", unit.Name)
 }
 
 // createPasswd creates the users and groups as described in config.Passwd.
