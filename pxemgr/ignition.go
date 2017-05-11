@@ -115,15 +115,6 @@ func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
 	}
 
-	var inCfg interface{}
-	if err := yaml.Unmarshal(dataIn, &inCfg); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
-	}
-
-	if hasUnrecognizedKeys(inCfg, reflect.TypeOf(cfg)) {
-		return nil, fmt.Errorf("Unrecognized keys in input, aborting.")
-	}
-
 	var (
 		dataOut []byte
 		err     error
