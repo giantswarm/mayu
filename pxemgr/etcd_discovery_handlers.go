@@ -87,7 +87,7 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 }
 
 func (mgr *pxeManagerT) etcdDiscoveryBaseURL() string {
-	return fmt.Sprintf("%s/etcd", mgr.thisHost())
+	return fmt.Sprintf("%s/etcd", mgr.apiURL())
 }
 
 func (mgr *pxeManagerT) etcdDiscoveryProxyHandler(w http.ResponseWriter, r *http.Request) {

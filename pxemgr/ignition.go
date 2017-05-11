@@ -41,9 +41,9 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		ClusterNetwork:   mgr.config.Network,
 		EtcdDiscoveryUrl: fmt.Sprintf("%s/%s", mgr.etcdDiscoveryUrl, etcdClusterToken),
 		MayuHost:         mgr.config.Network.BindAddr,
-		MayuPort:         mgr.httpPort,
-		MayuURL:          mgr.thisHost(),
-		PostBootURL:      mgr.thisHost() + "/admin/host/" + host.Serial + "/boot_complete",
+		MayuPort:         mgr.apiPort,
+		MayuURL:          mgr.apiURL(),
+		PostBootURL:      mgr.apiURL() + "/admin/host/" + host.Serial + "/boot_complete",
 		NoTLS:            mgr.noTLS,
 		TemplatesEnv:     mergedTemplatesEnv,
 	}
@@ -113,15 +113,6 @@ func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
-	}
-
-	var inCfg interface{}
-	if err := yaml.Unmarshal(dataIn, &inCfg); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
-	}
-
-	if hasUnrecognizedKeys(inCfg, reflect.TypeOf(cfg)) {
-		return nil, fmt.Errorf("Unrecognized keys in input, aborting.")
 	}
 
 	var (

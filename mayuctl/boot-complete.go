@@ -36,7 +36,6 @@ func init() {
 func bootCompleteRun(cmd *cobra.Command, args []string) {
 	hostEnvironment, err := godotenv.Read(
 		"/etc/os-release",
-		"/etc/yochu-env",
 		"/etc/mayu-env",
 	)
 	assert(err)

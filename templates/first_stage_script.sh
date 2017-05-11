@@ -7,7 +7,7 @@ which gpg >/dev/null || exit 1
 
 #make sure we have connectivity
 
-while [[ -z $(curl -s {{.MayuURL}}) ]] ; do sleep 1;  done
+while [[ -z $(curl -k -s {{.MayuURL}}) ]] ; do sleep 1;  done
 
 wget -O /tmp/helper {{.HostInfoHelperURL}}
 chmod +x /tmp/helper
