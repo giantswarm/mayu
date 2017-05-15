@@ -182,7 +182,7 @@ func (c *Cluster) Update() error {
 // is returned as second return value.
 func (c *Cluster) HostWithMacAddress(macAddr string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		fmt.Errorf("error getting the mac address using the internal cache %v", err)
+		glog.Error("error getting the mac address using the internal cache: ", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -200,7 +200,7 @@ func (c *Cluster) HostWithMacAddress(macAddr string) (*Host, bool) {
 // is returned as second return value.
 func (c *Cluster) HostWithInternalAddr(ipAddr net.IP) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		fmt.Errorf("error getting the ip address using the internal cache %v", err)
+		glog.Error("error getting the ip address using the internal cache ", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -218,7 +218,7 @@ func (c *Cluster) HostWithInternalAddr(ipAddr net.IP) (*Host, bool) {
 // returned as second return value.
 func (c *Cluster) HostWithSerial(serial string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		fmt.Errorf("error getting the serial number using the internal cache %v", err)
+		glog.Error("error getting the serial number using the internal cache: ", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -260,7 +260,7 @@ func (c *Cluster) GetAllHosts() []*Host {
 	hosts := make([]*Host, 0, len(c.hostsCache))
 
 	if err := c.Update(); err != nil {
-		fmt.Errorf("error getting the list of hosts based on the internal cache %v", err)
+		glog.Error("error getting the list of hosts based on the internal cache: ", err)
 		return hosts
 	}
 
@@ -274,7 +274,7 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	ch := make(chan *Host)
 
 	if err := c.Update(); err != nil {
-		fmt.Errorf("error filtering the hosts %v", err)
+		glog.Error("error filtering the hosts: ", err)
 		return ch
 	}
 

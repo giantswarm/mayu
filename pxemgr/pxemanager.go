@@ -1,7 +1,6 @@
 package pxemgr
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -147,7 +146,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			// convert token to internal etcd discovery
 			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, mgr.defaultEtcdQuorumSize)
 			if err != nil {
-				glog.Fatalf("Can't store discovery token in etcd.", baseUrl, mgr.etcdDiscoveryUrl)
+				glog.Fatal("Can't store discovery token in etcd.", baseUrl, mgr.etcdDiscoveryUrl)
 			}
 
 			glog.Warningf("Transferred etcd token to internal discovery. Note that your machines still have the old discovery url in their cloud-config and that you need to transfer the current member data yourself.")
@@ -350,8 +349,6 @@ func (mgr *pxeManagerT) Start() error {
 	}()
 
 	select {}
-
-	return nil
 }
 
 func (mgr *pxeManagerT) getNextProfile() string {
@@ -386,8 +383,7 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 		currentIP = incIP(currentIP)
 	}
 
-	panic(errors.New("unable to get a free ip"))
-	return net.IP{}
+	//panic(errors.New("unable to get a free ip"))
 }
 
 func (mgr *pxeManagerT) apiURL() string {

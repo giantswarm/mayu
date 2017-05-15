@@ -39,7 +39,7 @@ func NewFakeFilesystemWithFiles(fs []FakeFile) FakeFilesystem {
 func (ff FakeFilesystem) Open(name string) (File, error) {
 	file, ok := ff.files[name]
 	if !ok {
-		return FakeFile{}, &os.PathError{"stat", name, ErrFileDoesNotExist}
+		return FakeFile{}, &os.PathError{Op: "stat", Path: name, Err: ErrFileDoesNotExist}
 	}
 
 	return file, nil
@@ -52,7 +52,7 @@ func (ff FakeFilesystem) Open(name string) (File, error) {
 func (ff FakeFilesystem) Stat(name string) (os.FileInfo, error) {
 	file, ok := ff.files[name]
 	if !ok {
-		return FakeFileInfo{}, &os.PathError{"stat", name, ErrFileDoesNotExist}
+		return FakeFileInfo{}, &os.PathError{Op: "stat", Path: name, Err: ErrFileDoesNotExist}
 	}
 
 	return file.Stat()

@@ -261,7 +261,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		if globalFlags.useIgnition {
 			b := bytes.NewBuffer(nil)
 			if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
-				fmt.Errorf("error found while checking generated ignition config: %+v", err)
+				glog.Error("error found while checking generated ignition config: ", err)
 				os.Exit(1)
 			}
 			os.Stdout.WriteString("ignition config:\n")
@@ -274,7 +274,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 			pxeManager.WriteLastStageCC(placeholderHost, b)
 			yamlErr := validateYAML(b.Bytes())
 			if yamlErr != nil {
-				fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
+				glog.Error("error found while checking generated cloud-config: ", yamlErr)
 				os.Exit(1)
 			}
 		}
