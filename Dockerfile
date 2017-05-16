@@ -18,5 +18,5 @@ WORKDIR /usr/lib/mayu
 
 RUN if [ ! -f /etc/mayu/config.yaml ]; then cp /etc/mayu/config.yaml.dist /etc/mayu/config.yaml; fi
 
-ENTRYPOINT ["/mayu", "--cluster-directory=/var/lib/mayu"]
-CMD ["-v=12"]
+ENTRYPOINT ["/mayu"]
+CMD ["--cluster-directory=/var/lib/mayu","-v=12"]
