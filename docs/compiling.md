@@ -6,7 +6,7 @@ To compile all binaries of the projects running a simple `go build` is sufficien
 
 ## Updating vendors
 
-To update the vendored libraries used by Mayu's binaries you need to havve [glide](https://github.com/Masterminds/glide) installed.
+To update the vendored libraries used by Mayu's binaries you need to have [glide](https://github.com/Masterminds/glide) installed.
 
 Updating the vendored libraries is done by running the following `glide` targets:
 

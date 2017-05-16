@@ -36,7 +36,7 @@ Developing Mayu requires the following tools to be installed.
 
 ## Getting Mayu
 
-Download the latest release from here: get latest docker image here: https://quay.io/repository/giantswarm/mayu
+Get the latest Docker image here: https://quay.io/repository/giantswarm/mayu
 
 Clone the latest git repository version from here: https://github.com/giantswarm/mayu.git
 
@@ -54,10 +54,6 @@ Check code documentation: [godoc](https://godoc.org/github.com/giantswarm/mayu)
 ## Future Development
 
 - Future directions/vision
-
-## Changes
-We decided to change process of building and deploying mayu to make it more easy.
-Now you should use latest version of docker image from quay and then mount from host to docker container: `config.yaml`, `templates` directory, `template_snippets` directory, `images` directory.
 
 ## Contact
 
