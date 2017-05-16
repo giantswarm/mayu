@@ -65,12 +65,14 @@ coreos:
   - name: etcd2.service
     enable: false
     command: stop
+    mask: true
   - name: fleet.service
     enable: true
     command: start
   - name: flanneld.service
     enable: false
     command: stop
+    mask: true
   - name: docker-tcp.socket
     enable: true
     command: start

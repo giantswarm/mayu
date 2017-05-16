@@ -383,7 +383,6 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 		currentIP = incIP(currentIP)
 	}
 
-	//panic(errors.New("unable to get a free ip"))
 }
 
 func (mgr *pxeManagerT) apiURL() string {
