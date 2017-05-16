@@ -9,14 +9,14 @@ which gpg >/dev/null || exit 1
 
 while [[ -z $(curl -k -s {{.MayuURL}}) ]] ; do sleep 1;  done
 
-wget -O /tmp/helper {{.HostInfoHelperURL}}
-chmod +x /tmp/helper
+INFOPUSHER_IMAGE="quay.io/giantswarm/mayu-infopusher:33f832fcf8c0fa3a80300274ebb801ec2a87d3e3"
+TMP_HELPER="docker run --net=host --privileged=true -v /sys:/sys -v /dev:/dev -it $INFOPUSHER_IMAGE"
 
 if [[ -n "{{.CloudConfigURL}}" ]]; then
-  /tmp/helper -post-url={{.CloudConfigURL}} > /tmp/future-cloud-config.yaml
+  $TMP_HELPER -post-url={{.CloudConfigURL}} > /tmp/future-cloud-config.yaml
 fi
 if [[ -n "{{.IgnitionConfigURL}}" ]]; then
-  /tmp/helper -post-url={{.IgnitionConfigURL}} > /tmp/future-ignition-config.json
+  $TMP_HELPER -post-url={{.IgnitionConfigURL}} > /tmp/future-ignition-config.json
 fi
 C=$(cat /proc/cmdline | tr ' ' '\n' | grep maybe-install-coreos= | awk -F=  '{print $2}')
 

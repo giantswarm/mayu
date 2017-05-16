@@ -1,5 +1,0 @@
-#!/bin/sh
-set -e
-
-go build
-exec sudo ./infopusher

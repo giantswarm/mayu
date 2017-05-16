@@ -1,0 +1,10 @@
+hash: 80e5b3f24979e3d80e543709f0caef32ed06621d24ba06861ab16ed73c792584
+updated: 2017-05-15T16:49:43.426136922+02:00
+imports:
+- name: github.com/giantswarm/mayu
+  version: 41f805ade7d32f221410d2d6119ae6709910b908
+  subpackages:
+  - infopusher/machinedata
+- name: github.com/golang/glog
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+testImports: []

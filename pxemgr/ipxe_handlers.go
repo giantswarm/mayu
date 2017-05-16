@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/mayu/infopusher/machinedata"
+	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"gopkg.in/yaml.v2"

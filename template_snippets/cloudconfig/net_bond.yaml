@@ -16,8 +16,8 @@
 
       [Network]
       DHCP=none
-      VLAN=bond0.3
-      VLAN=bond0.4
+      VLAN=bond0.1
+      VLAN=bond0.27
 
   - name: 15-bond0.netdev
     runtime: true
@@ -33,35 +33,35 @@
       UpDelaySec=3s
       DownDelaySec=9s
 
-  - name: 35-bond0.3.netdev
+  - name: 35-bond0.1.netdev
     runtime: true
     content: |
       [NetDev]
-      Name=bond0.3
+      Name=bond0.1
       Kind=vlan
 
       [VLAN]
-      Id=3
+      Id=1
 
-  - name: 35-bond0.4.netdev
+  - name: 35-bond0.27.netdev
     runtime: true
     content: |
       [NetDev]
-      Name=bond0.4
+      Name=bond0.27
       Kind=vlan
 
       [VLAN]
-      Id=4
+      Id=27
 
   - name: 40-vlan.network
     runtime: true
     content: |
       [Match]
-      Name=bond0.3
+      Name=bond0.27
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
-      Gateway=10.0.7.251
+      Address={{.Host.InternalAddr}}/24
+      Gateway=10.0.1.254
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
 

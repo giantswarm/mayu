@@ -1,10 +1,9 @@
-# Mayu
-
 [![CircleCI](https://circleci.com/gh/giantswarm/mayu.svg?&style=shield)](https://circleci.com/gh/giantswarm/mayu)
 [![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu)
 [![Go Report Card](https://goreportcard.com/badge/github.com/giantswarm/mayu)](https://goreportcard.com/report/github.com/giantswarm/mayu)
-[![IRC Channel](https://img.shields.io/badge/irc-%23giantswarm-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#giantswarm)
+![Docker Repository on Quay](https://quay.io/repository/giantswarm/mayu/status "Docker Repository on Quay")](https://quay.io/repository/giantswarm/mayu)
 
+# Mayu
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
 that must follow a specific configuration with CoreOS. It sets up fleet
 meta-data, and patched versions of fleet, etcd, and docker when using
@@ -37,11 +36,9 @@ Developing Mayu requires the following tools to be installed.
 
 ## Getting Mayu
 
-Download the latest release from here: https://github.com/giantswarm/mayu/releases/latest
+Download the latest release from here: get latest docker image here: https://quay.io/repository/giantswarm/mayu
 
 Clone the latest git repository version from here: https://github.com/giantswarm/mayu.git
-
-Get the latest docker image from here: https://hub.docker.com/r/giantswarm/mayu/
 
 ## Running Mayu
 
@@ -57,6 +54,10 @@ Check code documentation: [godoc](https://godoc.org/github.com/giantswarm/mayu)
 ## Future Development
 
 - Future directions/vision
+
+## Changes
+We decided to change process of building and deploying mayu to make it more easy.
+Now you should use latest version of docker image from quay and then mount from host to docker container: `config.yaml`, `templates` directory, `template_snippets` directory, `images` directory.
 
 ## Contact
 
