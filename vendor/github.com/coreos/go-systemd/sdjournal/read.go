@@ -121,7 +121,7 @@ func (r *JournalReader) Read(b []byte) (int, error) {
 	var err error
 
 	if r.msgReader == nil {
-		var c uint64
+		var c int
 
 		// Advance the journal cursor. It has to be called at least one time
 		// before reading

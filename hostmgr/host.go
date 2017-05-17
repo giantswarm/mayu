@@ -28,7 +28,7 @@ type Host struct {
 	IPMIAddr           net.IP    `json:",omitempty"`
 	Hostname           string    `json:",omitempty"`
 	MachineID          string    `json:",omitempty"`
-	ConnectedNIC       string    `json:",omitempty`
+	ConnectedNIC       string    `json:",omitempty"`
 	FleetMetadata      FleetMeta `json:",omitempty"`
 	FleetDisableEngine bool      `json:",omitempty"`
 	KeepDiskData       bool      `json:",omitempty"`

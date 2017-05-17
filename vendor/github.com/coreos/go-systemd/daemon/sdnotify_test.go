@@ -15,7 +15,6 @@
 package daemon
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -24,6 +23,9 @@ import (
 
 // TestSdNotify
 func TestSdNotify(t *testing.T) {
+	notificationSupportedDataSent := "Notification supported, data sent"
+	notificationSupportedFailure := "Notification supported, but failure happened"
+	notificationNotSupported := "Notification not supported"
 
 	testDir, e := ioutil.TempDir("/tmp/", "test-")
 	if e != nil {
@@ -41,39 +43,33 @@ func TestSdNotify(t *testing.T) {
 		panic(e)
 	}
 
-	tests := []struct {
-		unsetEnv  bool
-		envSocket string
-
-		wsent bool
-		werr  bool
-	}{
-		// (true, nil) - notification supported, data has been sent
-		{false, notifySocket, true, false},
-		// (false, err) - notification supported, but failure happened
-		{true, testDir + "/missing.sock", false, true},
-		// (false, nil) - notification not supported
-		{true, "", false, false},
+	// (true, nil) - notification supported, data has been sent
+	e = os.Setenv("NOTIFY_SOCKET", notifySocket)
+	if e != nil {
+		panic(e)
+	}
+	sent, err := SdNotify(notificationSupportedDataSent)
+	if !sent || err != nil {
+		t.Errorf("TEST: %s FAILED", notificationSupportedDataSent)
 	}
 
-	for i, tt := range tests {
-		must(os.Unsetenv("NOTIFY_SOCKET"))
-		if tt.envSocket != "" {
-			must(os.Setenv("NOTIFY_SOCKET", tt.envSocket))
-		}
-		sent, err := SdNotify(tt.unsetEnv, fmt.Sprintf("TestSdNotify test message #%d", i))
+	// (false, err) - notification supported, but failure happened
+	e = os.Setenv("NOTIFY_SOCKET", testDir+"/not-exist.sock")
+	if e != nil {
+		panic(e)
+	}
+	sent, err = SdNotify(notificationSupportedFailure)
+	if sent && err == nil {
+		t.Errorf("TEST: %s FAILED", notificationSupportedFailure)
+	}
 
-		if sent != tt.wsent {
-			t.Errorf("#%d: expected send result %t, got %t", i, tt.wsent, sent)
-		}
-		if tt.werr && err == nil {
-			t.Errorf("#%d: want non-nil err, got nil", i)
-		} else if !tt.werr && err != nil {
-			t.Errorf("#%d: want nil err, got %v", i, err)
-		}
-		if tt.unsetEnv && tt.envSocket != "" && os.Getenv("NOTIFY_SOCKET") != "" {
-			t.Errorf("#%d: environment variable not cleaned up", i)
-		}
-
+	// (false, nil) - notification not supported
+	e = os.Unsetenv("NOTIFY_SOCKET")
+	if e != nil {
+		panic(e)
+	}
+	sent, err = SdNotify(notificationNotSupported)
+	if sent || err != nil {
+		t.Errorf("TEST: %s FAILED", notificationNotSupported)
 	}
 }

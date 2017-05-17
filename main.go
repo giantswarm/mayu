@@ -50,6 +50,7 @@ const (
 type MayuFlags struct {
 	debug   bool
 	version bool
+	help    bool
 
 	configFile               string
 	clusterDir               string
@@ -91,8 +92,8 @@ var (
 		Run:   mainRun,
 	}
 
-	projectVersion string
-	projectBuild   string
+	projectVersion string = "1.0.0"
+	projectBuild   string = "git"
 )
 
 func init() {
@@ -110,7 +111,7 @@ func init() {
 
 	pf.BoolVarP(&globalFlags.debug, "debug", "d", false, "Print debug output")
 	pf.BoolVar(&globalFlags.version, "version", false, "Show the version of Mayu")
-
+	pf.BoolVar(&globalFlags.help, "help", false, "Show mayu usage")
 	pf.StringVar(&globalFlags.configFile, "config", DefaultConfigFile, "Path to the configuration file")
 	pf.StringVar(&globalFlags.clusterDir, "cluster-directory", DefaultClusterDirectory, "Path to the cluster directory")
 	pf.BoolVar(&globalFlags.showTemplates, "show-templates", DefaultShowTemplates, "Show the templates and quit")
@@ -197,6 +198,16 @@ func (g MayuFlags) ValidateHTTPCertificateFileExistance() (bool, error) {
 }
 
 func mainRun(cmd *cobra.Command, args []string) {
+	if os.Args[1] == "version" {
+		println("Mayu build: ", projectBuild)
+		println("Mayu version: ", projectVersion)
+		return
+	}
+	if globalFlags.help {
+		cmd.PersistentFlags().Usage()
+		return
+	}
+
 	glog.V(8).Infof("starting mayu version %s", projectVersion)
 
 	var err error
@@ -261,7 +272,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		if globalFlags.useIgnition {
 			b := bytes.NewBuffer(nil)
 			if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
-				fmt.Errorf("error found while checking generated ignition config: %+v", err)
+				glog.Error("error found while checking generated ignition config: ", err)
 				os.Exit(1)
 			}
 			os.Stdout.WriteString("ignition config:\n")
@@ -274,7 +285,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 			pxeManager.WriteLastStageCC(placeholderHost, b)
 			yamlErr := validateYAML(b.Bytes())
 			if yamlErr != nil {
-				fmt.Errorf("error found while checking generated cloud-config: %+v", yamlErr)
+				glog.Error("error found while checking generated cloud-config: ", yamlErr)
 				os.Exit(1)
 			}
 		}

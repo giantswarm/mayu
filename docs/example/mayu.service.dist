@@ -1,0 +1,37 @@
+[Unit]
+Description=mayu
+Requires=etcd.service
+
+[Service]
+Restart=on-failure
+RestartSec=1
+StartLimitInterval=300s
+StartLimitBurst=3
+TimeoutStartSec=0
+Environment="IMAGE=quay.io/giantswarm/mayu:c832dd12fa8f5cc77101ae05820106ace18504f7"
+Environment="NAME=mayu"
+
+ExecStartPre=/usr/bin/docker pull $IMAGE
+ExecStartPre=-/usr/bin/docker stop -t 10 $NAME
+ExecStartPre=-/usr/bin/docker rm -f $NAME
+ExecStart=/usr/bin/docker run --rm --net=host --cap-add=NET_ADMIN \
+        -v /var/lib/mayu:/var/lib/mayu \
+        -v /etc/mayu/ssl:/etc/mayu/ssl \
+        -v /etc/mayu/config.yaml:/etc/mayu/config.yaml \
+        -v /etc/mayu/templates:/usr/lib/mayu/templates/ \
+        -v /etc/mayu/template_snippets:/usr/lib/mayu/template_snippets \
+        --name $NAME $IMAGE \
+        --v=12 \
+        --cluster-directory=/var/lib/mayu \
+        --tls-cert-file /etc/mayu/ssl/mayu-crtca.pem \
+        --tls-key-file /etc/mayu/ssl/mayu-key.pem \
+        --alsologtostderr \
+        --etcd-quorum-size=3 \
+        --etcd-cafile=/etc/mayu/ssl/etcd-ca.pem \
+        --etcd-endpoint=https://127.0.0.1:2379 \
+        --images-cache-dir=/var/lib/mayu/images \
+        --yochu-path=/var/lib/mayu/yochu \
+        --log_dir=/tmp
+
+[Install]
+WantedBy=multi-user.target

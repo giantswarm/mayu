@@ -1,0 +1,6 @@
+package: github.com/giantswarm/mayu-infopusher
+import:
+- package: github.com/giantswarm/mayu
+  subpackages:
+  - infopusher/machinedata
+- package: github.com/golang/glog

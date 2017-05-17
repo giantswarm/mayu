@@ -9,109 +9,147 @@ coreos:
   - name: locksmithd.service
     command: stop
     mask: true
-{{template "quobyte" .}}
+  - name: systemd-modules-load.service
+    command: restart
 {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
 {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
-{{if eq .ClusterNetwork.NetworkModel "bridge"}}{{template "net_bridge" .}}{{end}}
-  - name: systemd-networkd-wait-online.service
-    enable: true
-    command: start
-  - name: set-giantswarm-environment.service
+  - name: refresh-network-ifs.service
     command: start
     enable: true
     content: |
       [Unit]
-      Description=Configures giantswarm environment
-      Wants=network-online.target
-      After=network-online.target
+      Description=Restart network interfaces
+      Before=ensure-connectivity.service
+      Wants=ensure-connectivity.service
 
       [Service]
       Type=oneshot
-      ExecStart=/bin/sh -c 'echo "COREOS_PRIVATE_IPV4={{.Host.InternalAddr}}" > /etc/environment'
-
-      [Install]
-      WantedBy=multi-user.target
-  {{if index .TemplatesEnv "yochu_version"}}
-  - name: yochu.service
-    command: start
-    enable: true
-    content: |
-      [Unit]
-      Description=Giant Swarm yochu
-      Wants=network-online.target
-      After=network-online.target
-      Before=etcd2.service fleet.service docker.service
-
-      [Service]
-      Type=oneshot
-      EnvironmentFile=/etc/yochu-env
-      ExecStartPre=/usr/bin/mkdir -p /home/core/bin
-      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "yochu_http_endpoint"}}/yochu/${YOCHU_VERSION}/yochu -O /home/core/bin/yochu
-      ExecStartPre=-/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/mayuctl -O /home/core/bin/mayuctl
-      ExecStartPre=/usr/bin/chmod +x /home/core/bin/yochu
-      ExecStartPre=/usr/bin/chmod +x /home/core/bin/mayuctl
-      ExecStart=/home/core/bin/yochu setup -v -d --start-daemons=false --subnet="{{index .TemplatesEnv "yochu_localsubnet"}}" --gateway="{{index .TemplatesEnv "yochu_gateway"}}" --private-registry={{index .TemplatesEnv "yochu_private_registry"}} --http-endpoint={{index .TemplatesEnv "yochu_http_endpoint"}} --fleet-version=${FLEET_VERSION} --etcd-version=${ETCD_VERSION} --docker-version=${DOCKER_VERSION} --rkt-version=${RKT_VERSION} --k8s-version=${K8S_VERSION}
-      ExecStartPost=/bin/sh -c 'sleep 5'
-      ExecStartPost=/home/core/bin/mayuctl boot-complete --host={{.MayuHost}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls {{end}}--update-versions
+      ExecStart=/tmp/restart-network
       RemainAfterExit=yes
 
       [Install]
       WantedBy=multi-user.target
-  {{end}}
-  - name: etcd2.service
-    enable: true
+  - name: ensure-connectivity.service
     command: start
+    content: |
+      [Unit]
+      Description=Ensures theres connectivity before starting fleet and etcd3
+      After=systemd-networkd.service
+      Wants=systemd-networkd.service
+      Before=etcd3.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'while [[ -z $(curl -k -s {{index .TemplatesEnv "mayu_https_endpoint"}}) ]] ; do sleep 2 ; done'
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  - name: finish-install.service
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=finish mayu installation
+      Before=etcd3.service docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/mkdir -p /opt/bin
+      ExecStartPre=/bin/sh -c 'while [[ -z $(curl -s {{index .TemplatesEnv "mayu_https_endpoint"}}) ]] ; do sleep 2 ; done'
+      ExecStart=/usr/bin/docker run -it --privileged=true -v /dev:/dev -v /sys:/sys --net=host quay.io/giantswarm/mayuctl:1194675dc7cce290803a2beaf2311acdb6cf5905 boot-complete --host={{index .TemplatesEnv "mayu_api_ip"}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls{{end}} --update-versions
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  - name: etcd2.service
+    enable: false
+    command: stop
+    mask: true
   - name: fleet.service
     enable: true
     command: start
-  - name: docker.service
+  - name: flanneld.service
+    enable: false
+    command: stop
+    mask: true
+  - name: docker-tcp.socket
     enable: true
     command: start
+    content: |
+      [Unit]
+      Description=Docker Socket for the API
+
+      [Socket]
+      ListenStream=2375
+      Service=docker.service
+      BindIPv6Only=both
+
+      [Install]
+      WantedBy=sockets.target
+  - name: docker.service
+    drop-ins:
+      - name: 40-docker.conf
+        content: |
+          [Unit]
+          Requires=docker-tcp.socket
+          After=docker-tcp.socket
+          [Service]
+          Environment="DOCKER_OPTS=--iptables=true --storage-driver=overlay  --log-opt max-size=50m --log-opt max-file=1"
+          Environment="DOCKER_OPT_BIP="
+          Environment="DOCKER_OPT_IPMASQ="
+          Environment="DOCKER_OPT_MTU="
+
+{{if eq .Host.Profile "core"}}
+{{template "core_units" .}}
+{{else}}
+{{template "worker_units" .}}
+{{end}}
+
   update:
     reboot-strategy: off
-  fleet:
-    etcd_servers: http://{{.Host.InternalAddr}}:2379
-{{if .Host.FleetMetadata}}    metadata: {{.Host.FleetMetadata}}{{end}}
-  etcd2:
-{{if .EtcdDiscoveryUrl}}    discovery: {{.EtcdDiscoveryUrl}}{{end}}
-    advertise-client-urls: http://{{.Host.InternalAddr}}:2379
-    initial-advertise-peer-urls: http://{{.Host.InternalAddr}}:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://{{.Host.InternalAddr}}:2380,http://{{.Host.InternalAddr}}:7001
 write_files:
-- path: /etc/systemd/system/fleet.service.d/30-giantswarm.conf
-  permissions: 0644
+- path: /tmp/restart-network
+  permissions: 0755
   owner: root
   content: |
-    [Service]
-    {{if .Host.FleetMetadata}}Environment="FLEET_METADATA={{.Host.FleetMetadata}}"{{end}}
-    Environment="FLEET_DISABLE_ENGINE={{.Host.FleetDisableEngine}}"
+    #!/bin/bash
+    for i in /sys/class/net/en* ; do ip link set  $(basename $i) down ; done ; sleep 1 ; systemctl restart systemd-networkd ; sleep 5
+{{if eq .ClusterNetwork.NetworkModel "bond"}}
+- path: /etc/modprobe.d/bonding.conf
+  permissions: 0644
+  owner: root
+  content: options bonding miimon=100 mode=4 lacp_rate=1
+- path: /etc/modules-load.d/bonding.conf
+  permissions: 0644
+  owner: root
+  content: bonding
+{{end}}
 - path: /etc/hosts
   permissions: 0644
   owner: root
   content: |
     127.0.0.1 localhost
     127.0.0.1 {{.Host.Hostname}}
-    127.0.0.1 etcd.giantswarm
 - path: /etc/resolv.conf
   permissions: 0644
   owner: root
   content: |
-    {{range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
-    {{end}}
-{{if index .TemplatesEnv "yochu_version"}}
-- path: /etc/yochu-env
-  permissions: 0644
-  owner: root
-  content: |
-    YOCHU_VERSION={{index .TemplatesEnv "yochu_version"}}
-    DOCKER_VERSION={{index .TemplatesEnv "docker_version"}}
-    ETCD_VERSION={{index .TemplatesEnv "etcd_version"}}
-    FLEET_VERSION={{index .TemplatesEnv "fleet_version"}}
-    RKT_VERSION={{index .TemplatesEnv "rkt_version"}}
-    K8S_VERSION={{index .TemplatesEnv "k8s_version"}}
+    {{ range $server := .ClusterNetwork.DNS }}nameserver {{ $server }}
+    {{ end }}
+
+{{if eq .Host.Profile "core-g8s"}}
+{{template "core_files" .}}
+{{else}}
+{{template "worker_files" .}}
 {{end}}
 
-ssh_authorized_keys:
-{{range $index, $pubkey := (index .TemplatesEnv "ssh_authorized_keys")}}- {{ $pubkey }}
+users:
+{{ range $index, $user := (index .TemplatesEnv "users")}}  - name: {{ $user.Name }}
+    groups:
+      - "sudo"
+      - "docker"
+      - "rkt"
+    ssh-authorized_keys:
+       - "{{ $user.Key }}"
 {{end}}
