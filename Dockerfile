@@ -1,7 +1,6 @@
 FROM alpine:3.4
 
-RUN apk add --update git ca-certificates dnsmasq \
-    && rm -rf /var/cache/apk/* 
+RUN apk add --no-cache git ca-certificates dnsmasq 
 
 RUN mkdir -p /etc/mayu /var/lib/mayu /usr/lib/mayu
 COPY mayu  /mayu
