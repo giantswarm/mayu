@@ -157,7 +157,7 @@ fi
 rm -rf "${WORKDIR}"
 trap - EXIT
 
-echo "Success! CoreOS ${CHANNEL_ID} ${VERSION_ID}${OEM_ID:+ (${OEM_ID})} is installed on ${DEVICE}"
+echo "Success! Container Linux ${CHANNEL_ID} ${VERSION_ID}${OEM_ID:+ (${OEM_ID})} is installed on ${DEVICE}"
 
 
 }
