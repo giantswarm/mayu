@@ -1,6 +1,6 @@
-# Start KVMs inside CoreOS
+# Start KVMs inside Container Linux
 
-If you would like to start CoreOS via KVM inside your physical machines then Mayu can also serve the necessary assets for you.
+If you would like to start Container Linux via KVM inside your physical machines then Mayu can also serve the necessary assets for you.
 
 Btw if you are looking for a way to test Mayu with Qemu. We have created [Onsho](https://github.com/giantswarm/onsho) to reproduce our datacenter setup on a laptop.
 
@@ -8,9 +8,9 @@ Btw if you are looking for a way to test Mayu with Qemu. We have created [Onsho]
 
 Within a release (or after running `make bin-dist`) you will find a script called `./fetch-coreos-qemu-image.sh`. This image will download the PXE image and kernel but extract the `/usr` filesystem and put it in a folder that can be served by Mayu.
 
-Note: You need to install the CoreOS image signing key to be able to verify the downloads. See https://coreos.com/os/docs/latest/verify-images.html
+Note: You need to install the Container Linux image signing key to be able to verify the downloads. See https://coreos.com/os/docs/latest/verify-images.html
 
-To fetch CoreOS `1122.2.0` you can run:
+To fetch Container Linux `1122.2.0` you can run:
 ```
 ./fetch-coreos-qemu-image 1122.2.0
 ```
@@ -24,7 +24,7 @@ This will download the image into a folder called `./images/qemu/<coreos-version
 
 ## Create a container
 
-This is an example how to create a VM inside of CoreOS. To have some tooling available it is easier to start KVM from within a container. So you need a Dockerfile.
+This is an example how to create a VM inside of Container Linux. To have some tooling available it is easier to start KVM from within a container. So you need a Dockerfile.
 
 ```
 FROM fedora:latest

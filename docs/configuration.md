@@ -21,7 +21,7 @@ Check [mayuctl](mayuctl.md) for more information about the client.
 |   |-- first_stage_script.sh         - template used to generate the installation script
 |   |-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
 |   `-- ignition
-|       `--gs_install.yaml            - template used to generate the ignition config used to install CoreOS
+|       `--gs_install.yaml            - template used to generate the ignition config used to install Container Linux
 |-- template_snippets                 - directory containing some template snippets used in the cloudconfig or ignition
 |   |-- cloudconfig
 |   |   |-- net_bond.yaml
@@ -47,14 +47,14 @@ The very first thing to do is to copy `config.yaml.dist` to
 section configures the network, profiles for the machines and the versions
 of the software that should be installed via Yochu.
 
-### Default CoreOS Version
+### Default Container Linux Version
 
-To successfully run Mayu you need to specify a default CoreOS version. This version is used to bootstrap
-machine. So whenever a new machine starts this CoreOS version is used to install CoreOS on the disk of
-the machine. You can also specify other CoreOS versions within profiles or single machines that overwrite
+To successfully run Mayu you need to specify a default Container Linux version. This version is used to bootstrap
+machine. So whenever a new machine starts this Container Linux version is used to install Container Linux on the disk of
+the machine. You can also specify other Container Linux versions within profiles or single machines that overwrite
 this default value.
 
-Most importantly you also need to fetch the CoreOS image version. This is explained in the [Running Mayu](running.md) section.
+Most importantly you also need to fetch the Container Linux image version. This is explained in the [Running Mayu](running.md) section.
 
 ```yaml
 default_coreos_version: 1122.2.0
@@ -204,7 +204,7 @@ configuration) for now.
 ```
 
 This snippet will be merged into the `cloud-config` file, so the right
-indentation must be taken into account. The CoreOS [network
+indentation must be taken into account. The Container Linux [network
 configuration](https://coreos.com/os/docs/latest/network-config-with-networkd.html)
 defines the
 [systemd-networkd](http://www.freedesktop.org/software/systemd/man/systemd.network.html)

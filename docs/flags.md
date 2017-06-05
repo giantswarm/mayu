@@ -17,11 +17,11 @@ Flags:
       --dnsmasq string                  Path to dnsmasq binary (default "/usr/sbin/dnsmasq")
       --dnsmasq-template string         Dnsmasq config template (default "./templates/dnsmasq_template.conf")
       --etcd-quorum-size int            Quorum of the etcd cluster (default 3)
-      --first-stage-script string       Install script to install CoreOS on disk in the first stage. (default "./templates/first_stage_script.sh")
+      --first-stage-script string       Install script to install Container Linux on disk in the first stage. (default "./templates/first_stage_script.sh")
       --http-bind-address string        HTTP address Mayu listens on (default "0.0.0.0")
       --http-port int                   HTTP port Mayu listens on (default 4080)
       --ignition-config string          Final ignition config file that is used to boot the machine (default "./templates/ignition/gs_install.yaml")
-      --images-cache-dir string         Directory for CoreOS images (default "./images")
+      --images-cache-dir string         Directory for Container Linux images (default "./images")
       --last-stage-cloudconfig string   Final cloudconfig that is used to boot the machine (default "./templates/last_stage_cloudconfig.yaml")
       --log_backtrace_at value          when logging hits line file:N, emit a stack trace (default :0)
       --log_dir value                   If non-empty, write log files in this directory

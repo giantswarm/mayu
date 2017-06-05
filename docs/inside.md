@@ -54,11 +54,11 @@ the initial root directory.
 
 ## System Installation
 
-The initial root directory contains a version of CoreOS that is modified to run
+The initial root directory contains a version of Container Linux that is modified to run
 one unit that in turn requests a first stage script and runs that. The script
 is based on the `cloudconfig` that the management node holds for each server
 respectively and assigns based on the serial number of the machine. It waits
-for connectivity and then downloads a vanilla CoreOS stable image, which is
+for connectivity and then downloads a vanilla Container Linux stable image, which is
 cached on the management node. This image gets installed by default to
 `/dev/sda` configured through the above-mentioned `cloudconfig`. Finally the
 node announces itself as installed to the management node and reboots.
@@ -69,5 +69,5 @@ On the final reboot (as well as each next reboot, as long as nothing in the
 mayu configuration gets changed) the node will again try to boot over
 ethernet first. It sends three DHCP request, which get ignored by the PXE
 server. The PXE server ingores these as long as the node is marked as
-`installed`. The node then continues booting the previously installed CoreOS
+`installed`. The node then continues booting the previously installed Container Linux
 from `/dev/sda`.
