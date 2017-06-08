@@ -5,7 +5,7 @@
 
 # Mayu
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
-that must follow a specific configuration with CoreOS. It sets up fleet
+that must follow a specific configuration with Container Linux. It sets up fleet
 meta-data, and patched versions of fleet, etcd, and docker when using
 [Yochu](https://github.com/giantswarm/yochu).
 

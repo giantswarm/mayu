@@ -1,10 +1,10 @@
 # Running Mayu
 
-## Download CoreOS Images
+## Download Container Linux Images
 
-Before you start up Mayu you need to download a CoreOS image. In fact you need to download 
-all the CoreOS versions that you specified in your `config.yaml`. You definitely need your
-default CoreOS version. But you might also define different CoreOS versions within your profiles.
+Before you start up Mayu you need to download a Container Linux image. In fact you need to download
+all the Container Linux versions that you specified in your `config.yaml`. You definitely need your
+default Container Linux version. But you might also define different Container Linux versions within your profiles.
 
 *Note:* the script is part of a release tarball or if you've build Mayu yourself it is in `bin-dist/`. Please do not run `scripts/fetch-coreos-image` - you need to fetch or build a distribution first.
 

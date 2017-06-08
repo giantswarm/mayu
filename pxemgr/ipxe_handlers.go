@@ -248,7 +248,7 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
-	glog.V(3).Infof("sending CoreOS %s image", coreOSversion)
+	glog.V(3).Infof("sending Container Linux %s image", coreOSversion)
 
 	var (
 		img *os.File

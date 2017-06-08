@@ -58,5 +58,5 @@ write_files:
   permissions: 0644
   owner: root
   content: |
-    CoreOS is installing...
+    Container Linux is installing...
     You can look at installation progresses running `/tmp/gs-installer-progress.sh`
