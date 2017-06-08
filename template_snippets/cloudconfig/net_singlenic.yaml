@@ -14,7 +14,7 @@
       Name={{.Host.ConnectedNIC}}
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
+      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
       Gateway={{.ClusterNetwork.Router}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
