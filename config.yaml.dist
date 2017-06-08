@@ -15,7 +15,7 @@ network:
   dns: [8.8.8.8, 8.8.4.4]
   router: 10.0.0.1
   network_model: singlenic
-  subnet_len: 24
+  subnet_size: 24
   vlan_id: -1
 
 profiles:
