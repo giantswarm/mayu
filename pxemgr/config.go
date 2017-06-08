@@ -66,6 +66,8 @@ type Network struct {
 	Router       string
 	DNS          []string
 	PXE          bool
+        Subnet       string `yaml:"subnet_len"`
+        Vlan         string `yaml:"vlan_id"`
 	NetworkModel string `yaml:"network_model"`
 
 	IgnoredHosts []string
