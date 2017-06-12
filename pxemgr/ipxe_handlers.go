@@ -36,12 +36,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString("#!ipxe\n")
-	if mgr.config.Network.UEFI {
-		buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n initrd=initrd.cpio.gz", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
-
-	} else {
-		buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
-	}
+	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n initrd=initrd.cpio.gz", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
 	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
 	buffer.WriteString("boot\n")
 
