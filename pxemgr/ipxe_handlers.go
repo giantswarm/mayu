@@ -51,7 +51,7 @@ func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http
 	infoHelperURL := mgr.pxeURL() + "/hostinfo-helper"
 	cloudConfigURL := mgr.pxeURL() + "/final-cloud-config.yaml"
 	ignitionConfigURL := ""
-	setInstalledURL := mgr.pxeURL() + "/admin/host/__SERIAL__/set_installed"
+	setInstalledURL := mgr.apiURL() + "/admin/host/__SERIAL__/set_installed"
 	installImageURL := mgr.pxeURL() + "/images/" + serial + "/install_image.bin.bz2"
 	host := mgr.maybeCreateHost(serial)
 

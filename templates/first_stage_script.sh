@@ -10,7 +10,7 @@ which gpg >/dev/null || exit 1
 while [[ -z $(curl -k -s {{.MayuURL}}) ]] ; do sleep 1;  done
 
 INFOPUSHER_IMAGE="quay.io/giantswarm/mayu-infopusher:latest"
-TMP_HELPER="docker run --net=host --privileged=true -v /sys:/sys -v /dev:/dev -it $INFOPUSHER_IMAGE"
+TMP_HELPER="docker run --net=host --privileged=true -v /sys:/sys -v /dev:/dev  $INFOPUSHER_IMAGE"
 
 if [[ -n "{{.CloudConfigURL}}" ]]; then
   $TMP_HELPER -post-url={{.CloudConfigURL}} > /tmp/future-cloud-config.yaml
@@ -180,7 +180,7 @@ case "$C" in
     set -e
     coreos_install
 
-    curl -X PUT --header "Content-Length: 0" "$(echo {{.SetInstalledURL}} | sed "s/__SERIAL__/$serial/")" && reboot
+    curl -k -X PUT --header "Content-Length: 0" "$(echo {{.SetInstalledURL}} | sed "s/__SERIAL__/$serial/")" && reboot
 
     ;;
   *)

@@ -57,7 +57,7 @@ coreos:
       Type=oneshot
       ExecStartPre=/usr/bin/mkdir -p /opt/bin
       ExecStartPre=/bin/sh -c 'while [[ -z $(curl -s {{index .TemplatesEnv "mayu_https_endpoint"}}) ]] ; do sleep 2 ; done'
-      ExecStart=/usr/bin/docker run -it --privileged=true -v /dev:/dev -v /sys:/sys --net=host quay.io/giantswarm/mayuctl:latest boot-complete --host={{index .TemplatesEnv "mayu_api_ip"}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls{{end}} --update-versions
+      ExecStart=/usr/bin/docker run --privileged=true -v /dev:/dev -v /sys:/sys --net=host quay.io/giantswarm/mayuctl:latest boot-complete --host={{index .TemplatesEnv "mayu_api_ip"}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls{{end}} --update-versions
       RemainAfterExit=yes
 
       [Install]
