@@ -36,7 +36,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString("#!ipxe\n")
-	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
+	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin initrd=initrd.cpio.gz maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
 	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
 	buffer.WriteString("boot\n")
 

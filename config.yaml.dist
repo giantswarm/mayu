@@ -4,6 +4,7 @@ default_coreos_version: 1185.3.0
 
 network:
   pxe: true
+  uefi: false
   interface: bond0
   bind_addr: 10.0.0.254
   bootstrap_range:
