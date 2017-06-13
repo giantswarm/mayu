@@ -9,7 +9,7 @@ which gpg >/dev/null || exit 1
 
 while [[ -z $(curl -k -s {{.MayuURL}}) ]] ; do sleep 1;  done
 
-INFOPUSHER_IMAGE="quay.io/giantswarm/mayu-infopusher:33f832fcf8c0fa3a80300274ebb801ec2a87d3e3"
+INFOPUSHER_IMAGE="quay.io/giantswarm/mayu-infopusher:latest"
 TMP_HELPER="docker run --net=host --privileged=true -v /sys:/sys -v /dev:/dev -it $INFOPUSHER_IMAGE"
 
 if [[ -n "{{.CloudConfigURL}}" ]]; then
