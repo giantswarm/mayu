@@ -180,7 +180,7 @@ case "$C" in
     set -e
     coreos_install
 
-    curl -X PUT --header "Content-Length: 0" "$(echo {{.SetInstalledURL}} | sed "s/__SERIAL__/$serial/")" && reboot
+    curl -k -X PUT --header "Content-Length: 0" "$(echo {{.SetInstalledURL}} | sed "s/__SERIAL__/$serial/")" && reboot
 
     ;;
   *)
