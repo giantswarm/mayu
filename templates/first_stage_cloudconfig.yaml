@@ -11,7 +11,8 @@ coreos:
       [Unit]
       Description=Wait for network connectivity and run installer script
       Wants=network.target
-      After=network.target
+      After=network.target docker.service
+      Requires=docker.service
 
       [Service]
       Type=oneshot
