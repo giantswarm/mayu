@@ -74,6 +74,7 @@ network:
     start: 10.0.3.31
     end: 10.0.3.70
   dns: [8.8.8.8]
+  ntp: [0.pool.ntp.org, 1.pool.ntp.org]
   router: 10.0.3.251
   network_model: singlenic
 ```
