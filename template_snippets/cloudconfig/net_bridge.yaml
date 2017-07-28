@@ -6,8 +6,8 @@
       Name={{.Host.ConnectedNIC}}
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
-      Gateway={{.ClusterNetwork.Router}}
+      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
+      Gateway={{.ClusterNetwork.SubnetGateway}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
       {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}

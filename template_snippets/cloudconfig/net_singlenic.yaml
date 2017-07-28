@@ -15,7 +15,7 @@
 
       [Network]
       Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
-      Gateway={{.ClusterNetwork.Router}}
+      Gateway={{.ClusterNetwork.SubnetGateway}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
       {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
