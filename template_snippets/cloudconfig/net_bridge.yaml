@@ -10,6 +10,8 @@
       Gateway={{.ClusterNetwork.Router}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
+      {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
+      {{ end }}
 
   - name: 00-br0.netdev
     runtime: true
