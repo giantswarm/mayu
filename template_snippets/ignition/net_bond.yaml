@@ -53,5 +53,7 @@ networkd:
       Gateway={{.ClusterNetwork.Router}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
+      {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
+      {{ end }}
 
 {{end}}
