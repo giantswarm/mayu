@@ -71,11 +71,13 @@ network:
     start: 10.0.3.10
     end: 10.0.3.30
   ip_range:
-    start: 10.0.3.31
-    end: 10.0.3.70
+    start: 10.0.4.31
+    end: 10.0.4.70
   dns: [8.8.8.8]
   ntp: [0.pool.ntp.org, 1.pool.ntp.org]
   router: 10.0.3.251
+  subnet_size: 24
+  subnet_gateway: 10.0.4.251
   network_model: singlenic
 ```
 

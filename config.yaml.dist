@@ -17,6 +17,7 @@ network:
   router: 10.0.0.1
   network_model: singlenic
   subnet_size: 24
+  subnet_gateway: 10.0.1.1
   vlan_id: -1
 
 profiles:
