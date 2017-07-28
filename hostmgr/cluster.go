@@ -430,7 +430,7 @@ func (c *Cluster) cacheHosts() error {
 					lastModTime: host.lastModTime,
 				}
 			} else {
-				glog.V(4).Infof("file '%s' doesn't exist, skipping directory '%s'", hostConfPath, fi.Name())
+				glog.V(14).Infof("file '%s' doesn't exist, skipping directory '%s'", hostConfPath, fi.Name())
 			}
 
 		}
