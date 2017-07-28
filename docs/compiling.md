@@ -2,7 +2,18 @@
 
 In order to compile Mayu you need to have `golang`  installed.
 
-To compile all binaries of the projects running a simple `go build` is sufficient.
+Use following command to compile `mayu` binary:
+```
+CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
+```
+This will compile statically linked `mayu` binary.
+
+## Building docker image
+
+After `mayu` binary successfully compiled docker image can be built:
+```
+docker build -t mayu .
+```
 
 ## Updating vendors
 

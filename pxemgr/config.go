@@ -65,6 +65,7 @@ type Network struct {
 	} `yaml:"ip_range"`
 	Router       string
 	DNS          []string
+	NTP          []string
 	PXE          bool
 	UEFI         bool
 	SubnetSize   string `yaml:"subnet_size"`

@@ -60,5 +60,7 @@ networkd:
       Gateway=10.0.7.251
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
+      {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
+      {{ end }}
 
 {{end}}

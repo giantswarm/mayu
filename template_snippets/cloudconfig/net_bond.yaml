@@ -64,5 +64,7 @@
       Gateway=10.0.1.254
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
+      {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
+      {{ end }}
 
 {{end}}
