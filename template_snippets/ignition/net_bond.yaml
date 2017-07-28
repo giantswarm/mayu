@@ -16,8 +16,7 @@ networkd:
 
       [Network]
       DHCP=none
-      VLAN=bond0.3
-      VLAN=bond0.4
+      VLAN=bond0.{{.ClusterNetwork.VlanId}}
 
   - name: 15-bond0.netdev
     contents: |
@@ -26,38 +25,32 @@ networkd:
       Kind=bond
 
       [Bond]
+{{- if eq .ClusterNetwork.BondMode "lacp" }}
       Mode=802.3ad
       LACPTransmitRate=fast
       MIIMonitorSec=1s
       UpDelaySec=3s
       DownDelaySec=9s
-
-  - name: 35-bond0.3.netdev
+{{else}}
+      Mode=balance-rr
+{{end}}
+  - name: 35-bond0.{{.ClusterNetwork.VlanId}}.netdev
     contents: |
       [NetDev]
-      Name=bond0.3
+      Name=bond0.{{.ClusterNetwork.VlanId}}
       Kind=vlan
 
       [VLAN]
-      Id=3
-
-  - name: 35-bond0.4.netdev
-    contents: |
-      [NetDev]
-      Name=bond0.4
-      Kind=vlan
-
-      [VLAN]
-      Id=4
+      Id={{.ClusterNetwork.VlanId}}
 
   - name: 40-vlan.network
     contents: |
       [Match]
-      Name=bond0.3
+      Name=bond0.{{.ClusterNetwork.VlanId}}
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
-      Gateway=10.0.7.251
+      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
+      Gateway={{.ClusterNetwork.Router}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
       {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}

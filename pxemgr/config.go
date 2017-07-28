@@ -71,6 +71,7 @@ type Network struct {
 	SubnetSize   string `yaml:"subnet_size"`
 	VlanId       string `yaml:"vlan_id"`
 	NetworkModel string `yaml:"network_model"`
+	BondMode     string `yaml:"bond_mode"`
 
 	IgnoredHosts []string
 	StaticHosts  []hostmgr.IPMac
