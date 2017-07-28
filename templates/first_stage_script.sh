@@ -125,7 +125,7 @@ if [[ -n "${CLOUDINIT}" ]] || [[ -n "${COPY_NET}" ]]; then
     cp --recursive --no-clobber --preserve --dereference /run/systemd/network/* "${WORKDIR}/rootfs/etc/systemd/network"
   fi
   echo "{{.MachineID}}" > "${WORKDIR}/rootfs/etc/machine-id"
-
+  chmod a+r "${WORKDIR}/rootfs/etc/machine-id"
   echo "SERIAL=$serial" > "${WORKDIR}/rootfs/etc/mayu-env"
   echo "MAYU_VERSION={{.MayuVersion}}" >> "${WORKDIR}/rootfs/etc/mayu-env"
 
