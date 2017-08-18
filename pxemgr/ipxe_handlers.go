@@ -13,12 +13,13 @@ import (
 	"text/template"
 	"time"
 
+	"io/ioutil"
+
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 )
 
 const (
@@ -239,10 +240,18 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 
 	if mgr.useIgnition {
 		glog.V(2).Infoln("generating a final stage ignitionConfig")
-		mgr.WriteIgnitionConfig(*host, w)
+		if err := mgr.WriteIgnitionConfig(*host, w); err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("generating ignition config failed: " + err.Error()))
+			return
+		}
 	} else {
 		glog.V(2).Infoln("generating a final stage cloudConfig")
-		mgr.WriteLastStageCC(*host, w)
+		if err := mgr.WriteLastStageCC(*host, w); err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("generating final stage cloudConfig failed: " + err.Error()))
+			return
+		}
 	}
 }
 

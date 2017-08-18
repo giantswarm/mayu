@@ -279,10 +279,15 @@ func mainRun(cmd *cobra.Command, args []string) {
 			os.Stdout.WriteString(b.String())
 		} else {
 			os.Stdout.WriteString("last stage cloud config:\n")
-			pxeManager.WriteLastStageCC(placeholderHost, os.Stdout)
-
+			if err := pxeManager.WriteLastStageCC(placeholderHost, os.Stdout); err != nil {
+				glog.Error("error found while creating template: ", err)
+				os.Exit(1)
+			}
 			b := bytes.NewBuffer(nil)
-			pxeManager.WriteLastStageCC(placeholderHost, b)
+			if err := pxeManager.WriteLastStageCC(placeholderHost, b); err != nil {
+				glog.Error("error found while creating template: ", err)
+				os.Exit(1)
+			}
 			yamlErr := validateYAML(b.Bytes())
 			if yamlErr != nil {
 				glog.Error("error found while checking generated cloud-config: ", yamlErr)
