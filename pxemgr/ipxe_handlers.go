@@ -247,7 +247,6 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 			w.Write([]byte("generating ignition config failed: " + err.Error()))
 			return
 		}
-		buf.WriteTo(w)
 	} else {
 		glog.V(2).Infoln("generating a final stage cloudConfig")
 		if err := mgr.WriteLastStageCC(*host, buf); err != nil {
@@ -256,8 +255,8 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 			w.Write([]byte("generating final stage cloudConfig failed: " + err.Error()))
 			return
 		}
-		buf.WriteTo(w)
 	}
+	buf.WriteTo(w)
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
