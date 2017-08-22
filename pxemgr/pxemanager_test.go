@@ -72,9 +72,11 @@ func setUp(t *testing.T) *helper {
 
 	h.pxeCfg = PXEManagerConfiguration{
 		UseInternalEtcdDiscovery: true,
-		NoTLS:                true,
+		NoTLS: true,
+		// This port is declared only to allow PXEMAnager instantiation (APIPort and
+		// PXEPort must be different), the server is not going to be started and we
+		// are going to test the handler method directly
 		APIPort:              4080,
-		PXEPort:              4081,
 		LastStageCloudconfig: filepath.Join(h.dir, "last_stage_cloudconfig.yaml"),
 		EtcdEndpoint:         h.fakeEtcd.URL,
 	}
@@ -100,10 +102,14 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	defer tearDown(h)
 
 	h.pxeCfg.ConfigFile = filepath.Join(h.dir, "config_ok.yaml")
+
+	// instantiate PXEManager (no need to start it)
 	mgr, err := PXEManager(h.pxeCfg, h.cluster)
 	if err != nil {
 		t.Fatalf("unable to create a pxe manager: %s\n", err)
 	}
+
+	// call handler func and make assertions on the response recorder
 	mgr.configGenerator(h.w, h.req)
 
 	if status := h.w.Code; status != http.StatusOK {
@@ -132,10 +138,14 @@ func TestFinalCloudConfigChecksErrorFail(t *testing.T) {
 	defer tearDown(h)
 
 	h.pxeCfg.ConfigFile = filepath.Join(h.dir, "config_err.yaml")
+
+	// instantiate PXEManager (no need to start it)
 	mgr, err := PXEManager(h.pxeCfg, h.cluster)
 	if err != nil {
 		t.Fatalf("unable to create a pxe manager: %s\n", err)
 	}
+
+	// call handler func and make assertions on the response recorder
 	mgr.configGenerator(h.w, h.req)
 
 	if status := h.w.Code; status != http.StatusInternalServerError {
