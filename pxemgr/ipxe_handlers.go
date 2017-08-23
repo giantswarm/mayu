@@ -256,7 +256,9 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-	buf.WriteTo(w)
+	if _, err := buf.WriteTo(w); err != nil {
+		glog.V(2).Infoln("writing response failed: " + err.Error())
+	}
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
