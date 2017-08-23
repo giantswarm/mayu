@@ -257,7 +257,7 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		glog.V(2).Infoln("writing response failed: " + err.Error())
+		glog.Fatalln("writing response failed: " + err.Error())
 	}
 }
 
