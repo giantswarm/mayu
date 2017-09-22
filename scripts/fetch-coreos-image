@@ -20,7 +20,7 @@ mkdir -p ./images/${COREOS_VERSION}/usr/share/oem
 cp templates/first_stage_cloudconfig.yaml ./images/${COREOS_VERSION}/usr/share/oem/cloud-config.yml
 
 docker run --rm -v $(pwd)/images/${COREOS_VERSION}:/usr/code/images \
-	ubuntu:wily /bin/bash -c "apt-get update -y && apt-get install cpio && \
+	ubuntu:xenial /bin/bash -c "apt-get update -y && apt-get install cpio && \
 	zcat /usr/code/images/coreos_pxe_image.cpio.gz > /usr/code/images/coreos_production_pxe_image.cpio && \
 	cd /usr/code/images && find usr | cpio -o -A -H newc -O coreos_production_pxe_image.cpio && \
 	gzip coreos_production_pxe_image.cpio"
