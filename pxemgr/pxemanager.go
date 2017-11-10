@@ -212,7 +212,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 	}
 
-	mgr.pxeRouter.Methods("GETY").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
+	mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 	// endpoint for fetching coreos images defined by machine serial number
 	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
