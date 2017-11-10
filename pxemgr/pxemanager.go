@@ -401,7 +401,7 @@ func (mgr *pxeManagerT) pxeURL() string {
 }
 
 func (mgr *pxeManagerT) ignitionURL() string {
-	u := url.URL{Scheme: "http", Host: net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort)), Path: "/ignition##params"}
+	u := url.URL{Scheme: "http", Host: net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort)), Path: "/ignition"}
 	return u.String()
 }
 

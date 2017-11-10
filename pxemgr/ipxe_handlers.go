@@ -35,7 +35,7 @@ const (
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 
-	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s\n", mgr.pxeURL(), mgr.ignitionURL())
+	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s##params\n", mgr.pxeURL(), mgr.ignitionURL())
 	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
 
 	buffer := bytes.NewBufferString("")
@@ -55,9 +55,8 @@ inc idx && goto loop
 :loop_done
 param uuid ${uuid}
 param serial ${serial}
-param asset ${asset}
-
-	`)
+param asset ${asset}`)
+	buffer.WriteString("\n")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
 	buffer.WriteString("boot\n")
