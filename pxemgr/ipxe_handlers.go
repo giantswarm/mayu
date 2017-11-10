@@ -44,8 +44,8 @@ dhcp
 params
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
-echo net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}\n
-param net${idx}mac ${net${idx}/mac}\n
+echo net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
+param net${idx}mac ${net${idx}/mac}
 param net${idx}bustype ${net${idx}/bustype}
 param net${idx}busid ${net${idx}/busid}
 param net${idx}chip ${net${idx}/chip}
