@@ -35,10 +35,31 @@ const (
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 
+	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s\n", mgr.pxeURL(), mgr.ignitionURL())
+	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
+
 	buffer := bytes.NewBufferString("")
-	buffer.WriteString("#!ipxe\n")
-	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin initrd=initrd.cpio.gz maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
-	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
+	buffer.WriteString(`#!ipxe\n
+dhcp\n
+params\n
+set idx:int32 0\n
+:loop isset ${net${idx}/mac} || goto loop_done\n
+echo net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}\n
+param net${idx}mac ${net${idx}/mac}\n
+param net${idx}bustype ${net${idx}/bustype}\n
+param net${idx}busid ${net${idx}/busid}\n
+param net${idx}chip ${net${idx}/chip}\n
+param net${idx}busloc ${net${idx}/busloc}\n
+\n
+inc idx && goto loop\n
+:loop_done\n
+param uuid ${uuid}\n
+param serial ${serial}\n
+param asset ${asset}\n
+
+	`)
+	buffer.WriteString(kernel)
+	buffer.WriteString(initrd)
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
@@ -173,6 +194,97 @@ func (mgr *pxeManagerT) profileEtcdClusterToken(profileName string) string {
 
 func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infoln("generating a final stage config file")
+
+	hostData := &machinedata.HostData{}
+
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(hostData)
+	if err != nil {
+		glog.Warningln(err)
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if hostData.Serial == "" {
+		glog.Warningf("empty serial. %+v\n", hostData)
+		w.WriteHeader(400)
+		w.Write([]byte("no serial ? :/"))
+		return
+	}
+
+	host := mgr.maybeCreateHost(hostData.Serial)
+	mgr.mu.Lock()
+	defer mgr.mu.Unlock()
+	macAddresses := make([]string, len(hostData.NetDevs))
+	for i, dev := range hostData.NetDevs {
+		macAddresses[i] = dev.MacAddress
+	}
+	host.MacAddresses = macAddresses
+
+	err = host.Commit("collected host mac addresses")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host macAddress failed"))
+		return
+	}
+
+	if hostData.ConnectedNIC != "" && host.ConnectedNIC != hostData.ConnectedNIC {
+		host.ConnectedNIC = hostData.ConnectedNIC
+		err = host.Commit("updated host connected nic")
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("committing updated host connected nic failed"))
+			return
+		}
+	}
+
+	if hostData.IPMIAddress != nil {
+		host.IPMIAddr = hostData.IPMIAddress
+		err = host.Commit("updated host ipmi address")
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("committing updated host ipmi address failed"))
+			return
+		}
+	}
+
+	glog.V(2).Infof("got host %+v\n", host)
+
+	host.State = hostmgr.Installing
+	err = host.Commit("updated host state to installing")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("committing updated host state=installing failed"))
+		return
+	}
+	mgr.cluster.Update()
+
+	buf := &bytes.Buffer{}
+	if mgr.useIgnition {
+		glog.V(2).Infoln("generating a final stage ignitionConfig")
+		if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
+			glog.V(2).Infoln("generating ignition config failed: " + err.Error())
+			w.WriteHeader(500)
+			w.Write([]byte("generating ignition config failed: " + err.Error()))
+			return
+		}
+	} else {
+		glog.V(2).Infoln("generating a final stage cloudConfig")
+		if err := mgr.WriteLastStageCC(*host, buf); err != nil {
+			glog.V(2).Infoln("generating final stage cloudConfig failed: " + err.Error())
+			w.WriteHeader(500)
+			w.Write([]byte("generating final stage cloudConfig failed: " + err.Error()))
+			return
+		}
+	}
+	if _, err := buf.WriteTo(w); err != nil {
+		glog.Fatalln("writing response failed: " + err.Error())
+	}
+}
+
+func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request) {
+	glog.V(2).Infoln("IGNITION: generating a ignition")
+	glog.V(2).Infoln("IGNITION: server info:", r.RequestURI, r.URL)
 
 	hostData := &machinedata.HostData{}
 

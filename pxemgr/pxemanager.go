@@ -212,6 +212,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 	}
 
+	mgr.pxeRouter.Methods("GETY").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 	// endpoint for fetching coreos images defined by machine serial number
 	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
@@ -396,6 +397,11 @@ func (mgr *pxeManagerT) apiURL() string {
 
 func (mgr *pxeManagerT) pxeURL() string {
 	u := url.URL{Scheme: "http", Host: net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort))}
+	return u.String()
+}
+
+func (mgr *pxeManagerT) ignitionURL() string {
+	u := url.URL{Scheme: "http", Host: net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort)), Path: "/ignition##params"}
 	return u.String()
 }
 
