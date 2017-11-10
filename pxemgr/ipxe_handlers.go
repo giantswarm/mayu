@@ -39,23 +39,23 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
 
 	buffer := bytes.NewBufferString("")
-	buffer.WriteString(`#!ipxe\n
-dhcp\n
-params\n
-set idx:int32 0\n
-:loop isset ${net${idx}/mac} || goto loop_done\n
+	buffer.WriteString(`#!ipxe
+dhcp
+params
+set idx:int32 0
+:loop isset ${net${idx}/mac} || goto loop_done
 echo net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}\n
 param net${idx}mac ${net${idx}/mac}\n
-param net${idx}bustype ${net${idx}/bustype}\n
-param net${idx}busid ${net${idx}/busid}\n
-param net${idx}chip ${net${idx}/chip}\n
-param net${idx}busloc ${net${idx}/busloc}\n
-\n
-inc idx && goto loop\n
-:loop_done\n
-param uuid ${uuid}\n
-param serial ${serial}\n
-param asset ${asset}\n
+param net${idx}bustype ${net${idx}/bustype}
+param net${idx}busid ${net${idx}/busid}
+param net${idx}chip ${net${idx}/chip}
+param net${idx}busloc ${net${idx}/busloc}
+
+inc idx && goto loop
+:loop_done
+param uuid ${uuid}
+param serial ${serial}
+param asset ${asset}
 
 	`)
 	buffer.WriteString(kernel)
