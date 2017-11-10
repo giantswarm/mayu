@@ -43,7 +43,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 sleep 5
 dhcp || echo dhcp failed
 sleep 5
-params || echo params failed
+params || shell
 sleep 5
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
