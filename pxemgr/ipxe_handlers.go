@@ -40,8 +40,10 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString(`#!ipxe
-dhcp
-params
+sleep 5
+dhcp || echo dhcp failed
+sleep 5
+params || echo params failed
 sleep 5
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
