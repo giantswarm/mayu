@@ -53,9 +53,10 @@ type Profile struct {
 }
 
 type Network struct {
-	Interface      string
-	BindAddr       string `yaml:"bind_addr"`
-	BootstrapRange struct {
+	Interface        string
+	MachineInterface string `yaml:"machine_interface"`
+	BindAddr         string `yaml:"bind_addr"`
+	BootstrapRange   struct {
 		Start string
 		End   string
 	} `yaml:"bootstrap_range"`
