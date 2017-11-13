@@ -333,86 +333,86 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 }`))
 
 	return
-/*
-	hostData := &machinedata.HostData{}
+	/*
+		hostData := &machinedata.HostData{}
 
-	hostData.Serial = r.Form.Get("uuid")
+		hostData.Serial = r.Form.Get("uuid")
 
-	if hostData.Serial == "" {
-		glog.Warningf("empty serial. %+v\n", hostData)
-		w.WriteHeader(400)
-		w.Write([]byte("no serial ? :/"))
-		return
-	}
+		if hostData.Serial == "" {
+			glog.Warningf("empty serial. %+v\n", hostData)
+			w.WriteHeader(400)
+			w.Write([]byte("no serial ? :/"))
+			return
+		}
 
-	host := mgr.maybeCreateHost(hostData.Serial)
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
-	macAddresses := make([]string, len(hostData.NetDevs))
-	for i, dev := range hostData.NetDevs {
-		macAddresses[i] = dev.MacAddress
-	}
-	host.MacAddresses = macAddresses
+		host := mgr.maybeCreateHost(hostData.Serial)
+		mgr.mu.Lock()
+		defer mgr.mu.Unlock()
+		macAddresses := make([]string, len(hostData.NetDevs))
+		for i, dev := range hostData.NetDevs {
+			macAddresses[i] = dev.MacAddress
+		}
+		host.MacAddresses = macAddresses
 
-	err = host.Commit("collected host mac addresses")
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("committing updated host macAddress failed"))
-		return
-	}
-
-	if hostData.ConnectedNIC != "" && host.ConnectedNIC != hostData.ConnectedNIC {
-		host.ConnectedNIC = hostData.ConnectedNIC
-		err = host.Commit("updated host connected nic")
+		err = host.Commit("collected host mac addresses")
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte("committing updated host connected nic failed"))
+			w.Write([]byte("committing updated host macAddress failed"))
 			return
 		}
-	}
 
-	if hostData.IPMIAddress != nil {
-		host.IPMIAddr = hostData.IPMIAddress
-		err = host.Commit("updated host ipmi address")
+		if hostData.ConnectedNIC != "" && host.ConnectedNIC != hostData.ConnectedNIC {
+			host.ConnectedNIC = hostData.ConnectedNIC
+			err = host.Commit("updated host connected nic")
+			if err != nil {
+				w.WriteHeader(500)
+				w.Write([]byte("committing updated host connected nic failed"))
+				return
+			}
+		}
+
+		if hostData.IPMIAddress != nil {
+			host.IPMIAddr = hostData.IPMIAddress
+			err = host.Commit("updated host ipmi address")
+			if err != nil {
+				w.WriteHeader(500)
+				w.Write([]byte("committing updated host ipmi address failed"))
+				return
+			}
+		}
+
+		glog.V(2).Infof("got host %+v\n", host)
+
+		host.State = hostmgr.Installing
+		err = host.Commit("updated host state to installing")
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte("committing updated host ipmi address failed"))
+			w.Write([]byte("committing updated host state=installing failed"))
 			return
 		}
-	}
+		mgr.cluster.Update()
 
-	glog.V(2).Infof("got host %+v\n", host)
-
-	host.State = hostmgr.Installing
-	err = host.Commit("updated host state to installing")
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("committing updated host state=installing failed"))
-		return
-	}
-	mgr.cluster.Update()
-
-	buf := &bytes.Buffer{}
-	if mgr.useIgnition {
-		glog.V(2).Infoln("generating a final stage ignitionConfig")
-		if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
-			glog.V(2).Infoln("generating ignition config failed: " + err.Error())
-			w.WriteHeader(500)
-			w.Write([]byte("generating ignition config failed: " + err.Error()))
-			return
+		buf := &bytes.Buffer{}
+		if mgr.useIgnition {
+			glog.V(2).Infoln("generating a final stage ignitionConfig")
+			if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
+				glog.V(2).Infoln("generating ignition config failed: " + err.Error())
+				w.WriteHeader(500)
+				w.Write([]byte("generating ignition config failed: " + err.Error()))
+				return
+			}
+		} else {
+			glog.V(2).Infoln("generating a final stage cloudConfig")
+			if err := mgr.WriteLastStageCC(*host, buf); err != nil {
+				glog.V(2).Infoln("generating final stage cloudConfig failed: " + err.Error())
+				w.WriteHeader(500)
+				w.Write([]byte("generating final stage cloudConfig failed: " + err.Error()))
+				return
+			}
 		}
-	} else {
-		glog.V(2).Infoln("generating a final stage cloudConfig")
-		if err := mgr.WriteLastStageCC(*host, buf); err != nil {
-			glog.V(2).Infoln("generating final stage cloudConfig failed: " + err.Error())
-			w.WriteHeader(500)
-			w.Write([]byte("generating final stage cloudConfig failed: " + err.Error()))
-			return
-		}
-	}
-	if _, err := buf.WriteTo(w); err != nil {
-		glog.Fatalln("writing response failed: " + err.Error())
-	}*/
+		if _, err := buf.WriteTo(w); err != nil {
+			glog.Fatalln("writing response failed: " + err.Error())
+		}*/
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
