@@ -40,12 +40,8 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer := bytes.NewBufferString("")
 	buffer.WriteString(`#!ipxe
-sleep 5
-dhcp || echo dhcp failed
-sleep 5
-shell
-params || shell
-sleep 5
+dhcp
+params
 set idx:int32 0 || shell
 :loop isset ${net${idx}/mac} || goto loop_done
 echo net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
@@ -60,10 +56,9 @@ inc idx && goto loop
 param uuid ${uuid}
 param serial ${serial}
 param asset ${asset}`)
-	buffer.WriteString("\nsleep 10")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
-	buffer.WriteString("sleep 60\nboot\n")
+	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
 }
