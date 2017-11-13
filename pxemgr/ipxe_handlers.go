@@ -288,6 +288,15 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infoln("IGNITION: generating a ignition")
 	glog.V(2).Infoln("IGNITION: server info:", r.RequestURI, r.URL)
+	if err := r.ParseForm(); err != nil {
+		// handle error
+		glog.V(2).Infoln("IGNITION: error parsing form a ignition")
+	}
+
+	for key, values := range r.PostForm {
+		// [...]
+		glog.V(2).Infoln("IGNITION: server info: %s = %s", key, values)
+	}
 
 	w.Write([]byte(`{
   "ignition": {
