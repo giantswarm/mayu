@@ -35,7 +35,7 @@ const (
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 
-	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s##params\n", mgr.pxeURL(), mgr.ignitionURL())
+	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s?uuid=${uuid}&serial=${serial}&asset=${asset}&mac=${net${idx}/mac}\n", mgr.pxeURL(), mgr.ignitionURL())
 	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
 
 	buffer := bytes.NewBufferString("")
@@ -45,7 +45,7 @@ params
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
 echo machine ${uuid} with net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
-param net${idx}mac ${net${idx}/mac}
+param net${idx}mac
 param net${idx}bustype ${net${idx}/bustype}
 param net${idx}busid ${net${idx}/busid}
 param net${idx}chip ${net${idx}/chip}
@@ -57,13 +57,10 @@ param uuid ${uuid}
 param serial ${serial}
 param asset ${asset}`)
 
-	buffer.WriteString("echo " + kernel)
-	buffer.WriteString("echo " + initrd)
-	buffer.WriteString("sleep 25\n")
+	buffer.WriteString("sleep 5\n")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
-	buffer.WriteString("sleep 25\n")
-	buffer.WriteString("boot || shell\n")
+	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
 }
