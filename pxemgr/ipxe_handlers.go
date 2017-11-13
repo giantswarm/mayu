@@ -307,7 +307,7 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
       "mode": 420,
       "contents": { "source": "data:,core1" }
     }]
-  }
+  },
   "systemd": {
     "units": [
       {
