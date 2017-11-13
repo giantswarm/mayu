@@ -289,16 +289,46 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	glog.V(2).Infoln("IGNITION: generating a ignition")
 	glog.V(2).Infoln("IGNITION: server info:", r.RequestURI, r.URL)
 
+	w.Write([]byte(`{
+  "ignition": {
+    "version": "2.0.0",
+    "config": {}
+  },
+  "storage": {
+    "files": [{
+      "filesystem": "root",
+      "path": "/etc/hostname",
+      "mode": 420,
+      "contents": { "source": "data:,core1" }
+    }]
+  }
+  "systemd": {
+    "units": [
+      {
+        "name": "etcd2.service",
+        "enable": true
+      }
+    ]
+  },
+  "networkd": {},
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-rsa ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9IyAZvlEL7lrxDghpqWjs/z/q4E0OtEbmKW9oD0zhYfyHIaX33YYoj3iC7oEd6OEvY4+L4awjRZ2FrXerN/tTg9t1zrW7f7Tah/SnS9XYY9zyo4uzuq1Pa6spOkjpcjtXbQwdQSATD0eeLraBWWVBDIg1COAMsAhveP04UaXAKGSQst6df007dIS5pmcATASNNBc9zzBmJgFwPDLwVviYqoqcYTASka4fSQhQ+fSj9zO1pgrCvvsmA/QeHz2Cn5uFzjh8ftqkM10sjiYibknsBuvVKZ2KpeTY6XoTOT0d9YWoJpfqAEE00+RmYLqDTQGWm5pRuZSc9vbnnH2MiEKf calvix@masteR"
+        ]
+      }
+    ]
+  }
+}`))
+
+	return
+
 	hostData := &machinedata.HostData{}
 
-	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(hostData)
-	if err != nil {
-		glog.Warningln(err)
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	hostData.Serial = r.Form.Get("uuid")
+
 	if hostData.Serial == "" {
 		glog.Warningf("empty serial. %+v\n", hostData)
 		w.WriteHeader(400)
