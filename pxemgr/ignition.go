@@ -61,13 +61,13 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		glog.Fatalln(err)
 		return err
 	}
-	glog.V(2).Infoln(" yaml imported: \n%s", data.String())
+
 	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
 	if e != nil {
 		glog.Fatalln(e)
 		return e
 	}
-
+	glog.V(2).Infoln(" IGNITION imported: \n%s", string(ignitionJSON[:]))
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
 }
