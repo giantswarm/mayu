@@ -1,18 +1,18 @@
 hash: 4de5b2fc455038f0f0d3da2a87621b9499683e78e64f10fc63c40f441b28a77d
-updated: 2017-05-15T17:59:33.586326892+02:00
+updated: 2017-11-13T16:24:41.027399915+01:00
 imports:
 - name: github.com/coreos/etcd
-  version: 43b75072bfaca5a7c35c718179defbcabd9a0886
+  version: 0520cb9304cb2385f7e72b8bc02d6e4d3257158a
   subpackages:
   - client
   - pkg/pathutil
   - pkg/types
 - name: github.com/coreos/go-semver
-  version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
+  version: 568e959cd89871e61434c1143528d9162da89ef2
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd
-  version: 43e4800a6165b4e02bb2a36673c54b230d6f7b26
+  version: 48702e0da86bd25e76cfef347e2adeb434a0d0a6
   subpackages:
   - unit
 - name: github.com/coreos/ignition
@@ -21,7 +21,7 @@ imports:
   - config/types
   - config/validate/report
 - name: github.com/giantswarm/mayu-infopusher
-  version: 33f832fcf8c0fa3a80300274ebb801ec2a87d3e3
+  version: 144692a49fd2e01089f2361b2645a412990b076b
   subpackages:
   - machinedata
 - name: github.com/golang/glog
@@ -29,7 +29,7 @@ imports:
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/handlers
-  version: 3a5767ca75ece5f7f1440b1d16975247f8d8b221
+  version: a4043c62cc2329bacda331d33fc908ab11ef0ec3
 - name: github.com/gorilla/mux
   version: 392c28fe23e1c45ddba891b0320b3b5df220beea
 - name: github.com/inconshreveable/mousetrap
@@ -41,19 +41,19 @@ imports:
 - name: github.com/ryanuber/columnize
   version: 983d3a5fab1bf04d1b412465d2d9f8430e2e917e
 - name: github.com/spf13/cobra
-  version: 65a708cee0a4424f4e353d031ce440643e312f92
+  version: 2da4a54c5ceefcee7ca5dd0eea1e18a3b6366489
 - name: github.com/spf13/pflag
-  version: 7f60f83a2c81bc3c3c0d5297f61ddfa68da9d3b7
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/ugorji/go
-  version: 98ef79d6c615fa258e892ed0b11c6e013712693e
+  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
 - name: github.com/vincent-petithory/dataurl
   version: 9a301d65acbb728fcc3ace14f45f511a4cfeea9c
 - name: golang.org/x/net
-  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
+  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports: []

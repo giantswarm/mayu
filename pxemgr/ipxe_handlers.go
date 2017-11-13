@@ -324,11 +324,11 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 		w.Write([]byte("generating ignition config failed: " + err.Error()))
 		return
 	}
-
+	glog.V(2).Infoln("IGNITION: config: ", buf.String())
 	if _, err := buf.WriteTo(w); err != nil {
 		glog.Fatalln("writing response failed: " + err.Error())
 	}
-	glog.V(2).Infoln("IGNITION: config: %s", buf.String())
+
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
