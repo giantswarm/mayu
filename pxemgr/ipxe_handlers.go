@@ -30,6 +30,8 @@ const (
 	qemuKernelFile   = "coreos_production_qemu.vmlinuz"
 
 	defaultProfileName = "default"
+
+	kvmStaticSerial = "0123456789"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +47,7 @@ params
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
 echo machine ${uuid} with net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
-param net${idx}mac
+param net${idx}mac ${net${idx}/mac}
 param net${idx}bustype ${net${idx}/bustype}
 param net${idx}busid ${net${idx}/busid}
 param net${idx}chip ${net${idx}/chip}
@@ -285,131 +287,46 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infoln("IGNITION: generating a ignition")
 	glog.V(2).Infoln("IGNITION: server info:", r.RequestURI, r.URL)
-	if err := r.ParseForm(); err != nil {
-		// handle error
-		glog.V(2).Infoln("IGNITION: error parsing form a ignition")
+
+	uuid := r.Form.Get("uuid")
+	serial := r.Form.Get("serial")
+	hostData := &machinedata.HostData{}
+
+	if serial == "" || serial == kvmStaticSerial {
+		hostData.Serial = uuid
+	} else {
+		hostData.Serial = serial
 	}
 
-	for key, values := range r.PostForm {
-		// [...]
-		glog.V(2).Infoln("IGNITION: server info: %s = %s", key, values)
+	if hostData.Serial == "" {
+		glog.Warningf("empty serial. %+v\n", hostData)
+		w.WriteHeader(400)
+		w.Write([]byte("no serial ? :/"))
+		return
 	}
 
-	w.Write([]byte(`{
-  "ignition": {
-    "version": "2.0.0",
-    "config": {}
-  },
-  "storage": {
-    "files": [{
-      "filesystem": "root",
-      "path": "/etc/hostname",
-      "mode": 420,
-      "contents": { "source": "data:,core1" }
-    }]
-  },
-  "systemd": {
-    "units": [
-      {
-        "name": "etcd2.service",
-        "enable": true
-      }
-    ]
-  },
-  "networkd": {},
-  "passwd": {
-    "users": [
-      {
-        "name": "core",
-        "sshAuthorizedKeys": [
-          "ssh-rsa ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9IyAZvlEL7lrxDghpqWjs/z/q4E0OtEbmKW9oD0zhYfyHIaX33YYoj3iC7oEd6OEvY4+L4awjRZ2FrXerN/tTg9t1zrW7f7Tah/SnS9XYY9zyo4uzuq1Pa6spOkjpcjtXbQwdQSATD0eeLraBWWVBDIg1COAMsAhveP04UaXAKGSQst6df007dIS5pmcATASNNBc9zzBmJgFwPDLwVviYqoqcYTASka4fSQhQ+fSj9zO1pgrCvvsmA/QeHz2Cn5uFzjh8ftqkM10sjiYibknsBuvVKZ2KpeTY6XoTOT0d9YWoJpfqAEE00+RmYLqDTQGWm5pRuZSc9vbnnH2MiEKf calvix@masteR"
-        ]
-      }
-    ]
-  }
-}`))
+	host := mgr.maybeCreateHost(hostData.Serial)
+	mgr.mu.Lock()
+	defer mgr.mu.Unlock()
 
-	return
-	/*
-		hostData := &machinedata.HostData{}
+	glog.V(2).Infof("got host %+v\n", host)
 
-		hostData.Serial = r.Form.Get("uuid")
+	host.State = hostmgr.Installing
+	mgr.cluster.Update()
 
-		if hostData.Serial == "" {
-			glog.Warningf("empty serial. %+v\n", hostData)
-			w.WriteHeader(400)
-			w.Write([]byte("no serial ? :/"))
-			return
-		}
+	buf := &bytes.Buffer{}
 
-		host := mgr.maybeCreateHost(hostData.Serial)
-		mgr.mu.Lock()
-		defer mgr.mu.Unlock()
-		macAddresses := make([]string, len(hostData.NetDevs))
-		for i, dev := range hostData.NetDevs {
-			macAddresses[i] = dev.MacAddress
-		}
-		host.MacAddresses = macAddresses
+	glog.V(2).Infoln("generating a final stage ignitionConfig")
+	if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
+		glog.V(2).Infoln("generating ignition config failed: " + err.Error())
+		w.WriteHeader(500)
+		w.Write([]byte("generating ignition config failed: " + err.Error()))
+		return
+	}
 
-		err = host.Commit("collected host mac addresses")
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte("committing updated host macAddress failed"))
-			return
-		}
-
-		if hostData.ConnectedNIC != "" && host.ConnectedNIC != hostData.ConnectedNIC {
-			host.ConnectedNIC = hostData.ConnectedNIC
-			err = host.Commit("updated host connected nic")
-			if err != nil {
-				w.WriteHeader(500)
-				w.Write([]byte("committing updated host connected nic failed"))
-				return
-			}
-		}
-
-		if hostData.IPMIAddress != nil {
-			host.IPMIAddr = hostData.IPMIAddress
-			err = host.Commit("updated host ipmi address")
-			if err != nil {
-				w.WriteHeader(500)
-				w.Write([]byte("committing updated host ipmi address failed"))
-				return
-			}
-		}
-
-		glog.V(2).Infof("got host %+v\n", host)
-
-		host.State = hostmgr.Installing
-		err = host.Commit("updated host state to installing")
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte("committing updated host state=installing failed"))
-			return
-		}
-		mgr.cluster.Update()
-
-		buf := &bytes.Buffer{}
-		if mgr.useIgnition {
-			glog.V(2).Infoln("generating a final stage ignitionConfig")
-			if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
-				glog.V(2).Infoln("generating ignition config failed: " + err.Error())
-				w.WriteHeader(500)
-				w.Write([]byte("generating ignition config failed: " + err.Error()))
-				return
-			}
-		} else {
-			glog.V(2).Infoln("generating a final stage cloudConfig")
-			if err := mgr.WriteLastStageCC(*host, buf); err != nil {
-				glog.V(2).Infoln("generating final stage cloudConfig failed: " + err.Error())
-				w.WriteHeader(500)
-				w.Write([]byte("generating final stage cloudConfig failed: " + err.Error()))
-				return
-			}
-		}
-		if _, err := buf.WriteTo(w); err != nil {
-			glog.Fatalln("writing response failed: " + err.Error())
-		}*/
+	if _, err := buf.WriteTo(w); err != nil {
+		glog.Fatalln("writing response failed: " + err.Error())
+	}
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
