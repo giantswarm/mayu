@@ -288,8 +288,9 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	glog.V(2).Infoln("IGNITION: generating a ignition")
 	glog.V(2).Infoln("IGNITION: server info:", r.RequestURI, r.URL)
 
-	uuid := r.Form.Get("uuid")
-	serial := r.Form.Get("serial")
+	uuid := r.URL.Query().Get("uuid")
+	serial := r.URL.Query().Get("serial")
+
 	hostData := &machinedata.HostData{}
 
 	if serial == "" || serial == kvmStaticSerial {
@@ -327,6 +328,7 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	if _, err := buf.WriteTo(w); err != nil {
 		glog.Fatalln("writing response failed: " + err.Error())
 	}
+	glog.V(2).Infoln("IGNITION: config: %s", buf.String())
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
