@@ -333,7 +333,7 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 }`))
 
 	return
-
+/*
 	hostData := &machinedata.HostData{}
 
 	hostData.Serial = r.Form.Get("uuid")
@@ -412,7 +412,7 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	}
 	if _, err := buf.WriteTo(w); err != nil {
 		glog.Fatalln("writing response failed: " + err.Error())
-	}
+	}*/
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
