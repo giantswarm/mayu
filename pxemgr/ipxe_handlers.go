@@ -58,8 +58,8 @@ param uuid ${uuid}
 param serial ${serial}
 param asset ${asset}`)
 
-	buffer.WriteString("echo "+kernel)
-	buffer.WriteString("echo "+initrd)
+	buffer.WriteString("echo " + kernel)
+	buffer.WriteString("echo " + initrd)
 	buffer.WriteString("sleep 25\n")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
