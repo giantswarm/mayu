@@ -10,7 +10,7 @@ Ignition will choose where to look for configuration based on the underlying pla
 
 The configuration must be passed to Ignition through the designated data source. Please refer to Ignition [config examples][examples] to learn about writing config files. The provided configuration will be appended to the universal base configuration:
 
-```json
+```json ignition
 {
   "storage": {
     "filesystems": [{
@@ -35,6 +35,12 @@ journalctl --identifier=ignition --all
 
 In the event that this doesn't yield any results, running as root may help. There are circumstances where the journal isn't owned by the systemd-journal group or the current user is not a part of that group.
 
+### Increasing Verbosity
+
+In cases where the machine fails to boot, it's sometimes helpful to ask journald to log more information to the console. This makes it easy to access the Ignition logs in environments where no interactive console is available. The following kernel parameter will increase the console's log output, making all of Ignition's logs visible:
+
+`systemd.journald.max_level_console=debug`
+
 ### Validating the Configuration
 
 One common cause for Ignition failures is a malformed configuration (e.g. a misspelled section or incorrect hierarchy). Ignition will log errors, warnings, and other notes about the configuration that it parsed, so this can be used to debug issues with the configuration provided. As a convenience, CoreOS hosts an [online validator][validator] which can be used to quickly verify configurations.
@@ -46,7 +52,7 @@ When Ignition enables systemd services, it doesn't directly create the symlinks 
 Ignition is not typically run more than once during a machine's lifetime in a given role, so this situation requiring manual systemd intervention does not commonly arise.
 
 [conditions]: https://www.freedesktop.org/software/systemd/man/systemd.unit.html#ConditionArchitecture=
-[configspec]: configuration.md
+[configspec]: configuration-v2_0.md
 [examples]: examples.md
 [mime]: http://www.iana.org/assignments/media-types/application/vnd.coreos.ignition+json
 [platforms]: supported-platforms.md

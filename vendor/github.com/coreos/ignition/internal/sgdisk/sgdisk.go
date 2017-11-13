@@ -32,10 +32,11 @@ type Operation struct {
 
 type Partition struct {
 	Number   int
-	Offset   uint64 // 512-byte sectors
-	Length   uint64 // 512-byte sectors
+	Offset   uint64 // device logical sectors (probably 512 bytes or 4 KiB)
+	Length   uint64 // device logical sectors (probably 512 bytes or 4 KiB)
 	Label    string
 	TypeGUID string
+	GUID     string
 }
 
 // Begin begins an sgdisk operation
@@ -58,10 +59,10 @@ func (op *Operation) WipeTable(wipe bool) {
 func (op *Operation) Commit() error {
 	if op.wipe {
 		cmd := exec.Command(sgdiskPath, "--zap-all", op.dev)
-		if err := op.logger.LogCmd(cmd, "wiping table on %q", op.dev); err != nil {
+		if _, err := op.logger.LogCmd(cmd, "wiping table on %q", op.dev); err != nil {
 			op.logger.Info("potential error encountered while wiping table... retrying")
 			cmd = exec.Command(sgdiskPath, "--zap-all", op.dev)
-			if err := op.logger.LogCmd(cmd, "wiping table on %q", op.dev); err != nil {
+			if _, err := op.logger.LogCmd(cmd, "wiping table on %q", op.dev); err != nil {
 				return fmt.Errorf("wipe failed: %v", err)
 			}
 		}
@@ -75,10 +76,13 @@ func (op *Operation) Commit() error {
 			if p.TypeGUID != "" {
 				opts = append(opts, fmt.Sprintf("--typecode=%d:%s", p.Number, p.TypeGUID))
 			}
+			if p.GUID != "" {
+				opts = append(opts, fmt.Sprintf("--partition-guid=%d:%s", p.Number, p.GUID))
+			}
 		}
 		opts = append(opts, op.dev)
 		cmd := exec.Command(sgdiskPath, opts...)
-		if err := op.logger.LogCmd(cmd, "creating %d partitions on %q", len(op.parts), op.dev); err != nil {
+		if _, err := op.logger.LogCmd(cmd, "creating %d partitions on %q", len(op.parts), op.dev); err != nil {
 			return fmt.Errorf("create partitions failed: %v", err)
 		}
 	}

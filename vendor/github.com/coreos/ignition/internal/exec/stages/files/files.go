@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/ignition/internal/exec/util"
 	"github.com/coreos/ignition/internal/log"
 	"github.com/coreos/ignition/internal/resource"
+	internalUtil "github.com/coreos/ignition/internal/util"
 )
 
 const (
@@ -44,13 +45,13 @@ func init() {
 
 type creator struct{}
 
-func (creator) Create(logger *log.Logger, client *resource.HttpClient, root string) stages.Stage {
+func (creator) Create(logger *log.Logger, root string, f resource.Fetcher) stages.Stage {
 	return &stage{
 		Util: util.Util{
 			DestDir: root,
 			Logger:  logger,
+			Fetcher: f,
 		},
-		client: client,
 	}
 }
 
@@ -60,8 +61,6 @@ func (creator) Name() string {
 
 type stage struct {
 	util.Util
-
-	client *resource.HttpClient
 }
 
 func (stage) Name() string {
@@ -111,23 +110,31 @@ func (s stage) createFilesystemsEntries(config types.Config) error {
 
 // filesystemEntry represent a thing that knows how to create itself.
 type filesystemEntry interface {
-	create(l *log.Logger, c *resource.HttpClient, u util.Util) error
+	create(l *log.Logger, u util.Util) error
 }
 
 type fileEntry types.File
 
-func (tmp fileEntry) create(l *log.Logger, c *resource.HttpClient, u util.Util) error {
+func (tmp fileEntry) create(l *log.Logger, u util.Util) error {
 	f := types.File(tmp)
-	file := util.RenderFile(l, c, f)
-	if file == nil {
+
+	if f.User.ID == nil {
+		f.User.ID = internalUtil.IntToPtr(0)
+	}
+	if f.Group.ID == nil {
+		f.Group.ID = internalUtil.IntToPtr(0)
+	}
+
+	fetchOp := u.PrepareFetch(l, f)
+	if fetchOp == nil {
 		return fmt.Errorf("failed to resolve file %q", f.Path)
 	}
 
 	if err := l.LogOp(
-		func() error { return u.WriteFile(file) },
+		func() error { return u.PerformFetch(fetchOp) },
 		"writing file %q", string(f.Path),
 	); err != nil {
-		return fmt.Errorf("failed to create file %q: %v", file.Path, err)
+		return fmt.Errorf("failed to create file %q: %v", fetchOp.Path, err)
 	}
 
 	return nil
@@ -135,16 +142,22 @@ func (tmp fileEntry) create(l *log.Logger, c *resource.HttpClient, u util.Util) 
 
 type dirEntry types.Directory
 
-func (tmp dirEntry) create(l *log.Logger, _ *resource.HttpClient, u util.Util) error {
+func (tmp dirEntry) create(l *log.Logger, u util.Util) error {
 	d := types.Directory(tmp)
+
+	d.User.ID, d.Group.ID = u.GetUserGroupID(l, d.User, d.Group)
+	if d.User.ID == nil || d.Group.ID == nil {
+		return fmt.Errorf("failed to resolve directory %q", d.Path)
+	}
+
 	err := l.LogOp(func() error {
 		path := filepath.Clean(u.JoinPath(string(d.Path)))
 
 		// Build a list of paths to create. Since os.MkdirAll only sets the mode for new directories and not the
 		// ownership, we need to determine which directories will be created so we don't chown something that already
 		// exists.
-		newPaths := []string{}
-		for p := path; p != "/"; p = filepath.Dir(p) {
+		newPaths := []string{path}
+		for p := filepath.Dir(path); p != "/"; p = filepath.Dir(p) {
 			_, err := os.Stat(p)
 			if err == nil {
 				break
@@ -163,14 +176,35 @@ func (tmp dirEntry) create(l *log.Logger, _ *resource.HttpClient, u util.Util) e
 			if err := os.Chmod(newPath, os.FileMode(d.Mode)); err != nil {
 				return err
 			}
-			if err := os.Chown(newPath, d.User.Id, d.Group.Id); err != nil {
+			if err := os.Chown(newPath, *d.User.ID, *d.Group.ID); err != nil {
 				return err
 			}
 		}
+
 		return nil
 	}, "creating directory %q", string(d.Path))
 	if err != nil {
 		return fmt.Errorf("failed to create directory %q: %v", d.Path, err)
+	}
+
+	return nil
+}
+
+type linkEntry types.Link
+
+func (tmp linkEntry) create(l *log.Logger, u util.Util) error {
+	s := types.Link(tmp)
+
+	s.User.ID, s.Group.ID = u.GetUserGroupID(l, s.User, s.Group)
+	if s.User.ID == nil || s.Group.ID == nil {
+		return fmt.Errorf("failed to resolve link %q", s.Path)
+	}
+
+	if err := l.LogOp(
+		func() error { return u.WriteLink(s) },
+		"writing link %q -> %q", s.Path, s.Target,
+	); err != nil {
+		return fmt.Errorf("failed to create link %q: %v", s.Path, err)
 	}
 
 	return nil
@@ -223,6 +257,15 @@ func (s stage) mapEntriesToFilesystems(config types.Config) (map[types.Filesyste
 		}
 	}
 
+	for _, sy := range config.Storage.Links {
+		if fs, ok := filesystems[sy.Filesystem]; ok {
+			entryMap[fs] = append(entryMap[fs], linkEntry(sy))
+		} else {
+			s.Logger.Crit("the filesystem (%q), was not defined", sy.Filesystem)
+			return nil, ErrFilesystemUndefined
+		}
+	}
+
 	return entryMap, nil
 }
 
@@ -254,16 +297,17 @@ func (s stage) createEntries(fs types.Filesystem, files []filesystemEntry) error
 			"unmounting %q at %q", dev, mnt,
 		)
 	} else {
-		mnt = string(*fs.Path)
+		mnt = *fs.Path
 	}
 
 	u := util.Util{
-		Logger:  s.Logger,
 		DestDir: mnt,
+		Fetcher: s.Util.Fetcher,
+		Logger:  s.Logger,
 	}
 
 	for _, e := range files {
-		if err := e.create(s.Logger, s.client, u); err != nil {
+		if err := e.create(s.Logger, u); err != nil {
 			return err
 		}
 	}
@@ -278,11 +322,29 @@ func (s stage) createUnits(config types.Config) error {
 			return err
 		}
 		if unit.Enable {
+			s.Logger.Warning("the enable field has been deprecated in favor of enabled")
 			if err := s.Logger.LogOp(
 				func() error { return s.EnableUnit(unit) },
 				"enabling unit %q", unit.Name,
 			); err != nil {
 				return err
+			}
+		}
+		if unit.Enabled != nil {
+			if *unit.Enabled {
+				if err := s.Logger.LogOp(
+					func() error { return s.EnableUnit(unit) },
+					"enabling unit %q", unit.Name,
+				); err != nil {
+					return err
+				}
+			} else {
+				if err := s.Logger.LogOp(
+					func() error { return s.DisableUnit(unit) },
+					"disabling unit %q", unit.Name,
+				); err != nil {
+					return err
+				}
 			}
 		}
 		if unit.Mask {
@@ -305,16 +367,20 @@ func (s stage) createUnits(config types.Config) error {
 // writeSystemdUnit creates the specified unit and any dropins for that unit.
 // If the contents of the unit or are empty, the unit is not created. The same
 // applies to the unit's dropins.
-func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
+func (s stage) writeSystemdUnit(unit types.Unit) error {
 	return s.Logger.LogOp(func() error {
-		for _, dropin := range unit.DropIns {
+		for _, dropin := range unit.Dropins {
 			if dropin.Contents == "" {
 				continue
 			}
 
-			f := util.FileFromUnitDropin(unit, dropin)
+			f, err := util.FileFromUnitDropin(unit, dropin)
+			if err != nil {
+				s.Logger.Crit("error converting dropin: %v", err)
+				return err
+			}
 			if err := s.Logger.LogOp(
-				func() error { return s.WriteFile(f) },
+				func() error { return s.PerformFetch(f) },
 				"writing drop-in %q at %q", dropin.Name, f.Path,
 			); err != nil {
 				return err
@@ -325,9 +391,13 @@ func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
 			return nil
 		}
 
-		f := util.FileFromSystemdUnit(unit)
+		f, err := util.FileFromSystemdUnit(unit)
+		if err != nil {
+			s.Logger.Crit("error converting unit: %v", err)
+			return err
+		}
 		if err := s.Logger.LogOp(
-			func() error { return s.WriteFile(f) },
+			func() error { return s.PerformFetch(f) },
 			"writing unit %q at %q", unit.Name, f.Path,
 		); err != nil {
 			return err
@@ -339,15 +409,19 @@ func (s stage) writeSystemdUnit(unit types.SystemdUnit) error {
 
 // writeNetworkdUnit creates the specified unit. If the contents of the unit or
 // are empty, the unit is not created.
-func (s stage) writeNetworkdUnit(unit types.NetworkdUnit) error {
+func (s stage) writeNetworkdUnit(unit types.Networkdunit) error {
 	return s.Logger.LogOp(func() error {
 		if unit.Contents == "" {
 			return nil
 		}
 
-		f := util.FileFromNetworkdUnit(unit)
+		f, err := util.FileFromNetworkdUnit(unit)
+		if err != nil {
+			s.Logger.Crit("error converting unit: %v", err)
+			return err
+		}
 		if err := s.Logger.LogOp(
-			func() error { return s.WriteFile(f) },
+			func() error { return s.PerformFetch(f) },
 			"writing unit %q at %q", unit.Name, f.Path,
 		); err != nil {
 			return err
@@ -379,7 +453,7 @@ func (s stage) createUsers(config types.Config) error {
 	defer s.Logger.PopPrefix()
 
 	for _, u := range config.Passwd.Users {
-		if err := s.CreateUser(u); err != nil {
+		if err := s.EnsureUser(u); err != nil {
 			return fmt.Errorf("failed to create user %q: %v",
 				u.Name, err)
 		}

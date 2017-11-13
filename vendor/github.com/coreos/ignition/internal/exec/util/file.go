@@ -15,8 +15,6 @@
 package util
 
 import (
-	"bufio"
-	"compress/gzip"
 	"encoding/hex"
 	"hash"
 	"io"
@@ -24,12 +22,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/coreos/ignition/config/types"
 	"github.com/coreos/ignition/internal/log"
 	"github.com/coreos/ignition/internal/resource"
-
-	"golang.org/x/net/context"
+	internalUtil "github.com/coreos/ignition/internal/util"
 )
 
 const (
@@ -37,31 +35,14 @@ const (
 	DefaultFilePermissions      os.FileMode = 0644
 )
 
-type File struct {
-	io.ReadCloser
-	hash.Hash
-	Path        types.Path
-	Mode        os.FileMode
-	Uid         int
-	Gid         int
-	expectedSum string
-}
-
-func (f File) Verify() error {
-	if f.Hash == nil {
-		return nil
-	}
-	sum := f.Sum(nil)
-	encodedSum := make([]byte, hex.EncodedLen(len(sum)))
-	hex.Encode(encodedSum, sum)
-
-	if string(encodedSum) != f.expectedSum {
-		return ErrHashMismatch{
-			Calculated: string(encodedSum),
-			Expected:   f.expectedSum,
-		}
-	}
-	return nil
+type FetchOp struct {
+	Hash         hash.Hash
+	Path         string
+	Mode         os.FileMode
+	Uid          int
+	Gid          int
+	Url          url.URL
+	FetchOptions resource.FetchOptions
 }
 
 // newHashedReader returns a new ReadCloser that also writes to the provided hash.
@@ -75,90 +56,81 @@ func newHashedReader(reader io.ReadCloser, hasher hash.Hash) io.ReadCloser {
 	}
 }
 
-// RenderFile returns a *File with a Reader that downloads, hashes, and decompresses the incoming data.
-// It returns nil if f had invalid options. Errors reading/verifying/decompressing the file will
-// present themselves when the Reader is actually read from.
-func RenderFile(l *log.Logger, c *resource.HttpClient, f types.File) *File {
-	var reader io.ReadCloser
+// PrepareFetch converts a given logger, http client, and types.File into a
+// FetchOp. This includes operations such as parsing the source URL, generating
+// a hasher, and performing user/group name lookups. If an error is encountered,
+// the issue will be logged and nil will be returned.
+func (u Util) PrepareFetch(l *log.Logger, f types.File) *FetchOp {
 	var err error
-	var expectedSum string
+	var expectedSum []byte
 
-	reader, err = resource.FetchAsReader(l, c, context.Background(), url.URL(f.Contents.Source))
-	if err != nil {
-		l.Crit("Error fetching file %q: %v", f.Path, err)
-		return nil
-	}
+	// explicitly ignoring the error here because the config should already be
+	// validated by this point
+	uri, _ := url.Parse(f.Contents.Source)
 
-	fileHash, err := GetHasher(f.Contents.Verification)
+	hasher, err := GetHasher(f.Contents.Verification)
 	if err != nil {
 		l.Crit("Error verifying file %q: %v", f.Path, err)
 		return nil
 	}
 
-	if fileHash != nil {
-		reader = newHashedReader(reader, fileHash)
-		expectedSum = f.Contents.Verification.Hash.Sum
+	if hasher != nil {
+		// explicitly ignoring the error here because the config should already
+		// be validated by this point
+		_, expectedSumString, _ := f.Contents.Verification.HashParts()
+		expectedSum, err = hex.DecodeString(expectedSumString)
+		if err != nil {
+			l.Crit("Error parsing verification string %q: %v", expectedSumString, err)
+			return nil
+		}
 	}
 
-	reader, err = decompressFileStream(l, f, reader)
-	if err != nil {
-		l.Crit("Error decompressing file %q: %v", f.Path, err)
+	f.User.ID, f.Group.ID = u.GetUserGroupID(l, f.User, f.Group)
+	if f.User.ID == nil || f.Group.ID == nil {
 		return nil
 	}
 
-	return &File{
-		Path:        f.Path,
-		ReadCloser:  reader,
-		Hash:        fileHash,
-		Mode:        os.FileMode(f.Mode),
-		Uid:         f.User.Id,
-		Gid:         f.Group.Id,
-		expectedSum: expectedSum,
+	return &FetchOp{
+		Path: f.Path,
+		Hash: hasher,
+		Mode: os.FileMode(f.Mode),
+		Uid:  *f.User.ID,
+		Gid:  *f.Group.ID,
+		Url:  *uri,
+		FetchOptions: resource.FetchOptions{
+			Hash:        hasher,
+			Compression: f.Contents.Compression,
+			ExpectedSum: expectedSum,
+		},
 	}
 }
 
-// gzipReader is a wrapper for gzip's reader that closes the stream it wraps as well
-// as itself when Close() is called.
-type gzipReader struct {
-	*gzip.Reader //actually a ReadCloser
-	source       io.Closer
-}
+func (u Util) WriteLink(s types.Link) error {
+	path := u.JoinPath(s.Path)
 
-func newGzipReader(reader io.ReadCloser) (io.ReadCloser, error) {
-	gzReader, err := gzip.NewReader(reader)
-	if err != nil {
-		return nil, err
-	}
-	return gzipReader{
-		Reader: gzReader,
-		source: reader,
-	}, nil
-}
-
-func (gz gzipReader) Close() error {
-	if err := gz.Reader.Close(); err != nil {
+	if err := MkdirForFile(path); err != nil {
 		return err
 	}
-	if err := gz.source.Close(); err != nil {
+
+	if s.Hard {
+		targetPath := u.JoinPath(s.Target)
+		return os.Link(targetPath, path)
+	}
+
+	if err := os.Symlink(s.Target, path); err != nil {
 		return err
 	}
+
+	if err := os.Lchown(path, *s.User.ID, *s.Group.ID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func decompressFileStream(l *log.Logger, f types.File, contents io.ReadCloser) (io.ReadCloser, error) {
-	switch f.Contents.Compression {
-	case "":
-		return contents, nil
-	case "gzip":
-		return newGzipReader(contents)
-	default:
-		return nil, types.ErrCompressionInvalid
-	}
-}
-
-// WriteFile creates and writes the file described by f using the provided context.
-func (u Util) WriteFile(f *File) error {
-	defer f.Close()
+// PerformFetch performs a fetch operation generated by PrepareFetch, retrieving
+// the file and writing it to disk. Any encountered errors are returned.
+func (u Util) PerformFetch(f *FetchOp) error {
 	var err error
 
 	path := u.JoinPath(string(f.Path))
@@ -180,14 +152,9 @@ func (u Util) WriteFile(f *File) error {
 		}
 	}()
 
-	fileWriter := bufio.NewWriter(tmp)
-
-	if _, err = io.Copy(fileWriter, f); err != nil {
-		return err
-	}
-	fileWriter.Flush()
-
-	if err = f.Verify(); err != nil {
+	err = u.Fetcher.Fetch(f.Url, tmp, f.FetchOptions)
+	if err != nil {
+		u.Crit("Error fetching file %q: %v", f.Path, err)
 		return err
 	}
 
@@ -208,6 +175,46 @@ func (u Util) WriteFile(f *File) error {
 	}
 
 	return nil
+}
+
+func (u Util) GetUserGroupID(l *log.Logger, user types.NodeUser, group types.NodeGroup) (*int, *int) {
+	if user.Name != "" {
+		usr, err := u.userLookup(user.Name)
+		if err != nil {
+			l.Crit("No such user %q: %v", user.Name, err)
+			return nil, nil
+		}
+		uid, err := strconv.ParseInt(usr.Uid, 0, 0)
+		if err != nil {
+			l.Crit("Couldn't parse uid %q: %v", usr.Uid, err)
+			return nil, nil
+		}
+		tmp := int(uid)
+		user.ID = &tmp
+	}
+	if group.Name != "" {
+		g, err := u.groupLookup(group.Name)
+		if err != nil {
+			l.Crit("No such group %q: %v", group.Name, err)
+			return nil, nil
+		}
+		gid, err := strconv.ParseInt(g.Gid, 0, 0)
+		if err != nil {
+			l.Crit("Couldn't parse gid %q: %v", g.Gid, err)
+			return nil, nil
+		}
+		tmp := int(gid)
+		group.ID = &tmp
+	}
+
+	if user.ID == nil {
+		user.ID = internalUtil.IntToPtr(0)
+	}
+	if group.ID == nil {
+		group.ID = internalUtil.IntToPtr(0)
+	}
+
+	return user.ID, group.ID
 }
 
 // MkdirForFile helper creates the directory components of path.

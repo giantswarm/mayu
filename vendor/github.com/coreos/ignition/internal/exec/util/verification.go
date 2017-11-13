@@ -17,26 +17,21 @@ package util
 import (
 	"crypto/sha512"
 	"encoding/hex"
-	"fmt"
 	"hash"
 
 	"github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/internal/resource"
 )
-
-type ErrHashMismatch struct {
-	Calculated string
-	Expected   string
-}
-
-func (e ErrHashMismatch) Error() string {
-	return fmt.Sprintf("hash verification failed (calculated %s but expected %s)",
-		e.Calculated, e.Expected)
-}
 
 func AssertValid(verify types.Verification, data []byte) error {
 	if hash := verify.Hash; hash != nil {
+		hashFunc, hashSum, err := verify.HashParts()
+		if err != nil {
+			return err
+		}
+
 		var sum []byte
-		switch hash.Function {
+		switch hashFunc {
 		case "sha512":
 			rawSum := sha512.Sum512(data)
 			sum = rawSum[:]
@@ -46,10 +41,10 @@ func AssertValid(verify types.Verification, data []byte) error {
 
 		encodedSum := make([]byte, hex.EncodedLen(len(sum)))
 		hex.Encode(encodedSum, sum)
-		if string(encodedSum) != hash.Sum {
-			return ErrHashMismatch{
+		if string(encodedSum) != hashSum {
+			return resource.ErrHashMismatch{
 				Calculated: string(encodedSum),
-				Expected:   hash.Sum,
+				Expected:   hashSum,
 			}
 		}
 	}
@@ -62,7 +57,12 @@ func GetHasher(verify types.Verification) (hash.Hash, error) {
 		return nil, nil
 	}
 
-	switch verify.Hash.Function {
+	function, _, err := verify.HashParts()
+	if err != nil {
+		return nil, err
+	}
+
+	switch function {
 	case "sha512":
 		return sha512.New(), nil
 	default:

@@ -1,5 +1,7 @@
 # Configuration Specification v2.0.0 #
 
+*NOTE*: The [configuration specification 2.1.0][v2_1] is currently the latest stable version of the spec, and it's advised to use that over version 2.0.0.
+
 The Ignition configuration is a JSON document conforming to the following specification, with **_italicized_** entries being optional:
 
 * **ignition** (object): metadata about the configuration itself.
@@ -20,8 +22,8 @@ The Ignition configuration is a JSON document conforming to the following specif
     * **_partitions_** (list of objects): the list of partitions and their configuration for this particular disk.
       * **_label_** (string): the PARTLABEL for the partition.
       * **_number_** (integer): the partition number, which dictates it's position in the partition table (one-indexed). If zero, use the next available partition slot.
-      * **_size_** (integer): the size of the partition (in sectors). If zero, the partition will fill the remainder of the disk.
-      * **_start_** (integer): the start of the partition (in sectors). If zero, the partition will be positioned at the earliest available part of the disk.
+      * **_size_** (integer): the size of the partition (in device logical sectors, 512 or 4096 bytes). If zero, the partition will fill the remainder of the disk.
+      * **_start_** (integer): the start of the partition (in device logical sectors). If zero, the partition will be positioned at the earliest available part of the disk.
       * **_typeGuid_** (string): the GPT [partition type GUID][part-types]. If omitted, the default will be 0FC63DAF-8483-4772-8E79-3D69D8477DE4 (Linux filesystem data).
   * **_raid_** (list of objects): the list of RAID arrays to be configured.
     * **name** (string): the name to use for the resulting md device.
@@ -83,5 +85,6 @@ The Ignition configuration is a JSON document conforming to the following specif
     * **_gid_** (integer): the group ID of the new group.
     * **_passwordHash_** (string): the encrypted password of the new group.
 
+[v2_1]: configuration-v2_1.md
 [part-types]: http://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs
 [rfc2397]: https://tools.ietf.org/html/rfc2397
