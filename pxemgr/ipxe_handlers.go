@@ -44,7 +44,7 @@ dhcp
 params
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
-echo machine ${uuid }net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
+echo machine ${uuid} with net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
 param net${idx}mac ${net${idx}/mac}
 param net${idx}bustype ${net${idx}/bustype}
 param net${idx}busid ${net${idx}/busid}
@@ -56,12 +56,15 @@ inc idx && goto loop
 shell
 param uuid ${uuid}
 param serial ${serial}
-param asset ${asset}
-shell`)
+param asset ${asset}`)
 
+	buffer.WriteString("echo "+kernel)
+	buffer.WriteString("echo "+initrd)
+	buffer.WriteString("sleep 25\n")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
-	buffer.WriteString("boot\n")
+	buffer.WriteString("sleep 25\n")
+	buffer.WriteString("boot || shell\n")
 
 	w.Write(buffer.Bytes())
 }
