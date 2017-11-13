@@ -53,7 +53,6 @@ param net${idx}busloc ${net${idx}/busloc}
 
 inc idx && goto loop
 :loop_done
-shell
 param uuid ${uuid}
 param serial ${serial}
 param asset ${asset}`)
