@@ -149,7 +149,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	newHost.Cabinet = cabinet
 	newHost.MachineOnCabinet = machineOnCabinet
 	newHost.MachineID = machineID
-	newHost.Hostname = machineID[:16]
+	newHost.Hostname = strings.Replace(newHost.InternalAddr.String(),".","-",4)
 	newHost.Commit("updated with predefined settings")
 
 	return newHost, c.reindex()
