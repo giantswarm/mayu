@@ -154,6 +154,7 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 				glog.Fatalln(err)
 			}
 		}
+		host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
 	}
 	return host
 }
