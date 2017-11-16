@@ -41,6 +41,7 @@ type PXEManagerConfiguration struct {
 	UseIgnition              bool
 	FirstStageScript         string
 	ImagesCacheDir           string
+	FilesDir                 string
 	Version                  string
 }
 
@@ -59,6 +60,7 @@ type pxeManagerT struct {
 	ignitionConfig           string
 	useIgnition              bool
 	imagesCacheDir           string
+	filesDir                 string
 	useInternalEtcdDiscovery bool
 	defaultEtcdQuorumSize    int
 	etcdDiscoveryUrl         string
@@ -116,6 +118,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		useIgnition:              c.UseIgnition,
 		firstStageScript:         c.FirstStageScript,
 		imagesCacheDir:           c.ImagesCacheDir,
+		filesDir:                 c.FilesDir,
 		useInternalEtcdDiscovery: c.UseInternalEtcdDiscovery,
 		defaultEtcdQuorumSize:    c.EtcdQuorumSize,
 		etcdDiscoveryUrl:         c.EtcdDiscoveryUrl,

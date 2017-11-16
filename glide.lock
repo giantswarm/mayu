@@ -1,5 +1,5 @@
 hash: 012d2808df340f120d0e45c5df4df22a912bc8ea74a3ff187e21f6236de47cde
-updated: 2017-11-13T16:56:13.444286426+01:00
+updated: 2017-11-16T14:42:01.004190462+01:00
 imports:
 - name: github.com/coreos/etcd
   version: f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b
@@ -21,6 +21,7 @@ imports:
   version: 01c039a5ce59acd39e5741713e59abfcb74d0782
   subpackages:
   - config/types
+  - config/v2_0/types
   - config/validate/report
 - name: github.com/giantswarm/mayu-infopusher
   version: 144692a49fd2e01089f2361b2645a412990b076b
@@ -57,5 +58,5 @@ imports:
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+  version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
 testImports: []

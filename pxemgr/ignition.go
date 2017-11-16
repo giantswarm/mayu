@@ -36,6 +36,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		PostBootURL      string
 		NoTLS            bool
 		TemplatesEnv     map[string]interface{}
+		Files            Files
 	}{
 		Host:             host,
 		ClusterNetwork:   mgr.config.Network,
@@ -47,6 +48,8 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		NoTLS:            mgr.noTLS,
 		TemplatesEnv:     mergedTemplatesEnv,
 	}
+
+	ctx.Files = *mgr.RenderFiles(ctx)
 
 	ctx.Host.MayuVersion = mgr.version
 
