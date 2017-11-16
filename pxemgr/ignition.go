@@ -67,7 +67,6 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		glog.Fatalln(e)
 		return e
 	}
-	glog.V(2).Infoln(" IGNITION imported: \n%s", string(ignitionJSON[:]))
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
 }
