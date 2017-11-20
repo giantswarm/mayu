@@ -3,7 +3,7 @@ package pxemgr
 import (
 	"bytes"
 	"github.com/golang/glog"
-	"github.com/vincent-petithory/dataurl"
+	"encoding/base64"
 	"io/ioutil"
 	"path"
 	"text/template"
@@ -36,7 +36,7 @@ func (mgr *pxeManagerT) RenderFiles(ctx interface{}) *Files {
 			var data bytes.Buffer
 			tmpl.Execute(&data, ctx)
 
-			files[dir.Name()+"/"+file.Name()] = dataurl.EncodeBytes(data.Bytes())
+			files[dir.Name()+"/"+file.Name()] = base64.StdEncoding.EncodeToString(data.Bytes())
 			glog.V(8).Infoln("encoded file as: ", files[dir.Name()+"/"+file.Name()])
 		}
 	}
