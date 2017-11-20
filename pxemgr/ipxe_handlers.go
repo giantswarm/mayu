@@ -313,6 +313,8 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	glog.V(2).Infof("got host %+v\n", host)
 
 	host.State = hostmgr.Installing
+	host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
+	host.Commit("updated host state to installing")
 	mgr.cluster.Update()
 
 	buf := &bytes.Buffer{}
