@@ -70,6 +70,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		glog.Fatalln(e)
 		return e
 	}
+	host.State = hostmgr.Installing
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
 }

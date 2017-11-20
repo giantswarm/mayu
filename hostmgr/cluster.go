@@ -134,6 +134,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		if s, exists := predef["internaladdr"]; exists {
 			newHost.InternalAddr = net.ParseIP(s)
 			glog.V(4).Infof("setting internal address for '%s': %s", serial, newHost.InternalAddr.String())
+			newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 		}
 		if s, exists := predef["fleettags"]; exists {
 			newHost.FleetMetadata = strings.Split(s, ",")
