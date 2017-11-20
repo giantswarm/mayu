@@ -154,7 +154,9 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 				glog.Fatalln(err)
 			}
 		}
-		host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
+		if host.InternalAddr != nil {
+			host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
+		}
 	}
 	return host
 }
@@ -286,9 +288,6 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 }
 
 func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request) {
-	glog.V(2).Infoln("IGNITION: generating a ignition")
-	glog.V(2).Infoln("IGNITION: server info:", r.RequestURI, r.URL)
-
 	uuid := r.URL.Query().Get("uuid")
 	serial := r.URL.Query().Get("serial")
 
@@ -325,7 +324,6 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 		w.Write([]byte("generating ignition config failed: " + err.Error()))
 		return
 	}
-	glog.V(2).Infoln("IGNITION: config: ", buf.String())
 	if _, err := buf.WriteTo(w); err != nil {
 		glog.Fatalln("writing response failed: " + err.Error())
 	}

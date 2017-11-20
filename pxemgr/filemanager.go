@@ -25,10 +25,8 @@ func (mgr *pxeManagerT) RenderFiles(ctx interface{}) *Files {
 		if err != nil {
 			glog.Errorf("Failed to read dir: %s, error: %#v", path.Join(mgr.filesDir, dir.Name()), err)
 		}
-		glog.V(8).Infoln("Reading Dir: ", dir.Name())
 
 		for _, file := range fileList {
-			glog.V(8).Infoln("Reading File: ", file.Name())
 			tmpl, err := template.ParseFiles(path.Join(mgr.filesDir, dir.Name(), file.Name()))
 			if err != nil {
 				glog.Errorf("Failed to file: %s, error: %#v", path.Join(mgr.filesDir, dir.Name(), file.Name()), err)
@@ -37,7 +35,6 @@ func (mgr *pxeManagerT) RenderFiles(ctx interface{}) *Files {
 			tmpl.Execute(&data, ctx)
 
 			files[dir.Name()+"/"+file.Name()] = base64.StdEncoding.EncodeToString(data.Bytes())
-			glog.V(8).Infoln("encoded file as: ", files[dir.Name()+"/"+file.Name()])
 		}
 	}
 	return &files

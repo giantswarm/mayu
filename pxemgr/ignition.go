@@ -65,7 +65,6 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		return err
 	}
 
-	glog.Errorf("Yaml : %v", data.String())
 	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
 	if e != nil {
 		glog.Fatalln(e)
