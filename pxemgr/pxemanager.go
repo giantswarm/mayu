@@ -304,16 +304,19 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 	mgr.config.Network.StaticHosts = []hostmgr.IPMac{}
 	mgr.config.Network.IgnoredHosts = []string{}
 
-	ignoredHostPredicate := func(host *hostmgr.Host) bool {
-		// ignore hosts that are installed or running
-		return host.State == hostmgr.Installed || host.State == hostmgr.Running
-	}
-
-	for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
-		for _, macAddr := range host.MacAddresses {
-			mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
+	/*
+		ignoredHostPredicate := func(host *hostmgr.Host) bool {
+			// ignore hosts that are installed or running
+			return host.State == hostmgr.Installed || host.State == hostmgr.Running
 		}
-	}
+
+
+		for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
+			for _, macAddr := range host.MacAddresses {
+				mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
+			}
+		}
+	*/
 
 	err := mgr.DNSmasq.updateConf(mgr.config.Network)
 	if err != nil {

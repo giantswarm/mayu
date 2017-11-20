@@ -149,7 +149,9 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	newHost.Cabinet = cabinet
 	newHost.MachineOnCabinet = machineOnCabinet
 	newHost.MachineID = machineID
-	newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
+	if newHost.InternalAddr != nil {
+		newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
+	}
 	glog.V(2).Infof("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname)
 	newHost.Commit("updated with predefined settings")
 
