@@ -2,8 +2,8 @@ package pxemgr
 
 import (
 	"bytes"
-	"github.com/golang/glog"
 	"encoding/base64"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"path"
 	"text/template"
