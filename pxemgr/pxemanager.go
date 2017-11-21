@@ -210,12 +210,11 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.pxeRouter.Methods("GET").PathPrefix("/hostinfo-helper").HandlerFunc(mgr.infoPusher)
 
 	if mgr.useIgnition {
-		mgr.pxeRouter.Methods("POST").PathPrefix("/final-ignition-config.json").HandlerFunc(mgr.configGenerator)
+		mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 	} else {
 		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 	}
 
-	mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 	// endpoint for fetching coreos images defined by machine serial number
 	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
@@ -304,19 +303,18 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 	mgr.config.Network.StaticHosts = []hostmgr.IPMac{}
 	mgr.config.Network.IgnoredHosts = []string{}
 
-	/*
+	if !mgr.useIgnition {
 		ignoredHostPredicate := func(host *hostmgr.Host) bool {
 			// ignore hosts that are installed or running
 			return host.State == hostmgr.Installed || host.State == hostmgr.Running
 		}
-
 
 		for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
 			for _, macAddr := range host.MacAddresses {
 				mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
 			}
 		}
-	*/
+	}
 
 	err := mgr.DNSmasq.updateConf(mgr.config.Network)
 	if err != nil {

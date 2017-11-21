@@ -36,22 +36,20 @@ const (
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-
-	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s?uuid=${uuid}&serial=${serial}&asset=${asset}&mac=${net${idx}/mac}\n", mgr.pxeURL(), mgr.ignitionURL())
-	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
-
 	buffer := bytes.NewBufferString("")
-	buffer.WriteString(`#!ipxe
+
+	if mgr.useIgnition {
+		// for ignition we use only 1phase installation without mayu-infopusher
+		kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s?uuid=${uuid}&serial=${serial}&asset=${asset}&mac=${net${idx}/mac}\n", mgr.pxeURL(), mgr.ignitionURL())
+		initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
+
+		buffer.WriteString(`#!ipxe
 dhcp
 params
 set idx:int32 0
 :loop isset ${net${idx}/mac} || goto loop_done
 echo machine ${uuid} with net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
 param net${idx}mac ${net${idx}/mac}
-param net${idx}bustype ${net${idx}/bustype}
-param net${idx}busid ${net${idx}/busid}
-param net${idx}chip ${net${idx}/chip}
-param net${idx}busloc ${net${idx}/busloc}
 
 inc idx && goto loop
 :loop_done
@@ -59,12 +57,19 @@ param uuid ${uuid}
 param serial ${serial}
 param asset ${asset}`)
 
-	buffer.WriteString("sleep 5\n")
-	buffer.WriteString(kernel)
-	buffer.WriteString(initrd)
-	buffer.WriteString("boot\n")
-
+		buffer.WriteString("sleep 5\n")
+		buffer.WriteString(kernel)
+		buffer.WriteString(initrd)
+		buffer.WriteString("boot\n")
+	} else {
+		// old cloudconfig ipxe handler
+		buffer.WriteString("#!ipxe\n")
+		buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin initrd=initrd.cpio.gz maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
+		buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
+		buffer.WriteString("boot\n")
+	}
 	w.Write(buffer.Bytes())
+
 }
 
 func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http.Request) {
