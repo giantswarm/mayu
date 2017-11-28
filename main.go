@@ -35,6 +35,7 @@ const (
 	DefaultIgnitionTemplateSnippets string = "./template_snippets/ignition"
 	DefaultDNSMasq                  string = "/usr/sbin/dnsmasq"
 	DefaultImagesCacheDir           string = "./images"
+	DefaultFilesDir                 string = "./files"
 	DefaultAPIPort                  int    = 4080
 	DefaultPXEPort                  int    = 4081
 	DefaultHTTPBindAddress          string = "0.0.0.0"
@@ -68,6 +69,7 @@ type MayuFlags struct {
 	dnsmasq                  string
 	dnsmasqTemplate          string
 	imagesCacheDir           string
+	filesDir                 string
 	apiPort                  int
 	pxePort                  int
 	bindAddress              string
@@ -128,6 +130,7 @@ func init() {
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig or Ignition template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
 	pf.StringVar(&globalFlags.imagesCacheDir, "images-cache-dir", DefaultImagesCacheDir, "Directory for Container Linux images")
+	pf.StringVar(&globalFlags.filesDir, "files-dir", DefaultFilesDir, "Directory for file templates")
 	pf.IntVar(&globalFlags.apiPort, "api-port", DefaultAPIPort, "API HTTP port Mayu listens on")
 	pf.IntVar(&globalFlags.pxePort, "pxe-port", DefaultPXEPort, "PXE HTTP port Mayu listens on")
 	pf.StringVar(&globalFlags.bindAddress, "http-bind-address", DefaultHTTPBindAddress, "HTTP address Mayu listens on")
@@ -260,6 +263,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		UseIgnition:              globalFlags.useIgnition,
 		FirstStageScript:         globalFlags.firstStageScript,
 		ImagesCacheDir:           globalFlags.imagesCacheDir,
+		FilesDir:                 globalFlags.filesDir,
 		Version:                  projectVersion,
 	}, cluster)
 	if err != nil {

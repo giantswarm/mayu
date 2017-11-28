@@ -7,7 +7,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/config/v2_0/types"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 
@@ -36,6 +36,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		PostBootURL      string
 		NoTLS            bool
 		TemplatesEnv     map[string]interface{}
+		Files            Files
 	}{
 		Host:             host,
 		ClusterNetwork:   mgr.config.Network,
@@ -47,6 +48,8 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		NoTLS:            mgr.noTLS,
 		TemplatesEnv:     mergedTemplatesEnv,
 	}
+
+	ctx.Files = *mgr.RenderFiles(ctx)
 
 	ctx.Host.MayuVersion = mgr.version
 
@@ -61,12 +64,13 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		glog.Fatalln(err)
 		return err
 	}
+
 	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
 	if e != nil {
 		glog.Fatalln(e)
 		return e
 	}
-
+	host.State = hostmgr.Installing
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
 }

@@ -33,8 +33,8 @@ func TestMapEntriesToFilesystems(t *testing.T) {
 		err   error
 	}
 
-	fs1 := types.Path("/fs1")
-	fs2 := types.Path("/fs2")
+	fs1 := "/fs1"
+	fs2 := "/fs2"
 
 	tests := []struct {
 		in  in
@@ -56,7 +56,7 @@ func TestMapEntriesToFilesystems(t *testing.T) {
 					{Node: types.Node{Filesystem: "fs1", Path: "/bar"}},
 				},
 			}}},
-			out: out{files: map[types.Filesystem][]filesystemEntry{types.Filesystem{Name: "fs1"}: {
+			out: out{files: map[types.Filesystem][]filesystemEntry{{Name: "fs1"}: {
 				fileEntry(types.File{Node: types.Node{Filesystem: "fs1", Path: "/foo"}}),
 				fileEntry(types.File{Node: types.Node{Filesystem: "fs1", Path: "/bar"}}),
 			}}},
@@ -70,8 +70,8 @@ func TestMapEntriesToFilesystems(t *testing.T) {
 				},
 			}}},
 			out: out{files: map[types.Filesystem][]filesystemEntry{
-				types.Filesystem{Name: "fs1", Path: &fs1}: {fileEntry(types.File{Node: types.Node{Filesystem: "fs1", Path: "/foo"}})},
-				types.Filesystem{Name: "fs2", Path: &fs2}: {fileEntry(types.File{Node: types.Node{Filesystem: "fs2", Path: "/bar"}})},
+				{Name: "fs1", Path: &fs1}: {fileEntry(types.File{Node: types.Node{Filesystem: "fs1", Path: "/foo"}})},
+				{Name: "fs2", Path: &fs2}: {fileEntry(types.File{Node: types.Node{Filesystem: "fs2", Path: "/bar"}})},
 			}},
 		},
 		{
@@ -83,7 +83,7 @@ func TestMapEntriesToFilesystems(t *testing.T) {
 				},
 			}}},
 			out: out{files: map[types.Filesystem][]filesystemEntry{
-				types.Filesystem{Name: "fs1", Path: &fs1}: {
+				{Name: "fs1", Path: &fs1}: {
 					fileEntry(types.File{Node: types.Node{Filesystem: "fs1", Path: "/foo"}}),
 					fileEntry(types.File{Node: types.Node{Filesystem: "fs1", Path: "/bar"}}),
 				},
@@ -133,12 +133,12 @@ func TestDirectorySort(t *testing.T) {
 	for i, test := range tests {
 		dirs := make([]types.Directory, len(test.in.data))
 		for j := range dirs {
-			dirs[j].Path = types.Path(test.in.data[j])
+			dirs[j].Path = test.in.data[j]
 		}
 		sort.Sort(ByDirectorySegments(dirs))
 		outpaths := make([]string, len(test.in.data))
 		for j, dir := range dirs {
-			outpaths[j] = string(dir.Path)
+			outpaths[j] = dir.Path
 		}
 		if !reflect.DeepEqual(test.out.data, outpaths) {
 			t.Errorf("#%d: bad error: want %v, got %v", i, test.out.data, outpaths)

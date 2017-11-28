@@ -84,10 +84,13 @@ func readContents(path string) (string, error) {
 
 func fetchDMISerial() string {
 	productSerial := fetchDMIXSerial("product_serial")
-	if len(productSerial) > 0 {
-		return productSerial
+	if len(productSerial) == 0 {
+		productSerial = fetchDMIXSerial("chassis_serial")
 	}
-	return fetchDMIXSerial("chassis_serial")
+	if productSerial == "0123456789" {
+		productSerial = fetchDMIXSerial("product_uuid")
+	}
+	return productSerial
 }
 
 func fetchDMIXSerial(x string) string {
@@ -189,7 +192,7 @@ func fetchIPMIAddress() (ip net.IP) {
 	ipmitoolCmd := exec.Command(tempFile.Name(), "lan", "print")
 	output, err := ipmitoolCmd.CombinedOutput()
 	if err != nil {
-		glog.Warningln(err)
+		glog.Warningln("Failed to list IPMI ip.", err)
 		return
 	}
 	lines := strings.Split(string(output), "\n")

@@ -134,6 +134,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		if s, exists := predef["internaladdr"]; exists {
 			newHost.InternalAddr = net.ParseIP(s)
 			glog.V(4).Infof("setting internal address for '%s': %s", serial, newHost.InternalAddr.String())
+			newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 		}
 		if s, exists := predef["fleettags"]; exists {
 			newHost.FleetMetadata = strings.Split(s, ",")
@@ -149,7 +150,10 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	newHost.Cabinet = cabinet
 	newHost.MachineOnCabinet = machineOnCabinet
 	newHost.MachineID = machineID
-	newHost.Hostname = machineID[:16]
+	if newHost.InternalAddr != nil {
+		newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
+	}
+	glog.V(2).Infof("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname)
 	newHost.Commit("updated with predefined settings")
 
 	return newHost, c.reindex()

@@ -30,18 +30,46 @@ const (
 	qemuKernelFile   = "coreos_production_qemu.vmlinuz"
 
 	defaultProfileName = "default"
+
+	kvmStaticSerial = "0123456789"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-
 	buffer := bytes.NewBufferString("")
-	buffer.WriteString("#!ipxe\n")
-	buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin initrd=initrd.cpio.gz maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
-	buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
-	buffer.WriteString("boot\n")
 
+	if mgr.useIgnition {
+		// for ignition we use only 1phase installation without mayu-infopusher
+		kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s?uuid=${uuid}&serial=${serial}&asset=${asset}&mac=${net${idx}/mac}\n", mgr.pxeURL(), mgr.ignitionURL())
+		initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
+
+		buffer.WriteString(`#!ipxe
+dhcp
+params
+set idx:int32 0
+:loop isset ${net${idx}/mac} || goto loop_done
+echo machine ${uuid} with net${idx} is a ${net${idx}/chip} with MAC ${net${idx}/mac}
+param net${idx}mac ${net${idx}/mac}
+
+inc idx && goto loop
+:loop_done
+param uuid ${uuid}
+param serial ${serial}
+param asset ${asset}`)
+
+		buffer.WriteString("sleep 5\n")
+		buffer.WriteString(kernel)
+		buffer.WriteString(initrd)
+		buffer.WriteString("boot\n")
+	} else {
+		// old cloudconfig ipxe handler
+		buffer.WriteString("#!ipxe\n")
+		buffer.WriteString(fmt.Sprintf("kernel %s/images/vmlinuz coreos.autologin initrd=initrd.cpio.gz maybe-install-coreos=stable console=ttyS0,115200n8 mayu=%s next-script=%s\n", mgr.pxeURL(), mgr.pxeURL(), mgr.pxeURL()+"/first-stage-script/__SERIAL__"))
+		buffer.WriteString(fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL()))
+		buffer.WriteString("boot\n")
+	}
 	w.Write(buffer.Bytes())
+
 }
 
 func (mgr *pxeManagerT) firstStageScriptGenerator(w http.ResponseWriter, r *http.Request) {
@@ -130,6 +158,9 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 			if err != nil {
 				glog.Fatalln(err)
 			}
+		}
+		if host.InternalAddr != nil {
+			host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
 		}
 	}
 	return host
@@ -259,6 +290,51 @@ func (mgr *pxeManagerT) configGenerator(w http.ResponseWriter, r *http.Request) 
 	if _, err := buf.WriteTo(w); err != nil {
 		glog.Fatalln("writing response failed: " + err.Error())
 	}
+}
+
+func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request) {
+	uuid := r.URL.Query().Get("uuid")
+	serial := r.URL.Query().Get("serial")
+
+	hostData := &machinedata.HostData{}
+
+	if serial == "" || serial == kvmStaticSerial {
+		hostData.Serial = uuid
+	} else {
+		hostData.Serial = serial
+	}
+
+	if hostData.Serial == "" {
+		glog.Warningf("empty serial. %+v\n", hostData)
+		w.WriteHeader(400)
+		w.Write([]byte("no serial ? :/"))
+		return
+	}
+
+	host := mgr.maybeCreateHost(hostData.Serial)
+	mgr.mu.Lock()
+	defer mgr.mu.Unlock()
+
+	glog.V(2).Infof("got host %+v\n", host)
+
+	host.State = hostmgr.Installing
+	host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
+	host.Commit("updated host state to installing")
+	mgr.cluster.Update()
+
+	buf := &bytes.Buffer{}
+
+	glog.V(2).Infoln("generating a final stage ignitionConfig")
+	if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
+		glog.V(2).Infoln("generating ignition config failed: " + err.Error())
+		w.WriteHeader(500)
+		w.Write([]byte("generating ignition config failed: " + err.Error()))
+		return
+	}
+	if _, err := buf.WriteTo(w); err != nil {
+		glog.Fatalln("writing response failed: " + err.Error())
+	}
+
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {

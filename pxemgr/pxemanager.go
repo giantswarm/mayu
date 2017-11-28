@@ -41,6 +41,7 @@ type PXEManagerConfiguration struct {
 	UseIgnition              bool
 	FirstStageScript         string
 	ImagesCacheDir           string
+	FilesDir                 string
 	Version                  string
 }
 
@@ -59,6 +60,7 @@ type pxeManagerT struct {
 	ignitionConfig           string
 	useIgnition              bool
 	imagesCacheDir           string
+	filesDir                 string
 	useInternalEtcdDiscovery bool
 	defaultEtcdQuorumSize    int
 	etcdDiscoveryUrl         string
@@ -116,6 +118,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		useIgnition:              c.UseIgnition,
 		firstStageScript:         c.FirstStageScript,
 		imagesCacheDir:           c.ImagesCacheDir,
+		filesDir:                 c.FilesDir,
 		useInternalEtcdDiscovery: c.UseInternalEtcdDiscovery,
 		defaultEtcdQuorumSize:    c.EtcdQuorumSize,
 		etcdDiscoveryUrl:         c.EtcdDiscoveryUrl,
@@ -207,7 +210,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.pxeRouter.Methods("GET").PathPrefix("/hostinfo-helper").HandlerFunc(mgr.infoPusher)
 
 	if mgr.useIgnition {
-		mgr.pxeRouter.Methods("POST").PathPrefix("/final-ignition-config.json").HandlerFunc(mgr.configGenerator)
+		mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 	} else {
 		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
 	}
@@ -300,14 +303,16 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 	mgr.config.Network.StaticHosts = []hostmgr.IPMac{}
 	mgr.config.Network.IgnoredHosts = []string{}
 
-	ignoredHostPredicate := func(host *hostmgr.Host) bool {
-		// ignore hosts that are installed or running
-		return host.State == hostmgr.Installed || host.State == hostmgr.Running
-	}
+	if !mgr.useIgnition {
+		ignoredHostPredicate := func(host *hostmgr.Host) bool {
+			// ignore hosts that are installed or running
+			return host.State == hostmgr.Installed || host.State == hostmgr.Running
+		}
 
-	for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
-		for _, macAddr := range host.MacAddresses {
-			mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
+		for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
+			for _, macAddr := range host.MacAddresses {
+				mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
+			}
 		}
 	}
 
@@ -396,6 +401,11 @@ func (mgr *pxeManagerT) apiURL() string {
 
 func (mgr *pxeManagerT) pxeURL() string {
 	u := url.URL{Scheme: "http", Host: net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort))}
+	return u.String()
+}
+
+func (mgr *pxeManagerT) ignitionURL() string {
+	u := url.URL{Scheme: "http", Host: net.JoinHostPort(mgr.config.Network.BindAddr, strconv.Itoa(mgr.pxePort)), Path: "/ignition"}
 	return u.String()
 }
 

@@ -28,8 +28,6 @@ import (
 	"github.com/coreos/ignition/internal/providers"
 	"github.com/coreos/ignition/internal/providers/util"
 	"github.com/coreos/ignition/internal/resource"
-
-	"golang.org/x/net/context"
 )
 
 const (
@@ -37,8 +35,8 @@ const (
 	cmdlineUrlFlag = "coreos.config.url"
 )
 
-func FetchConfig(logger *log.Logger, client *resource.HttpClient) (types.Config, report.Report, error) {
-	url, err := readCmdline(logger)
+func FetchConfig(f resource.Fetcher) (types.Config, report.Report, error) {
+	url, err := readCmdline(f.Logger)
 	if err != nil {
 		return types.Config{}, report.Report{}, err
 	}
@@ -47,12 +45,14 @@ func FetchConfig(logger *log.Logger, client *resource.HttpClient) (types.Config,
 		return types.Config{}, report.Report{}, providers.ErrNoProvider
 	}
 
-	data, err := resource.FetchConfig(logger, client, context.Background(), *url)
+	data, err := f.FetchToBuffer(*url, resource.FetchOptions{
+		Headers: resource.ConfigHeaders,
+	})
 	if err != nil {
 		return types.Config{}, report.Report{}, err
 	}
 
-	return util.ParseConfig(logger, data)
+	return util.ParseConfig(f.Logger, data)
 }
 
 func readCmdline(logger *log.Logger) (*url.URL, error) {

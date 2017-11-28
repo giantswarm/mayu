@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/internal/resource"
 )
 
 func TestAssertValid(t *testing.T) {
@@ -29,6 +30,8 @@ func TestAssertValid(t *testing.T) {
 	type out struct {
 		err error
 	}
+
+	stringDeref := func(s string) *string { return &s }
 
 	tests := []struct {
 		in  in
@@ -41,10 +44,7 @@ func TestAssertValid(t *testing.T) {
 		{
 			in: in{
 				verification: types.Verification{
-					Hash: &types.Hash{
-						Function: "sha512",
-						Sum:      "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043",
-					},
+					Hash: stringDeref("sha512-9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043"),
 				},
 				data: []byte("hello"),
 			},
@@ -53,7 +53,7 @@ func TestAssertValid(t *testing.T) {
 		{
 			in: in{
 				verification: types.Verification{
-					Hash: &types.Hash{Function: "xor"},
+					Hash: stringDeref("xor-"),
 				},
 			},
 			out: out{err: types.ErrHashUnrecognized},
@@ -61,14 +61,11 @@ func TestAssertValid(t *testing.T) {
 		{
 			in: in{
 				verification: types.Verification{
-					Hash: &types.Hash{
-						Function: "sha512",
-						Sum:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-					},
+					Hash: stringDeref("sha512-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
 				},
 				data: []byte("hello"),
 			},
-			out: out{err: ErrHashMismatch{
+			out: out{err: resource.ErrHashMismatch{
 				Calculated: "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043",
 				Expected:   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			}},

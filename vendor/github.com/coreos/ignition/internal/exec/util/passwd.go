@@ -25,72 +25,135 @@ import (
 	keys "github.com/coreos/update-ssh-keys/authorized_keys_d"
 )
 
-// CreateUser creates the user as described.
-func (u Util) CreateUser(c types.User) error {
-	if c.Create == nil {
-		return nil
+// EnsureUser ensures that the user exists as described. If the user does not
+// yet exist, they will be created, otherwise the existing user will be
+// modified.
+func (u Util) EnsureUser(c types.PasswdUser) error {
+	exists, err := u.CheckIfUserExists(c)
+	if err != nil {
+		return err
 	}
-
-	cu := c.Create
+	if c.Create != nil {
+		cu := c.Create
+		c.Gecos = cu.Gecos
+		c.Groups = translateV2_1UsercreateGroupSliceToPasswdUserGroupSlice(cu.Groups)
+		c.HomeDir = cu.HomeDir
+		c.NoCreateHome = cu.NoCreateHome
+		c.NoLogInit = cu.NoLogInit
+		c.NoUserGroup = cu.NoUserGroup
+		c.PrimaryGroup = cu.PrimaryGroup
+		c.Shell = cu.Shell
+		c.System = cu.System
+		c.UID = cu.UID
+	}
 	args := []string{"--root", u.DestDir}
 
-	if c.PasswordHash != "" {
-		args = append(args, "--password", c.PasswordHash)
+	var cmd string
+	if exists {
+		cmd = "usermod"
+
+		if c.HomeDir != "" {
+			args = append(args, "--home", c.HomeDir, "--move-home")
+		}
 	} else {
+		cmd = "useradd"
+
+		if c.HomeDir != "" {
+			args = append(args, "--home-dir", c.HomeDir)
+		}
+
+		if c.NoCreateHome {
+			args = append(args, "--no-create-home")
+		} else {
+			args = append(args, "--create-home")
+		}
+
+		if c.NoUserGroup {
+			args = append(args, "--no-user-group")
+		}
+
+		if c.System {
+			args = append(args, "--system")
+		}
+
+		if c.NoLogInit {
+			args = append(args, "--no-log-init")
+		}
+	}
+
+	if c.PasswordHash != nil {
+		if *c.PasswordHash != "" {
+			args = append(args, "--password", *c.PasswordHash)
+		} else {
+			args = append(args, "--password", "*")
+		}
+	} else if !exists {
+		// Set the user's password to "*" if they don't exist yet and one wasn't
+		// set to disable password logins
 		args = append(args, "--password", "*")
 	}
 
-	if cu.Uid != nil {
+	if c.UID != nil {
 		args = append(args, "--uid",
-			strconv.FormatUint(uint64(*cu.Uid), 10))
+			strconv.FormatUint(uint64(*c.UID), 10))
 	}
 
-	if cu.GECOS != "" {
-		args = append(args, "--comment", fmt.Sprintf("%q", cu.GECOS))
+	if c.Gecos != "" {
+		args = append(args, "--comment", c.Gecos)
 	}
 
-	if cu.Homedir != "" {
-		args = append(args, "--home-dir", cu.Homedir)
+	if c.PrimaryGroup != "" {
+		args = append(args, "--gid", c.PrimaryGroup)
 	}
 
-	if cu.NoCreateHome {
-		args = append(args, "--no-create-home")
-	} else {
-		args = append(args, "--create-home")
+	if len(c.Groups) > 0 {
+		args = append(args, "--groups", strings.Join(translateV2_1PasswdUserGroupSliceToStringSlice(c.Groups), ","))
 	}
 
-	if cu.PrimaryGroup != "" {
-		args = append(args, "--gid", cu.PrimaryGroup)
-	}
-
-	if len(cu.Groups) > 0 {
-		args = append(args, "--groups", strings.Join(cu.Groups, ","))
-	}
-
-	if cu.NoUserGroup {
-		args = append(args, "--no-user-group")
-	}
-
-	if cu.System {
-		args = append(args, "--system")
-	}
-
-	if cu.NoLogInit {
-		args = append(args, "--no-log-init")
-	}
-
-	if cu.Shell != "" {
-		args = append(args, "--shell", cu.Shell)
+	if c.Shell != "" {
+		args = append(args, "--shell", c.Shell)
 	}
 
 	args = append(args, c.Name)
 
-	return u.LogCmd(exec.Command("useradd", args...),
-		"creating user %q", c.Name)
+	_, err = u.LogCmd(exec.Command(cmd, args...),
+		"creating or modifying user %q", c.Name)
+	return err
+}
+
+// golang--
+func translateV2_1UsercreateGroupSliceToPasswdUserGroupSlice(groups []types.UsercreateGroup) []types.PasswdUserGroup {
+	newGroups := make([]types.PasswdUserGroup, len(groups))
+	for i, g := range groups {
+		newGroups[i] = types.PasswdUserGroup(g)
+	}
+	return newGroups
+}
+
+func (u Util) CheckIfUserExists(c types.PasswdUser) (bool, error) {
+	code, err := u.LogCmd(exec.Command("chroot", u.DestDir, "id", c.Name),
+		"checking if user %q exists", c.Name)
+	if err != nil {
+		if code == 1 {
+			return false, nil
+		}
+		u.Logger.Info("error encountered (%+T): %v", err, err)
+		return false, err
+	}
+	return true, nil
+}
+
+// golang--
+func translateV2_1PasswdUserGroupSliceToStringSlice(groups []types.PasswdUserGroup) []string {
+	newGroups := make([]string, len(groups))
+	for i, g := range groups {
+		newGroups[i] = string(g)
+	}
+	return newGroups
 }
 
 // Add the provided SSH public keys to the user's authorized keys.
-func (u Util) AuthorizeSSHKeys(c types.User) error {
+func (u Util) AuthorizeSSHKeys(c types.PasswdUser) error {
 	if len(c.SSHAuthorizedKeys) == 0 {
 		return nil
 	}
@@ -109,7 +172,7 @@ func (u Util) AuthorizeSSHKeys(c types.User) error {
 
 		// TODO(vc): introduce key names to config?
 		// TODO(vc): validate c.SSHAuthorizedKeys well-formedness.
-		ks := strings.Join(c.SSHAuthorizedKeys, "\n")
+		ks := strings.Join(translateV2_1SSHAuthorizedKeySliceToStringSlice(c.SSHAuthorizedKeys), "\n")
 		// XXX(vc): for now ensure the addition is always
 		// newline-terminated.  A future version of akd will handle this
 		// for us in addition to validating the ssh keys for
@@ -130,25 +193,40 @@ func (u Util) AuthorizeSSHKeys(c types.User) error {
 	}, "adding ssh keys to user %q", c.Name)
 }
 
+// golang--
+func translateV2_1SSHAuthorizedKeySliceToStringSlice(keys []types.SSHAuthorizedKey) []string {
+	newKeys := make([]string, len(keys))
+	for i, k := range keys {
+		newKeys[i] = string(k)
+	}
+	return newKeys
+}
+
 // SetPasswordHash sets the password hash of the specified user.
-func (u Util) SetPasswordHash(c types.User) error {
-	if c.PasswordHash == "" {
+func (u Util) SetPasswordHash(c types.PasswdUser) error {
+	if c.PasswordHash == nil {
 		return nil
+	}
+
+	pwhash := *c.PasswordHash
+	if *c.PasswordHash == "" {
+		pwhash = "*"
 	}
 
 	args := []string{
 		"--root", u.DestDir,
-		"--password", c.PasswordHash,
+		"--password", pwhash,
 	}
 
 	args = append(args, c.Name)
 
-	return u.LogCmd(exec.Command("usermod", args...),
+	_, err := u.LogCmd(exec.Command("usermod", args...),
 		"setting password for %q", c.Name)
+	return err
 }
 
 // CreateGroup creates the group as described.
-func (u Util) CreateGroup(g types.Group) error {
+func (u Util) CreateGroup(g types.PasswdGroup) error {
 	args := []string{"--root", u.DestDir}
 
 	if g.Gid != nil {
@@ -168,6 +246,7 @@ func (u Util) CreateGroup(g types.Group) error {
 
 	args = append(args, g.Name)
 
-	return u.LogCmd(exec.Command("groupadd", args...),
+	_, err := u.LogCmd(exec.Command("groupadd", args...),
 		"adding group %q", g.Name)
+	return err
 }

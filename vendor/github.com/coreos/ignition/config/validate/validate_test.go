@@ -15,13 +15,19 @@
 package validate
 
 import (
+	"bytes"
 	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
+
+	json "github.com/ajeddeloh/go-json"
+	"github.com/coreos/ignition/config/validate/astjson"
+	"github.com/coreos/ignition/config/validate/report"
 	// Import into the same namespace to keep config definitions clean
 	. "github.com/coreos/ignition/config/types"
-	"github.com/coreos/ignition/config/validate/report"
 )
 
 func TestValidate(t *testing.T) {
@@ -37,21 +43,37 @@ func TestValidate(t *testing.T) {
 		out out
 	}{
 		{
-			in:  in{cfg: Config{Ignition: Ignition{Version: IgnitionVersion{Major: 2}}}},
+			in:  in{cfg: Config{Ignition: Ignition{Version: semver.Version{Major: 2}.String()}}},
 			out: out{},
 		},
 		{
 			in:  in{cfg: Config{}},
+			out: out{err: ErrInvalidVersion},
+		},
+		{
+			in:  in{cfg: Config{Ignition: Ignition{Version: "invalid.version"}}},
+			out: out{err: ErrInvalidVersion},
+		},
+		{
+			in:  in{cfg: Config{Ignition: Ignition{Version: "2.2.0"}}},
+			out: out{err: ErrNewVersion},
+		},
+		{
+			in:  in{cfg: Config{Ignition: Ignition{Version: "3.0.0"}}},
+			out: out{err: ErrNewVersion},
+		},
+		{
+			in:  in{cfg: Config{Ignition: Ignition{Version: "1.0.0"}}},
 			out: out{err: ErrOldVersion},
 		},
 		{
 			in: in{cfg: Config{
 				Ignition: Ignition{
-					Version: IgnitionVersion{Major: 2},
+					Version: semver.Version{Major: 2}.String(),
 					Config: IgnitionConfig{
 						Replace: &ConfigReference{
 							Verification: Verification{
-								Hash: &Hash{Function: "foobar"},
+								Hash: func(s string) *string { return &s }("foobar-"),
 							},
 						},
 					},
@@ -61,14 +83,14 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			in: in{cfg: Config{
-				Ignition: Ignition{Version: IgnitionVersion{Major: 2}},
+				Ignition: Ignition{Version: semver.Version{Major: 2}.String()},
 				Storage: Storage{
 					Filesystems: []Filesystem{
 						{
 							Name: "filesystem1",
-							Mount: &FilesystemMount{
-								Device: Path("/dev/disk/by-partlabel/ROOT"),
-								Format: FilesystemFormat("btrfs"),
+							Mount: &Mount{
+								Device: "/dev/disk/by-partlabel/ROOT",
+								Format: "btrfs",
 							},
 						},
 					},
@@ -78,12 +100,12 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			in: in{cfg: Config{
-				Ignition: Ignition{Version: IgnitionVersion{Major: 2}},
+				Ignition: Ignition{Version: semver.Version{Major: 2}.String()},
 				Storage: Storage{
 					Filesystems: []Filesystem{
 						{
 							Name: "filesystem1",
-							Path: func(p Path) *Path { return &p }("/sysroot"),
+							Path: func(p string) *string { return &p }("/sysroot"),
 						},
 					},
 				},
@@ -92,8 +114,8 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			in: in{cfg: Config{
-				Ignition: Ignition{Version: IgnitionVersion{Major: 2}},
-				Systemd:  Systemd{Units: []SystemdUnit{{Name: "foo.bar", Contents: "[Foo]\nfoo=qux"}}},
+				Ignition: Ignition{Version: semver.Version{Major: 2}.String()},
+				Systemd:  Systemd{Units: []Unit{{Name: "foo.bar", Contents: "[Foo]\nfoo=qux"}}},
 			}},
 			out: out{err: errors.New("invalid systemd unit extension")},
 		},
@@ -105,6 +127,132 @@ func TestValidate(t *testing.T) {
 		if !reflect.DeepEqual(expectedReport, r) {
 			t.Errorf("#%d: bad error: want %v, got %v", i, expectedReport, r)
 		}
+	}
+}
+
+var dummyErr = errors.New("dummy error")
+
+// These types need to be declared here to allow us to define Validate() methods on them
+// simple case, no embedding, no Validate<NAME> functions, just Validate() defined on a struct
+type Simple struct{}
+
+func (s Simple) Validate() report.Report {
+	return report.ReportFromError(dummyErr, report.EntryError)
+}
+
+type NamedValidate struct {
+	A string `json:"a"`
+}
+
+func (n NamedValidate) ValidateA() report.Report {
+	return report.ReportFromError(dummyErr, report.EntryError)
+}
+
+type simpleEmbedded struct {
+	Simple
+}
+
+type NamedEmbedded struct {
+	NamedValidate
+}
+
+type twiceNestedAndNamed struct {
+	NamedEmbedded
+}
+
+func TestValidateLineCol(t *testing.T) {
+	type in struct {
+		cfg string
+		// use reflect.Type to allow not needing an entire ignition config. Using interface{}
+		// would require the unbox and rebox trick, and Validate() needs a reflect.Value anyway.
+		// Unforunately, this means we can't (easily) factor out the reflect.TypeOf() call, but
+		// it makes the test code easier to read.
+		unmarshalInto reflect.Type
+	}
+	type out struct {
+		r report.Report
+	}
+
+	reportFromDummyWithLineCol := func(line, col int) report.Report {
+		r := report.ReportFromError(dummyErr, report.EntryError)
+		r.AddPosition(line, col, "")
+		return r
+	}
+
+	tests := []struct {
+		in  in
+		out out
+	}{
+		{
+			// no Validate()
+			in:  in{cfg: "{}", unmarshalInto: reflect.TypeOf(struct{}{})},
+			out: out{},
+		},
+		{
+			in: in{
+				cfg: `{
+}`,
+				unmarshalInto: reflect.TypeOf(Simple{}),
+			},
+			out: out{r: reportFromDummyWithLineCol(2, 2)},
+		},
+		{
+			in: in{
+				cfg: `{
+}`,
+				unmarshalInto: reflect.TypeOf(simpleEmbedded{}),
+			},
+			out: out{r: reportFromDummyWithLineCol(2, 2)},
+		},
+		{
+			in: in{
+				cfg: `{
+	"a": "foobar"
+}`,
+				unmarshalInto: reflect.TypeOf(NamedValidate{}),
+			},
+			out: out{r: reportFromDummyWithLineCol(2, 15)},
+		},
+		{
+			in: in{
+				cfg: `{
+	"a": "foobar"
+}`,
+				unmarshalInto: reflect.TypeOf(NamedEmbedded{}),
+			},
+			out: out{r: reportFromDummyWithLineCol(2, 15)},
+		},
+		{
+			in: in{
+				cfg: `{
+	"a": "foobar"
+}`,
+				unmarshalInto: reflect.TypeOf(twiceNestedAndNamed{}),
+			},
+			out: out{r: reportFromDummyWithLineCol(2, 15)},
+		},
+	}
+
+	for i, test := range tests {
+		v := reflect.New(test.in.unmarshalInto)
+		if err := json.Unmarshal([]byte(test.in.cfg), v.Interface()); err != nil {
+			t.Errorf("#%d: Failed to unmarshal into struct. This is most likely an error with the test: %v", i, err)
+		}
+
+		var ast json.Node
+		if err := json.Unmarshal([]byte(test.in.cfg), &ast); err != nil {
+			t.Errorf("#%d: Failed to unmarshal into ast. This is most likely an error with the test: %v", i, err)
+		}
+
+		reader := bytes.NewReader([]byte(test.in.cfg))
+
+		r := Validate(v, astjson.FromJsonRoot(ast), reader, false)
+		// highlight strings are hard to generate by hand, so ignore them for now
+		// TODO(ajeddeloh) test highlight strings
+		for i := range r.Entries {
+			r.Entries[i].Highlight = ""
+		}
+		assert.Equal(t, test.out.r, r, "#%d bad report", i)
 	}
 }
 
