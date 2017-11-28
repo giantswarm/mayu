@@ -25,11 +25,19 @@ network:
 templates_env:
   mayu_https_endpoint: https://mayu
 `
-	configOK             = baseConfig + "  storage: mystorage"
-	configErr            = baseConfig
-	lastStageCloudconfig = `before_key: ok
-{{if eq .TemplatesEnv.storage "mystorage"}}storage: mystorage{{end}}
-after_key: ok
+	configOK             = baseConfig + `  update: "no_updates"`
+	configErr            = baseConfig + `  update: "update"`
+	ignition = `ignition:
+  version:
+    major: 2
+    minor: 0
+    patch: 0
+systemd:
+{{if eq  .TemplatesEnv.update "no_updates"}}
+  units:
+    - name: update-engine.service
+      enable: false
+      mask: true{{end}}
 `
 )
 
@@ -57,9 +65,13 @@ func setUp(t *testing.T) *helper {
 	if err := ioutil.WriteFile(filepath.Join(h.dir, "config_err.yaml"), []byte(configErr), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(h.dir, "ignition.yaml"), []byte(lastStageCloudconfig), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(h.dir, "ignition.yaml"), []byte(ignition), 0644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Mkdir(filepath.Join(h.dir, "files"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 
 	h.cluster, err = hostmgr.NewCluster(h.dir, true)
 	if err != nil {
@@ -77,6 +89,7 @@ func setUp(t *testing.T) *helper {
 		// PXEPort must be different), the server is not going to be started and we
 		// are going to test the handler method directly
 		APIPort:        4080,
+		FilesDir: filepath.Join(h.dir, "files"),
 		IgnitionConfig: filepath.Join(h.dir, "ignition.yaml"),
 		EtcdEndpoint:   h.fakeEtcd.URL,
 	}
@@ -86,7 +99,7 @@ func setUp(t *testing.T) *helper {
 	}
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(hostData)
-	h.req = httptest.NewRequest("GET", "http://127.0.0.1:4080/ignition", b)
+	h.req = httptest.NewRequest("GET", "http://127.0.0.1:4080/ignition?serial=test1234", b)
 	h.w = httptest.NewRecorder()
 
 	return h
@@ -118,9 +131,7 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	}
 
 	actual := h.w.Body.String()
-	expected := `before_key: ok
-storage: mystorage
-after_key: ok
+	expected := `{"ignition":{"version":"2.0.0","config":{}},"storage":{},"systemd":{"units":[{"name":"update-engine.service","mask":true}]},"networkd":{},"passwd":{}}
 `
 	if actual != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
@@ -128,40 +139,7 @@ after_key: ok
 	}
 
 	// make sure the template is complete
-	if !strings.Contains(actual, "after_key: ok") {
+	if !strings.Contains(actual, "update-engine.service") {
 		t.Errorf("response body contains incomplete template: %s", actual)
-	}
-}
-
-func TestFinalCloudConfigChecksErrorFail(t *testing.T) {
-	h := setUp(t)
-	defer tearDown(h)
-
-	h.pxeCfg.ConfigFile = filepath.Join(h.dir, "config_err.yaml")
-
-	// instantiate PXEManager (no need to start it)
-	mgr, err := PXEManager(h.pxeCfg, h.cluster)
-	if err != nil {
-		t.Fatalf("unable to create a pxe manager: %s\n", err)
-	}
-
-	// call handler func and make assertions on the response recorder
-	mgr.ignitionGenerator(h.w, h.req)
-
-	if status := h.w.Code; status != http.StatusInternalServerError {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusInternalServerError)
-	}
-
-	actual := h.w.Body.String()
-	expected := `generating final stage cloudConfig failed: template: last_stage_cloudconfig.yaml`
-	if !strings.Contains(actual, expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			actual, expected)
-	}
-
-	// make sure we don't get partial templates
-	if strings.Contains(actual, "before_key: ok") {
-		t.Errorf("response body contains partial template: %s", actual)
 	}
 }

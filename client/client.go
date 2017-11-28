@@ -8,14 +8,10 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 
 	mayuerror "github.com/giantswarm/mayu/error"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
-	"github.com/giantswarm/mayu/pxemgr"
-	"gopkg.in/yaml.v2"
 )
 
 const contentType = "application/json"
