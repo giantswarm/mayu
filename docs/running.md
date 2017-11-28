@@ -15,41 +15,25 @@ default Container Linux version. But you might also define different Container L
 If you like to distribute your own binaries for docker, etcd or fleet have a look at [Yochu](https://github.com/giantswarm/yochu).
 There is also a script to fetch Giant Swarms binaries as an example.
 
-```
-./fetch-yochu-assets
-```
-
 ## Start Mayu
 
-Once Mayu is properly configured, it can be started:
-
-```nohighlight
-make bin-dist
-./mayu --cluster-directory cluster -v=12 --no-git --no-tls
-```
 
 ### Run Mayu within a Docker container
 
 ```
 docker run --rm -it \
+  --net=host \
   --cap-add=NET_ADMIN \
   --net=host \
   --name=mayu \
-  -v $(pwd)/cluster:/var/lib/mayu \
-  -v $(pwd)/images:/usr/lib/mayu/images \
-  -v $(pwd)/yochu:/usr/lib/mayu/yochu \
-  giantswarm/mayu \
+  -v /var/lib/mayu:/var/lib/mayu \
+  -v /etc/mayu/config.yaml:/etc/mayu/config.yaml \
+  -v /etc/mayu/templates:/usr/lib/mayu/templates/ \
+  -v /etc/mayu/files:/usr/lib/mayu/files \
   -v=12 --no-git --no-tls
 ```
 
 Or use the [`mayu.service`](https://github.com/giantswarm/mayu/blob/master/mayu.service) unit file included in this repository.
-
-For running `mayu` in a local VM you might want to add two more volumes, to
-enable DNS resultion by the `dnsmasq` included in `mayu`:
-
-```
--v /etc/hosts:/etc/hosts -v /etc/resolv.conf:/etc/resolv.conf
-```
 
 ## Cluster information
 
@@ -85,9 +69,6 @@ containing a JSON file with data about the node:
   "Hostname": "00006811af601fe8",
   "MachineID": "00006811af601fe8e1d3f37902021ae0",
   "ConnectedNIC": "ens3",
-  "FleetMetadata": [
-    "rule-core=true"
-  ],
   "LastBoot": "2015-10-08T19:14:36.227056826+02:00",
   "Profile": "core",
   "State": "running"

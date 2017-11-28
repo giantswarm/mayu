@@ -57,7 +57,7 @@ func setUp(t *testing.T) *helper {
 	if err := ioutil.WriteFile(filepath.Join(h.dir, "config_err.yaml"), []byte(configErr), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(h.dir, "last_stage_cloudconfig.yaml"), []byte(lastStageCloudconfig), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(h.dir, "ignition.yaml"), []byte(lastStageCloudconfig), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -76,9 +76,9 @@ func setUp(t *testing.T) *helper {
 		// This port is declared only to allow PXEMAnager instantiation (APIPort and
 		// PXEPort must be different), the server is not going to be started and we
 		// are going to test the handler method directly
-		APIPort:              4080,
-		LastStageCloudconfig: filepath.Join(h.dir, "last_stage_cloudconfig.yaml"),
-		EtcdEndpoint:         h.fakeEtcd.URL,
+		APIPort:        4080,
+		IgnitionConfig: filepath.Join(h.dir, "ignition.yaml"),
+		EtcdEndpoint:   h.fakeEtcd.URL,
 	}
 
 	hostData := machinedata.HostData{
@@ -86,7 +86,7 @@ func setUp(t *testing.T) *helper {
 	}
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(hostData)
-	h.req = httptest.NewRequest("POST", "http://127.0.0.1:4080/final-cloud-config.yaml", b)
+	h.req = httptest.NewRequest("GET", "http://127.0.0.1:4080/ignition", b)
 	h.w = httptest.NewRecorder()
 
 	return h
@@ -110,7 +110,7 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	}
 
 	// call handler func and make assertions on the response recorder
-	mgr.configGenerator(h.w, h.req)
+	mgr.ignitionGenerator(h.w, h.req)
 
 	if status := h.w.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
@@ -146,7 +146,7 @@ func TestFinalCloudConfigChecksErrorFail(t *testing.T) {
 	}
 
 	// call handler func and make assertions on the response recorder
-	mgr.configGenerator(h.w, h.req)
+	mgr.ignitionGenerator(h.w, h.req)
 
 	if status := h.w.Code; status != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",

@@ -1,17 +1,17 @@
 {{define "net_singlenic"}}
+networkd:
+  units:
   - name: 10-nodhcp.network
-    runtime: false
-    content: |
+    contents: |
       [Match]
       Name=*
 
       [Network]
       DHCP=no
-  - name: 00-{{.Host.ConnectedNIC}}.network
-    runtime: false
-    content: |
+  - name: 00-{{.ClusterNetwork.MachineInterface}}.network
+    contents: |
       [Match]
-      Name={{.Host.ConnectedNIC}}
+      Name={{.ClusterNetwork.MachineInterface}}
 
       [Network]
       Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
@@ -21,3 +21,4 @@
       {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
       {{ end }}
 {{end}}
+

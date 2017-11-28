@@ -1,0 +1,29 @@
+{{define "extra_units"}}
+    - name: extra_unit.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=extraUnit
+        Requires=docker.service
+        After=docker.service
+  
+        [Service]
+        EnvironmentFile=/etc/environment
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/bash -c 'echo "extra work" >> /extra-file'
+        [Install]
+        WantedBy=multi-user.target
+{{end}
+{{define "extra_files"}}
+    - filesystem: root
+      path: /etc/my-service/config.conf
+      mode: 0600
+      user:  
+        id: 0
+        group: 0
+      contents:
+        source:
+          scheme: data
+          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "my-service/my-service.conf" }}"
+{{end}}

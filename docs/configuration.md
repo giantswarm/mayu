@@ -12,32 +12,21 @@ Check [mayuctl](mayuctl.md) for more information about the client.
 .
 |-- mayu                              - the mayu executable
 |-- config.yaml.dist                  - mayu configuration file template
-|-- static_html
-|   `-- infopusher                    - small node info pusher used during the installation process
-|   `-- mayuctl                       - pushes information after each reboot of machines
 |-- templates
 |   |-- dnsmasq_template.conf         - template file used to generate the dnsmasq configuration
-|   |-- first_stage_cloudconfig.yaml  - template used to generate the first cloud-config to install the machine
-|   |-- first_stage_script.sh         - template used to generate the installation script
-|   |-- last_stage_cloudconfig.yaml   - template used to generate the final cloud-config
-|   `-- ignition
-|       `--gs_install.yaml            - template used to generate the ignition config used to install Container Linux
-|-- template_snippets                 - directory containing some template snippets used in the cloudconfig or ignition
-|   |-- cloudconfig
+|   |-- ignition.yaml.yaml            - template used to generate the ignition
+|   |-- snippets                 - directory containing some template snippets used in the  ignition template
 |   |   |-- net_bond.yaml
 |   |   |-- net_singlenic.yaml
-|   |   `-- quobyte.yaml
-|   `-- ignition
-|       |-- net_bond.yaml
-|       |-- net_singlenic.yaml
-|       `-- quobyte.yaml
+|   |   |-- extra.yaml
 `-- tftproot
     `-- undionly.kpxe                 - ipxe pxe image
+    `-- ipxe.efi                      - ipxe pxe image for UEFI enabled hosts
 ```
 
 For a new environment to be configured, there are three main files that might
-have to be adapted: `config.yaml`, `last_stage_cloudconfig.yaml` and one of the
-network snippets `net_bond.yaml` or `net_singlenic.yaml`.
+have to be adapted: `config.yaml`, `ignition.yaml` and one of the
+ snippets `extra.yaml`, `net_bond.yaml` or `net_singlenic.yaml`.
 
 
 ## `/etc/mayu/config.yaml`
@@ -57,7 +46,7 @@ this default value.
 Most importantly you also need to fetch the Container Linux image version. This is explained in the [Running Mayu](running.md) section.
 
 ```yaml
-default_coreos_version: 1122.2.0
+default_coreos_version: 1409.7.0
 ```
 
 ### Network
@@ -65,7 +54,9 @@ default_coreos_version: 1122.2.0
 ```yaml
 network:
   pxe: true
-  interface: bond0
+  uefi: false
+  pxe_interface: eth0
+  machine_interface: eth0
   bind_addr: 10.0.3.251
   bootstrap_range:
     start: 10.0.3.10
@@ -87,31 +78,24 @@ installation. The `ip_range` is a range of addresses that will be statically
 assigned to the cluster nodes. The `network_model` specifies which network
 template snippet will be used.
 
+
+`pxe_interface` is defining on which network interface mayu should listen for pxe and dhcp
+
+
+`machine_interface` is defining the name for interface that will be used for configuring network if `network_model: singlenic` is used.
+
 ### Profiles
 
 ```yaml
 profiles:
   - name: core
     quantity: 3
-    coreos_version: "835.13.0"
-    tags:
-      - "rule-core=true"
   - name: default
-    disable_engine: true
-    coreos_version: "835.13.0"
-    tags:
-      - "rule-worker=true"
-      - "stack-compute=true"
 ```
 
-The final goal of a mayu-enabled deployment is a functional fleet cluster. To
-be able to assign different roles to the different nodes, mayu employs a
-mechanism of profile selection. Each profile has a `name`, a `quantity`
-(defines the number of cluster nodes that should have this profile), a
-`disable_engine` (defines whether the cluster nodes can be elected as fleet
-leader) and a list of `tags` (the elements of this list will be directly mapped
-to fleet metadata tags). Once all the profiles' quantities are matched (in
-this example that means we have 3 nodes with the profile core), mayu will assign
+Each profile has a `name`, a `quantity`
+(defines the number of cluster nodes that should have this profile). Name can be used for distinguishing machines in the ignition templates. Once all the profiles' quantities are matched 
+(in this example that means we have 3 nodes with the profile core), mayu will assign
 the profile "default" to the remaining nodes. Thus, profiles with a `quantity`
 set are of higher priority than the default profile.
 
@@ -119,30 +103,30 @@ set are of higher priority than the default profile.
 
 ```yaml
 templates_env:
-  ssh_authorized_keys:
-    - "ssh-rsa ..."
-    - "ssh-rsa ..."
-  yochu_localsubnet: "10.0.0.0/22"
-  yochu_gateway: "10.0.3.251/32"
-  yochu_private_registry: "registry.<cluster-name>.private.<domain>"
+  users:
+    - Key: ssh-rsa xxxxxxxxxxxxxxx
+      Name: my_user
+    - Key: ssh-rsa yyyyyyyyyyyyyyy
+      Name: second_user
+  mayu_https_endpoint: https://10.0.1.254:4080
+  mayu_http_endpoint: http://10.0.1.254:4081
+  mayu_api_ip: 10.0.1.254
 ```
 
 These variables are used by the templates (most of them are directly injected
-into the final cloudconfig file).
+into the ignition file).
 
 ## Commandline flags
 
 ```
---tftproot=./tftproot
---static_html_path=./static_html
---ipxe=undionly.kpxe
---first_stage_script=./templates/first_stage_script.sh
---last_stage_cloudconfig=./templates/last_stage_cloudconfig.yaml
---dnsmasq_template=./templates/dnsmasq_template.conf
---template_snippets=./template_snippets
---dnsmasq=./dnsmasq
---images_cache_dir=./images
---http_port=4080
+--v=12
+--cluster-directory=/var/lib/mayu
+--alsologtostderr
+--etcd-quorum-size=3
+--etcd-endpoint=https://127.0.0.1:2379
+--images-cache-dir=/var/lib/mayu/images
+--yochu-path=/var/lib/mayu/yochu
+--log_dir=/tmp
 ```
 
 ### Certificates
@@ -158,15 +142,13 @@ provided.
 --tls_key-file="./key.pem"
 ```
 
-## `last_stage_cloudconfig.yaml`
+## `ignition.yaml`
 
 This template is a vanilla
-[cloud-config](https://coreos.com/os/docs/latest/cloud-config.html) file with a
-few additions to automatically deploy the Giant Swarm yochu, setup the
-fleet metadata, define the etcd discovery url, update the `ssh_authorized_keys`
-for the user `core` and configure the network.
+[ignition](https://coreos.com/ignition/docs/latest/) file with a
+few additions to automatically deploy the few units, define the etcd3 with discovery url, confgure ssh keys for users` and configure the network.
 
-## `template_snippets/net_singlenic.yaml`
+## `templates/snippets/net_singlenic.yaml`
 
 In the near future, the existence of multiple network template snippets will be
 changed, so we'll focus on the singlenic template (used by the default
@@ -174,45 +156,38 @@ configuration) for now.
 
 ```yaml
 {{define "net_singlenic"}}
-  - name: systemd-networkd.service
-    command: stop
+networkd:
+  units:
   - name: 10-nodhcp.network
-    runtime: false
-    content: |
+    contents: |
       [Match]
       Name=*
 
       [Network]
       DHCP=no
-  - name: 00-{{.Host.ConnectedNIC}}.network
-    runtime: false
-    content: |
+  - name: 00-{{.ClusterNetwork.MachineInterface}}.network
+    contents: |
       [Match]
-      Name={{.Host.ConnectedNIC}}
+      Name={{.ClusterNetwork.MachineInterface}}
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
-      Gateway={{.ClusterNetwork.Router}}
-      DNS={{index .ClusterNetwork.DNS 0}}
-  - name: down-interfaces.service
-    command: start
-    content: |
-      [Service]
-      Type=oneshot
-      ExecStart=/usr/bin/ip link set {{.Host.ConnectedNIC}} down
-      ExecStart=/usr/bin/ip addr flush dev {{.Host.ConnectedNIC}}
-  - name: systemd-networkd.service
-    command: restart
+      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
+      Gateway={{.ClusterNetwork.SubnetGateway}}
+      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+      {{ end }}
+      {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
+      {{ end }}
 {{end}}
 ```
 
-This snippet will be merged into the `cloud-config` file, so the right
+This snippet will be merged into the ignition file, so the right
 indentation must be taken into account. The Container Linux [network
 configuration](https://coreos.com/os/docs/latest/network-config-with-networkd.html)
 defines the
 [systemd-networkd](http://www.freedesktop.org/software/systemd/man/systemd.network.html)
 .network (and optionally .device) files used by each node.
 
-In this example it just disables DHCP and configures the `ConnectedNIC` with a
-static IP address. The `ConnectedNIC` is aquired during installation time by
-analyzing which interface is used to reach the default gateway.
+In this example it just disables DHCP and configures the `machine_interface` with a
+static IP address. The `machine_interface` is configured in mayu config.
+
+

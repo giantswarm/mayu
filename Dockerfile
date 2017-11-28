@@ -1,4 +1,4 @@
-FROM alpine:3.6
+FROM alpine:3.7
 
 RUN apk add --no-cache git ca-certificates dnsmasq 
 
@@ -9,9 +9,6 @@ COPY static_html /usr/lib/mayu/static_html
 COPY template_snippets /usr/lib/mayu/template_snippets
 COPY templates /usr/lib/mayu/templates
 COPY config.yaml* /etc/mayu/
-
-# enable if you want to add a post hook to github to store your cluster config
-#RUN ssh-keyscan -H github.com > /etc/ssh/ssh_known_hosts
 
 WORKDIR /usr/lib/mayu
 

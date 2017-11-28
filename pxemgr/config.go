@@ -53,7 +53,7 @@ type Profile struct {
 }
 
 type Network struct {
-	Interface        string
+	PxeInterface     string `yaml:"pxe_interface"`
 	MachineInterface string `yaml:"machine_interface"`
 	BindAddr         string `yaml:"bind_addr"`
 	BootstrapRange   struct {

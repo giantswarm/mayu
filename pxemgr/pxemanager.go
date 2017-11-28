@@ -36,10 +36,7 @@ type PXEManagerConfiguration struct {
 	YochuPath                string
 	StaticHTMLPath           string
 	TemplateSnippets         string
-	LastStageCloudconfig     string
 	IgnitionConfig           string
-	UseIgnition              bool
-	FirstStageScript         string
 	ImagesCacheDir           string
 	FilesDir                 string
 	Version                  string
@@ -55,10 +52,7 @@ type pxeManagerT struct {
 	yochuPath                string
 	staticHTMLPath           string
 	templateSnippets         string
-	lastStageCloudconfig     string
-	firstStageScript         string
 	ignitionConfig           string
-	useIgnition              bool
 	imagesCacheDir           string
 	filesDir                 string
 	useInternalEtcdDiscovery bool
@@ -113,10 +107,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		yochuPath:                c.YochuPath,
 		staticHTMLPath:           c.StaticHTMLPath,
 		templateSnippets:         c.TemplateSnippets,
-		lastStageCloudconfig:     c.LastStageCloudconfig,
 		ignitionConfig:           c.IgnitionConfig,
-		useIgnition:              c.UseIgnition,
-		firstStageScript:         c.FirstStageScript,
 		imagesCacheDir:           c.ImagesCacheDir,
 		filesDir:                 c.FilesDir,
 		useInternalEtcdDiscovery: c.UseInternalEtcdDiscovery,
@@ -202,23 +193,16 @@ func withSerialParam(serialHandler func(serial string, w http.ResponseWriter, r 
 func (mgr *pxeManagerT) startIPXEserver() error {
 	mgr.pxeRouter = mux.NewRouter()
 
-	// first stage ipxe boot script
+	// ipxe script
 	mgr.pxeRouter.Methods("GET").PathPrefix("/ipxebootscript").HandlerFunc(mgr.ipxeBootScript)
-	mgr.pxeRouter.Methods("GET").PathPrefix("/first-stage-script/{serial}").HandlerFunc(mgr.firstStageScriptGenerator)
 
-	// used by the first-stage-script:
-	mgr.pxeRouter.Methods("GET").PathPrefix("/hostinfo-helper").HandlerFunc(mgr.infoPusher)
-
-	if mgr.useIgnition {
-		mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
-	} else {
-		mgr.pxeRouter.Methods("POST").PathPrefix("/final-cloud-config.yaml").HandlerFunc(mgr.configGenerator)
-	}
+	// get ignition
+	mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 
 	// endpoint for fetching coreos images defined by machine serial number
 	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
-	// serve static files like infopusher and mayuctl etc.
+	// serve static files like
 	mgr.pxeRouter.PathPrefix("/").Handler(http.FileServer(http.Dir(mgr.staticHTMLPath)))
 
 	// add welcome handler for debugging
@@ -241,18 +225,13 @@ func (mgr *pxeManagerT) startAPIserver() error {
 	mgr.apiRouter = mux.NewRouter()
 	//  api endpoint for setting metadata of machine
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/boot_complete").HandlerFunc(withSerialParam(mgr.bootComplete))
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_installed").HandlerFunc(withSerialParam(mgr.setInstalled))
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_metadata").HandlerFunc(withSerialParam(mgr.setMetadata))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/mark_fresh").HandlerFunc(withSerialParam(mgr.markFresh))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_provider_id").HandlerFunc(withSerialParam(mgr.setProviderId))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_ipmi_addr").HandlerFunc(withSerialParam(mgr.setIPMIAddr))
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_cabinet").HandlerFunc(withSerialParam(mgr.setCabinet))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
-	// get and set operations for mayu config
-	mgr.apiRouter.Methods("GET").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.getMayuConfig)
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/mayu_config").HandlerFunc(mgr.setMayuConfig)
+
 	// list all machines/hosts method
 	mgr.apiRouter.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
 	// etcd discovery
@@ -302,19 +281,6 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 
 	mgr.config.Network.StaticHosts = []hostmgr.IPMac{}
 	mgr.config.Network.IgnoredHosts = []string{}
-
-	if !mgr.useIgnition {
-		ignoredHostPredicate := func(host *hostmgr.Host) bool {
-			// ignore hosts that are installed or running
-			return host.State == hostmgr.Installed || host.State == hostmgr.Running
-		}
-
-		for host := range mgr.cluster.FilterHostsFunc(ignoredHostPredicate) {
-			for _, macAddr := range host.MacAddresses {
-				mgr.config.Network.IgnoredHosts = append(mgr.config.Network.IgnoredHosts, macAddr)
-			}
-		}
-	}
 
 	err := mgr.DNSmasq.updateConf(mgr.config.Network)
 	if err != nil {

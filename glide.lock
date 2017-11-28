@@ -1,5 +1,5 @@
 hash: 012d2808df340f120d0e45c5df4df22a912bc8ea74a3ff187e21f6236de47cde
-updated: 2017-11-20T17:11:49.313809285+01:00
+updated: 2017-11-28T18:39:52.571114923+01:00
 imports:
 - name: github.com/coreos/etcd
   version: 694728c496e22dfa5719c78ff23cc982e15bcb2f
@@ -44,7 +44,7 @@ imports:
 - name: github.com/ryanuber/columnize
   version: 983d3a5fab1bf04d1b412465d2d9f8430e2e917e
 - name: github.com/spf13/cobra
-  version: 19e54c4a2b8a78c9d54b2bed61b1a6c5e1bfcf6f
+  version: 1be1d2841c773c01bee8289f55f7463b6e2c2539
 - name: github.com/spf13/pflag
   version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/ugorji/go
