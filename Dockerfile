@@ -6,7 +6,7 @@ RUN mkdir -p /etc/mayu /var/lib/mayu /usr/lib/mayu
 COPY mayu  /mayu
 COPY tftproot /usr/lib/mayu/tftproot
 COPY static_html /usr/lib/mayu/static_html
-COPY template_snippets /usr/lib/mayu/template_snippets
+COPY files /usr/lib/mayu/files
 COPY templates /usr/lib/mayu/templates
 COPY config.yaml* /etc/mayu/
 
