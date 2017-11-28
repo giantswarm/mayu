@@ -25,9 +25,9 @@ network:
 templates_env:
   mayu_https_endpoint: https://mayu
 `
-	configOK             = baseConfig + `  update: "no_updates"`
-	configErr            = baseConfig + `  update: "update"`
-	ignition = `ignition:
+	configOK  = baseConfig + `  update: "no_updates"`
+	configErr = baseConfig + `  update: "update"`
+	ignition  = `ignition:
   version:
     major: 2
     minor: 0
@@ -72,7 +72,6 @@ func setUp(t *testing.T) *helper {
 		t.Fatal(err)
 	}
 
-
 	h.cluster, err = hostmgr.NewCluster(h.dir, true)
 	if err != nil {
 		t.Fatalf("creating cluster: %s", err)
@@ -89,7 +88,7 @@ func setUp(t *testing.T) *helper {
 		// PXEPort must be different), the server is not going to be started and we
 		// are going to test the handler method directly
 		APIPort:        4080,
-		FilesDir: filepath.Join(h.dir, "files"),
+		FilesDir:       filepath.Join(h.dir, "files"),
 		IgnitionConfig: filepath.Join(h.dir, "ignition.yaml"),
 		EtcdEndpoint:   h.fakeEtcd.URL,
 	}
