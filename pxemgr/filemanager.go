@@ -8,6 +8,7 @@ import (
 	"path"
 	"text/template"
 )
+
 // Files is map[string]string for files that we fetched from disk and then filled with data.
 type Files map[string]string
 
