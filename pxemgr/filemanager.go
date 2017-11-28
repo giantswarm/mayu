@@ -8,13 +8,11 @@ import (
 	"path"
 	"text/template"
 )
-
+// Files is map[string]string for files that we fetched from disk and then filled with data.
 type Files map[string]string
 
 func (mgr *pxeManagerT) RenderFiles(ctx interface{}) *Files {
-
 	files := Files{}
-
 	dirList, err := ioutil.ReadDir(mgr.filesDir)
 	if err != nil {
 		glog.Fatalf("Failed to read files dir: %s, error: %#v", mgr.filesDir, err)
