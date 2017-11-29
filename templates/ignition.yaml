@@ -65,6 +65,8 @@ systemd:
         Before=etcd3.service
 
         [Service]
+        Restart=always
+        RestartSec=10
         Type=oneshot
         ExecStartPre=/usr/bin/mkdir -p /opt/bin
         ExecStartPre=/bin/sh -c 'while [[ -z $(curl -k -s {{index .TemplatesEnv "mayu_https_endpoint"}}) ]] ; do sleep 2 ; done'
