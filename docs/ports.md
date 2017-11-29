@@ -5,6 +5,7 @@ Machines need to be able to connect to Mayu on a few ports. Here is a short list
 ```
 PORT    PROTOCOL  DESCRIPTION
 4080    TCP       default TLS/HTTP port to communicate the state of the machine and fetch binaries and scripts to provision machines
+4081    TCP       default HTTP port for ipxe  endpoints (kernel, initrd and ignition endpoints)
 67      UDP       DHCP/BOOTP to let machines boot via PXE/iPXE
 69      UDP/TCP   TFTP to ship images via PXE
 ```  

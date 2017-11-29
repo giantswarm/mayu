@@ -12,7 +12,6 @@ const (
 	Unknown hostState = iota
 	Configured
 	Installing
-	Installed
 	Running
 )
 
@@ -21,7 +20,6 @@ func HostStateMap() map[hostState]string {
 		Unknown:    `"unknown"`,
 		Configured: `"configured"`,
 		Installing: `"installing"`,
-		Installed:  `"installed"`,
 		Running:    `"running"`,
 	}
 }
@@ -43,8 +41,6 @@ func HostState(state string) (hostState, error) {
 		return Configured, nil
 	case "installing":
 		return Installing, nil
-	case "installed":
-		return Installed, nil
 	case "running":
 		return Running, nil
 	default:
@@ -61,8 +57,6 @@ func (s *hostState) UnmarshalJSON(b []byte) error {
 		*s = Configured
 	case `"installing"`:
 		*s = Installing
-	case `"installed"`:
-		*s = Installed
 	case `"running"`:
 		*s = Running
 	default:

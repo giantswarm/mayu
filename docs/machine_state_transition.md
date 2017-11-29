@@ -4,7 +4,6 @@ In Mayu, the machines have a state, which can vary depending on the operations t
 are performed on them. The list of available states in Mayu is:
 
 - `unknown`
-- `installed`
 - `installing`
 - `configured`
 - `running`

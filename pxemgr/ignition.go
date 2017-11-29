@@ -12,6 +12,10 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/giantswarm/mayu/hostmgr"
+	"io/ioutil"
+	"os"
+	"path"
+	"text/template"
 )
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {
@@ -51,8 +55,6 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 
 	ctx.Files = *mgr.RenderFiles(ctx)
 
-	ctx.Host.MayuVersion = mgr.version
-
 	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
 	if err != nil {
 		glog.Fatalln(err)
@@ -73,6 +75,62 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	host.State = hostmgr.Installing
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
+}
+
+var snippetsFiles []string
+
+func maybeInitSnippets(snippets string) {
+	if snippetsFiles != nil {
+		return
+	}
+	snippetsFiles = []string{}
+
+	if len(snippets) > 0 {
+		if _, err := os.Stat(snippets); err == nil {
+			if fis, err := ioutil.ReadDir(snippets); err == nil {
+				for _, fi := range fis {
+					snippetsFiles = append(snippetsFiles, path.Join(snippets, fi.Name()))
+				}
+			}
+		}
+	}
+}
+
+func getTemplate(path, snippets string) (*template.Template, error) {
+	maybeInitSnippets(snippets)
+	templates := []string{path}
+	templates = append(templates, snippetsFiles...)
+	glog.V(10).Infof("templates: %+v\n", templates)
+
+	return template.ParseFiles(templates...)
+}
+
+func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
+	cfg := types.Config{}
+
+	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
+	}
+
+	var (
+		dataOut []byte
+		err     error
+	)
+
+	if pretty {
+		dataOut, err = json.MarshalIndent(&cfg, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+		}
+		dataOut = append(dataOut, '\n')
+	} else {
+		dataOut, err = json.Marshal(&cfg)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+		}
+	}
+
+	return dataOut, nil
 }
 
 // hasUnrecognizedKeys finds unrecognized keys and warns about them on stderr.
@@ -110,32 +168,4 @@ func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool
 	default:
 	}
 	return
-}
-
-func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
-	cfg := types.Config{}
-
-	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
-	}
-
-	var (
-		dataOut []byte
-		err     error
-	)
-
-	if pretty {
-		dataOut, err = json.MarshalIndent(&cfg, "", "  ")
-		if err != nil {
-			return nil, fmt.Errorf("Failed to marshal output: %v", err)
-		}
-		dataOut = append(dataOut, '\n')
-	} else {
-		dataOut, err = json.Marshal(&cfg)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to marshal output: %v", err)
-		}
-	}
-
-	return dataOut, nil
 }

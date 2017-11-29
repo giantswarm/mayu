@@ -35,39 +35,20 @@ How It Works? Let's start by analyzing the bootstrap process of a fresh node:
 
 ![mayu bootstrap sequence](image/bootstrap.png)
 
-Adding a fresh node to the cluster consists of three parts:
+Adding a fresh node to the cluster consists of three steps:
 
-* initial boot
-* system installation
-* final reboot to installed system
+* initial boot of ipxe
+* fetching ignition from mayu
+* booting Container Linux from PXE with the fetched ignition
 
 ## Initial boot
-
 The fresh node is by definition empty and boots over ethernet by default. It
 sends a DHCP request for a `pxeclient`, which gets answered by the management
 node (which acts a DHCP/PXE server) with PXE details to boot iPXE. The node
-then pulls iPXE boot data from the PXE server via tftp. The node now send
-another DHCP request, this time with the ipxe client and gets back an ipxe boot
-path. The node then requests the kernel image and subsequently the initial root
-directory over HTTP. With this the node can then boot into installation from
-the initial root directory.
+then pulls iPXE boot data from the PXE server via tftp. 
 
-## System Installation
+## Fetching ignition from mayu
+iPXE script will fetch Container Linux `kernel`, `initrd` and ignition, which are based on the information that iPXE provided via GET request. 
 
-The initial root directory contains a version of Container Linux that is modified to run
-one unit that in turn requests a first stage script and runs that. The script
-is based on the `cloudconfig` that the management node holds for each server
-respectively and assigns based on the serial number of the machine. It waits
-for connectivity and then downloads a vanilla Container Linux stable image, which is
-cached on the management node. This image gets installed by default to
-`/dev/sda` configured through the above-mentioned `cloudconfig`. Finally the
-node announces itself as installed to the management node and reboots.
-
-## Final Reboot To Installed System
-
-On the final reboot (as well as each next reboot, as long as nothing in the
-mayu configuration gets changed) the node will again try to boot over
-ethernet first. It sends three DHCP request, which get ignored by the PXE
-server. The PXE server ingores these as long as the node is marked as
-`installed`. The node then continues booting the previously installed Container Linux
-from `/dev/sda`.
+## Booting Container Linux from PXE
+When everything is fetched, iPXE will start booting Container Linux PXE image and use ignition for bootstraping the OS.

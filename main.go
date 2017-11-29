@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -15,74 +14,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v2"
 )
-
-const (
-	DefaultConfigFile               string = "/etc/mayu/config.yaml"
-	DefaultClusterDirectory         string = "cluster"
-	DefaultShowTemplates            bool   = false
-	DefaultNoGit                    bool   = false
-	DefaultNoTLS                    bool   = false
-	DefaultTFTPRoot                 string = "./tftproot"
-	DefaultYochuPath                string = "./yochu"
-	DefaultStaticHTMLPath           string = "./static_html"
-	DefaultFirstStageScript         string = "./templates/first_stage_script.sh"
-	DefaultLastStageCloudconfig     string = "./templates/last_stage_cloudconfig.yaml"
-	DefaultIgnitionConfig           string = "./templates/ignition/gs_install.yaml"
-	DefaultDnsmasqTemplate          string = "./templates/dnsmasq_template.conf"
-	DefaultTemplateSnippets         string = "./template_snippets/cloudconfig"
-	DefaultIgnitionTemplateSnippets string = "./template_snippets/ignition"
-	DefaultDNSMasq                  string = "/usr/sbin/dnsmasq"
-	DefaultImagesCacheDir           string = "./images"
-	DefaultFilesDir                 string = "./files"
-	DefaultAPIPort                  int    = 4080
-	DefaultPXEPort                  int    = 4081
-	DefaultHTTPBindAddress          string = "0.0.0.0"
-	DefaultTLSCertFile              string = ""
-	DefaultTLSKeyFile               string = ""
-	DefaultUseInternalEtcdDiscovery bool   = true
-	DefaultEtcdQuorumSize           int    = 3
-	DefaultEtcdDiscoveryUrl         string = ""
-	DefaultEtcdEndpoint             string = "http://127.0.0.1:2379"
-	DefaultEtcdCA                   string = ""
-)
-
-type MayuFlags struct {
-	debug   bool
-	version bool
-	help    bool
-
-	configFile               string
-	clusterDir               string
-	showTemplates            bool
-	noGit                    bool
-	noTLS                    bool
-	tFTPRoot                 string
-	yochuPath                string
-	staticHTMLPath           string
-	firstStageScript         string
-	lastStageCloudconfig     string
-	ignitionConfig           string
-	useIgnition              bool
-	templateSnippets         string
-	dnsmasq                  string
-	dnsmasqTemplate          string
-	imagesCacheDir           string
-	filesDir                 string
-	apiPort                  int
-	pxePort                  int
-	bindAddress              string
-	tlsCertFile              string
-	tlsKeyFile               string
-	useInternalEtcdDiscovery bool
-	etcdQuorumSize           int
-	etcdDiscoveryUrl         string
-	etcdEndpoint             string
-	etcdCAfile               string
-
-	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
-}
 
 var (
 	globalFlags = MayuFlags{}
@@ -94,7 +26,7 @@ var (
 		Run:   mainRun,
 	}
 
-	projectVersion string = "1.0.0"
+	projectVersion string = "1.1.0"
 	projectBuild   string = "git"
 )
 
@@ -120,12 +52,8 @@ func init() {
 	pf.BoolVar(&globalFlags.noGit, "no-git", DefaultNoGit, "Disable git operations")
 	pf.BoolVar(&globalFlags.noTLS, "no-tls", DefaultNoTLS, "Disable tls")
 	pf.StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
-	pf.StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
-	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
-	pf.StringVar(&globalFlags.firstStageScript, "first-stage-script", DefaultFirstStageScript, "Install script to install Container Linux on disk in the first stage.")
-	pf.StringVar(&globalFlags.lastStageCloudconfig, "last-stage-cloudconfig", DefaultLastStageCloudconfig, "Final cloudconfig that is used to boot the machine")
+	pf.StringVar(&globalFlags.fileServerPath, "file-server-path", DefaultFileServerPath, "Path to fileserver dir.")
 	pf.StringVar(&globalFlags.ignitionConfig, "ignition-config", DefaultIgnitionConfig, "Final ignition config file that is used to boot the machine")
-	pf.BoolVar(&globalFlags.useIgnition, "use-ignition", false, "Use ignition configuration setup")
 	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig or Ignition template snippets (eg storage or network configuration)")
 	pf.StringVar(&globalFlags.dnsmasq, "dnsmasq", DefaultDNSMasq, "Path to dnsmasq binary")
@@ -145,59 +73,16 @@ func init() {
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
 
-var (
-	ErrNotAllCertFilesProvided = errors.New("Please configure a key and cert files for TLS connections.")
-	ErrHTTPSCertFileNotRedable = errors.New("Cannot open configured certificate file for TLS connections.")
-	ErrHTTPSKeyFileNotReadable = errors.New("Cannot open configured key file for TLS connections.")
-)
+func main() {
+	log.SetFlags(0)
+	log.SetPrefix("mayu: ")
 
-// Validate checks the configuration based on all Validate* functions
-// attached to the configuration struct.
-func (g MayuFlags) Validate() (bool, error) {
-	if ok, err := g.ValidateHTTPCertificateUsage(); !ok {
-		return ok, err
+	if globalFlags.version {
+		printVersion()
+		os.Exit(0)
 	}
 
-	if ok, err := g.ValidateHTTPCertificateFileExistance(); !ok {
-		return ok, err
-	}
-
-	return true, nil
-}
-
-// ValidateHTTPCertificateUsage checks if the fields HTTPSCertFile and HTTPSKeyFile
-// of the configuration struct are set whenever the NoTLS is set to false.
-// This makes sure that users are configuring the needed certificate files when
-// using TLS encrypted connections.
-func (g MayuFlags) ValidateHTTPCertificateUsage() (bool, error) {
-	if g.noTLS {
-		return true, nil
-	}
-
-	if !g.noTLS && g.tlsCertFile != "" && g.tlsKeyFile != "" {
-		return true, nil
-	}
-
-	return false, ErrNotAllCertFilesProvided
-}
-
-// ValidateHTTPCertificateFileExistance checks if the filenames configured
-// in the fields HTTPSCertFile and HTTPSKeyFile can be stat'ed to make sure
-// they actually exist.
-func (g MayuFlags) ValidateHTTPCertificateFileExistance() (bool, error) {
-	if g.noTLS {
-		return true, nil
-	}
-
-	if _, err := g.filesystem.Stat(g.tlsCertFile); err != nil {
-		return false, ErrHTTPSCertFileNotRedable
-	}
-
-	if _, err := g.filesystem.Stat(g.tlsKeyFile); err != nil {
-		return false, ErrHTTPSKeyFileNotReadable
-	}
-
-	return true, nil
+	mainCmd.Execute()
 }
 
 func mainRun(cmd *cobra.Command, args []string) {
@@ -211,7 +96,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	glog.V(8).Infof("starting mayu version %s", projectVersion)
+	glog.V(8).Infof("Starting mayu version %s", projectVersion)
 
 	var err error
 
@@ -235,9 +120,8 @@ func mainRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		glog.Fatalf("unable to get a cluster: %s\n", err)
 	}
-	if globalFlags.useIgnition && globalFlags.templateSnippets == DefaultTemplateSnippets {
-		globalFlags.templateSnippets = DefaultIgnitionTemplateSnippets
-	}
+
+	globalFlags.templateSnippets = DefaultTemplateSnippets
 
 	pxeManager, err := pxemgr.PXEManager(pxemgr.PXEManagerConfiguration{
 		ConfigFile:               globalFlags.configFile,
@@ -255,13 +139,10 @@ func mainRun(cmd *cobra.Command, args []string) {
 		BindAddress:              globalFlags.bindAddress,
 		TLSCertFile:              globalFlags.tlsCertFile,
 		TLSKeyFile:               globalFlags.tlsKeyFile,
-		YochuPath:                globalFlags.yochuPath,
+		FileServerPath:           globalFlags.fileServerPath,
 		StaticHTMLPath:           globalFlags.staticHTMLPath,
 		TemplateSnippets:         globalFlags.templateSnippets,
-		LastStageCloudconfig:     globalFlags.lastStageCloudconfig,
 		IgnitionConfig:           globalFlags.ignitionConfig,
-		UseIgnition:              globalFlags.useIgnition,
-		FirstStageScript:         globalFlags.firstStageScript,
 		ImagesCacheDir:           globalFlags.imagesCacheDir,
 		FilesDir:                 globalFlags.filesDir,
 		Version:                  projectVersion,
@@ -273,31 +154,13 @@ func mainRun(cmd *cobra.Command, args []string) {
 	if globalFlags.showTemplates {
 		placeholderHost := hostmgr.Host{}
 
-		if globalFlags.useIgnition {
-			b := bytes.NewBuffer(nil)
-			if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
-				glog.Error("error found while checking generated ignition config: ", err)
-				os.Exit(1)
-			}
-			os.Stdout.WriteString("ignition config:\n")
-			os.Stdout.WriteString(b.String())
-		} else {
-			os.Stdout.WriteString("last stage cloud config:\n")
-			if err := pxeManager.WriteLastStageCC(placeholderHost, os.Stdout); err != nil {
-				glog.Error("error found while creating template: ", err)
-				os.Exit(1)
-			}
-			b := bytes.NewBuffer(nil)
-			if err := pxeManager.WriteLastStageCC(placeholderHost, b); err != nil {
-				glog.Error("error found while creating template: ", err)
-				os.Exit(1)
-			}
-			yamlErr := validateYAML(b.Bytes())
-			if yamlErr != nil {
-				glog.Error("error found while checking generated cloud-config: ", yamlErr)
-				os.Exit(1)
-			}
+		b := bytes.NewBuffer(nil)
+		if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
+			glog.Error("error found while checking generated ignition config: ", err)
+			os.Exit(1)
 		}
+		os.Stdout.WriteString("ignition config:\n")
+		os.Stdout.WriteString(b.String())
 
 		os.Exit(0)
 	}
@@ -308,26 +171,9 @@ func mainRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func main() {
-	log.SetFlags(0)
-	log.SetPrefix("mayu: ")
-
-	if globalFlags.version {
-		printVersion()
-		os.Exit(0)
-	}
-
-	mainCmd.Execute()
-}
-
 func fileExists(path string) bool {
 	if _, err := os.Stat(path); err == nil {
 		return true
 	}
 	return false
-}
-
-func validateYAML(yml []byte) error {
-	y := map[string]interface{}{}
-	return yaml.Unmarshal(yml, &y)
 }

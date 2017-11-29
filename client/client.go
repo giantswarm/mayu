@@ -8,14 +8,10 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 
 	mayuerror "github.com/giantswarm/mayu/error"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
-	"github.com/giantswarm/mayu/pxemgr"
-	"gopkg.in/yaml.v2"
 )
 
 const contentType = "application/json"
@@ -56,28 +52,6 @@ func (c *Client) BootComplete(serial string, host hostmgr.Host) error {
 		return mayuerror.MaskAny(err)
 	}
 	defer resp.Body.Close()
-	return nil
-}
-
-// SetMetadata sets fleet metadata given by value for a node given by serial.
-func (c *Client) SetMetadata(serial, value string) error {
-	data, err := json.Marshal(hostmgr.Host{
-		FleetMetadata: strings.Split(value, ","),
-	})
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-
-	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_metadata", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
-	}
-
 	return nil
 }
 
@@ -174,33 +148,6 @@ func (c *Client) SetState(serial, value string) error {
 	return nil
 }
 
-// SetCabinet sets the cabinet given by value for a node given by serial.
-func (c *Client) SetCabinet(serial, value string) error {
-	cabinet, err := strconv.ParseUint(value, 10, 0)
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-
-	data, err := json.Marshal(hostmgr.Host{
-		Cabinet: uint(cabinet),
-	})
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-
-	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_cabinet", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
-	}
-
-	return nil
-}
-
 // Override overrides a template properties such as docker_version, yochu_version, etc
 func (c *Client) Override(serial, property, value string) error {
 	data, err := json.Marshal(hostmgr.Host{
@@ -280,39 +227,4 @@ func (c *Client) Status(serial string) (hostmgr.Host, error) {
 	}
 
 	return host, fmt.Errorf("host %s not found.", serial)
-}
-
-func (c *Client) GetConfig() (string, error) {
-	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/mayu_config", c.Scheme, c.Host, c.Port))
-	if err != nil {
-		return "", mayuerror.MaskAny(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode > 399 {
-		return "", mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", mayuerror.MaskAny(err)
-	}
-
-	return string(body), nil
-}
-
-func (c *Client) SetConfig(conf pxemgr.Configuration) error {
-	data, err := yaml.Marshal(conf)
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/mayu_config", c.Scheme, c.Host, c.Port), "text/plain", bytes.NewBuffer(data))
-	if err != nil {
-		return mayuerror.MaskAny(err)
-	}
-	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
-	}
-
-	return nil
 }

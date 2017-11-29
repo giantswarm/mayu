@@ -1,11 +1,12 @@
 # used to install machines and if no coreos
 # version is given in the profile
-default_coreos_version: 1185.3.0
+default_coreos_version: 1409.7.0
 
 network:
   pxe: true
   uefi: false
-  interface: bond0
+  pxe_interface: eth0
+  machine_interface: eth0
   bind_addr: 10.0.0.254
   bootstrap_range:
     start: 10.0.0.10
@@ -14,6 +15,7 @@ network:
     start: 10.0.1.100
     end: 10.0.1.150
   dns: [8.8.8.8, 8.8.4.4]
+  ntp: [0.pool.ntp.org, 1.pool.ntp.org]
   router: 10.0.0.1
   network_model: singlenic
   subnet_size: 24
@@ -23,15 +25,7 @@ network:
 profiles:
   - name: core
     quantity: 3
-    tags:
-      - "role-core=true"
-    coreos_version: "1185.3.0"
   - name: default
-    disable_engine: true
-    coreos_version: "1185.3.0"
-    tags:
-      - "role-worker=true"
-      - "stack-compute=true"
 
 templates_env:
   users:
@@ -39,16 +33,6 @@ templates_env:
       Name: my_user
     - Key: ssh-rsa yyyyyyyyyyyyyyy
       Name: second_user
-  yochu_localsubnet: "10.0.1.0/24"
-  yochu_gateway: "10.0.1.254/32"
-  yochu_private_registry: "registry.private.tiny.swarm"
-  yochu_http_endpoint: "http://10.0.1.254:4080/yochu"
   mayu_https_endpoint: https://10.0.1.254:4080
   mayu_http_endpoint: http://10.0.1.254:4081
   mayu_api_ip: 10.0.1.254
-  yochu_version: 0.19.1
-  etcd_version: v2.2.5-gs-1
-  fleet_version: v0.11.5-gs-grpc-1
-  docker_version: 1.10.3
-  rkt_version: v1.3.0
-  k8s_version: v1.5.2

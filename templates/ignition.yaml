@@ -1,0 +1,186 @@
+ignition:
+  version:
+   major: 2
+   minor: 0
+   patch: 0
+systemd:
+  units:
+    - name: etcd2.service
+      enable: false
+      mask: true
+    - name: fleet.service
+      enable: false
+      mask: true
+    - name: systemd-modules-load.service
+      enable: true
+    - name: systemd-networkd-wait-online.service
+      enable: true
+    - name: docker.service
+      enable: true
+    - name: var-lib-docker.mount
+      enable: true
+      contents: |
+        [Unit]
+        Description=Mount /dev/sda to /var/lib/docker
+        Before=docker.service
+        [Mount]
+        What=/dev/sda
+        Where=/var/lib/docker
+        Type=xfs
+        [Install]
+        WantedBy=multi-user.target
+    - name: docker.service
+      dropins:
+        - name: 40-docker.conf
+          contents: |
+            [Unit]
+            Requires=docker.socket var-lib-docker.mount
+            After=docker.socket var-lib-docker.mount
+            [Service]
+            Environment="DOCKER_OPTS=--iptables=true --storage-driver=overlay --log-opt max-size=50m --log-opt max-file=2 --live-restore --userland-proxy=false --icc=false --disable-legacy-registry=true {{index .TemplatesEnv "docker_args"}}"
+            Environment="DOCKER_OPT_BIP="
+            Environment="DOCKER_OPT_IPMASQ="
+            Environment="DOCKER_OPT_MTU="
+    - name: ensure-connectivity.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=Ensures theres connectivity before starting etcd
+        After=systemd-networkd.service
+        Wants=systemd-networkd.service
+        Before=etcd3.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh -c 'while [[ -z $(curl -k -s {{index .TemplatesEnv "mayu_https_endpoint"}}) ]] ; do sleep 2 ; done'
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: finish-install.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=finish mayu installation
+        Before=etcd3.service
+
+        [Service]
+        Type=oneshot
+        ExecStartPre=/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/bin/sh -c 'while [[ -z $(curl -k -s {{index .TemplatesEnv "mayu_https_endpoint"}}) ]] ; do sleep 2 ; done'
+        ExecStart=/usr/bin/docker run --privileged=true -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt -v /etc/os-release:/etc/os-release -v /etc/mayu-env:/etc/mayu-env -v /dev:/dev -v /sys:/sys --net=host quay.io/giantswarm/mayuctl:latest boot-complete --host={{index .TemplatesEnv "mayu_api_ip"}} --port={{.MayuPort}} {{if .NoTLS}}--no-tls{{end}} --update-versions
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: etcd3.service
+      command: start
+      enable: true
+      contents: |
+        [Unit]
+        Description=etcd
+        Requires=docker.service 
+
+        [Service]
+        Restart=always
+        RestartSec=10s
+        EnvironmentFile=/etc/environment
+        Environment=IMAGE=quay.io/coreos/etcd:v3.2.7
+        Environment=NAME=%p.service
+        ExecStartPre=-/usr/bin/docker stop  $NAME
+        ExecStartPre=-/usr/bin/docker rm  $NAME
+        ExecStartPre=-/usr/bin/docker pull $IMAGE
+        ExecStart=/usr/bin/docker run \
+          -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
+          -v /var/lib/etcd:/var/lib/etcd  \
+          --net=host  \
+          --name $NAME \
+          $IMAGE \
+          etcd \
+          --name {{.Host.Serial}} 
+          --advertise-client-urls https//{{.Host.InternalAddr}}:2379 \
+          --listen-client-urls http://0.0.0.0:2379 \
+          --listen-peer-urls http://{{.Host.InternalAddr}}:2380 \
+          --initial-advertise-peer-urls http://{{.Host.InternalAddr}}:2380\
+          --discovery={{.EtcdDiscoveryUrl}} \
+          --data-dir=/var/lib/etcd \
+          --enable-v2
+
+        [Install]
+        WantedBy=multi-user.target
+{{if eq .Host.Profile "core"}}
+{{template "extra_units" .}}
+{{end}}
+
+{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+
+storage:
+  filesystems:
+    - mount:
+        device: "/dev/sda"
+        format: "xfs"
+        create:
+          force: true
+          options:
+          - "-Ldocker"
+  files:
+    - filesystem: root
+      path: /etc/hostname
+      mode: 0644
+      user:
+        id: 0
+        group: 0
+      contents:
+        source:
+          scheme: data
+          opaque: ",{{if eq .Host.Profile "core"}}master{{else}}worker{{end}}-{{.Host.Hostname}}"
+    - filesystem: root
+      path: /etc/mayu-env
+      mode: 0644
+      user:
+        id: 0
+        group: 0
+      contents:
+        source:
+          scheme: data
+          opaque: ",SERIAL={{.Host.Serial}}"
+
+{{if eq .ClusterNetwork.NetworkModel "bond"}}
+    - filesystem: root
+      path: /etc/modprobe.d/bonding.conf
+      mode: 0644
+      user:  
+        id: 0
+        group: 0
+      contents:
+        source: 
+     a     scheme: data
+          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "conf/lacp-bonding.conf" }}"
+    - filesystem: root
+      path: /etc/modules-load.d/bonding.conf
+      mode: 0644
+      user:  
+        id: 0
+        group: 0
+      contents:
+        source:
+          scheme: data
+          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "conf/module-bonding.conf" }}"
+{{end}}
+
+{{if eq .Host.Profile "core"}}
+{{template "extra_files" .}}
+{{end}}
+
+passwd:
+  users:
+{{ range $index, $user := (index .TemplatesEnv "users")}}    - name: {{ $user.Name }}
+      create:
+        shell: "/bin/bash"
+        groups:
+          - "sudo"
+          - "docker"
+      sshauthorizedkeys:
+        - "{{ $user.Key }}"
+{{end}}

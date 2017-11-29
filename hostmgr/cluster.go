@@ -109,35 +109,16 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		return nil, err
 	}
 
-	var cabinet, machineOnCabinet uint
-
 	if predef, exists := c.predefinedVals[serial]; exists {
 		glog.V(2).Infof("found predefined values for '%s'", serial)
 		if s, exists := predef["ipmiaddr"]; exists {
 			newHost.IPMIAddr = net.ParseIP(s)
 			glog.V(4).Infof("setting IPMIAdddress for '%s': %s", serial, newHost.IPMIAddr.String())
 		}
-		if s, exists := predef["cabinet"]; exists {
-			num, err := strconv.ParseUint(s, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			cabinet = uint(num)
-		}
-		if s, exists := predef["machineoncabinet"]; exists {
-			num, err := strconv.ParseUint(s, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			machineOnCabinet = uint(num)
-		}
 		if s, exists := predef["internaladdr"]; exists {
 			newHost.InternalAddr = net.ParseIP(s)
 			glog.V(4).Infof("setting internal address for '%s': %s", serial, newHost.InternalAddr.String())
 			newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
-		}
-		if s, exists := predef["fleettags"]; exists {
-			newHost.FleetMetadata = strings.Split(s, ",")
 		}
 		if s, exists := predef["etcdclustertoken"]; exists {
 			newHost.EtcdClusterToken = s
@@ -146,9 +127,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		glog.V(2).Infof("no predefined values for '%s'", serial)
 	}
 
-	machineID := genMachineID(cabinet, machineOnCabinet)
-	newHost.Cabinet = cabinet
-	newHost.MachineOnCabinet = machineOnCabinet
+	machineID := genMachineID()
 	newHost.MachineID = machineID
 	if newHost.InternalAddr != nil {
 		newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
