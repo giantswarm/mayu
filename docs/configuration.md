@@ -125,7 +125,7 @@ into the ignition file).
 --etcd-quorum-size=3
 --etcd-endpoint=https://127.0.0.1:2379
 --images-cache-dir=/var/lib/mayu/images
---yochu-path=/var/lib/mayu/yochu
+--file-server-path=/var/lib/mayu/fileserver
 --log_dir=/tmp
 ```
 
@@ -189,5 +189,4 @@ defines the
 
 In this example it just disables DHCP and configures the `machine_interface` with a
 static IP address. The `machine_interface` is configured in mayu config.
-
 

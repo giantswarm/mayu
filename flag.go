@@ -12,8 +12,7 @@ const (
 	DefaultNoGit                    bool   = false
 	DefaultNoTLS                    bool   = false
 	DefaultTFTPRoot                 string = "./tftproot"
-	DefaultYochuPath                string = "./yochu"
-	DefaultStaticHTMLPath           string = "./static_html"
+	DefaultFileServerPath           string = "./fileserver"
 	DefaultIgnitionConfig           string = "./templates/ignition.yaml"
 	DefaultDnsmasqTemplate          string = "./templates/dnsmasq_template.conf"
 	DefaultTemplateSnippets         string = "./templates/snippets/"
@@ -43,7 +42,7 @@ type MayuFlags struct {
 	noGit                    bool
 	noTLS                    bool
 	tFTPRoot                 string
-	yochuPath                string
+	fileServerPath           string
 	staticHTMLPath           string
 	ignitionConfig           string
 	templateSnippets         string

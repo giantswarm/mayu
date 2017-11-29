@@ -52,8 +52,7 @@ func init() {
 	pf.BoolVar(&globalFlags.noGit, "no-git", DefaultNoGit, "Disable git operations")
 	pf.BoolVar(&globalFlags.noTLS, "no-tls", DefaultNoTLS, "Disable tls")
 	pf.StringVar(&globalFlags.tFTPRoot, "tftproot", DefaultTFTPRoot, "Path to the tftproot")
-	pf.StringVar(&globalFlags.yochuPath, "yochu-path", DefaultYochuPath, "Path to Yochus assets (eg docker, etcd, rkt binaries)")
-	pf.StringVar(&globalFlags.staticHTMLPath, "static-html-path", DefaultStaticHTMLPath, "Path to Mayus binaries (eg. mayuctl, infopusher)")
+	pf.StringVar(&globalFlags.fileServerPath, "file-server-path", DefaultFileServerPath, "Path to fileserver dir.")
 	pf.StringVar(&globalFlags.ignitionConfig, "ignition-config", DefaultIgnitionConfig, "Final ignition config file that is used to boot the machine")
 	pf.StringVar(&globalFlags.dnsmasqTemplate, "dnsmasq-template", DefaultDnsmasqTemplate, "Dnsmasq config template")
 	pf.StringVar(&globalFlags.templateSnippets, "template-snippets", DefaultTemplateSnippets, "Cloudconfig or Ignition template snippets (eg storage or network configuration)")
@@ -140,7 +139,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		BindAddress:              globalFlags.bindAddress,
 		TLSCertFile:              globalFlags.tlsCertFile,
 		TLSKeyFile:               globalFlags.tlsKeyFile,
-		YochuPath:                globalFlags.yochuPath,
+		FileServerPath:           globalFlags.fileServerPath,
 		StaticHTMLPath:           globalFlags.staticHTMLPath,
 		TemplateSnippets:         globalFlags.templateSnippets,
 		IgnitionConfig:           globalFlags.ignitionConfig,

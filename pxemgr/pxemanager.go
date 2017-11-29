@@ -33,7 +33,7 @@ type PXEManagerConfiguration struct {
 	APIPort                  int
 	PXEPort                  int
 	BindAddress              string
-	YochuPath                string
+	FileServerPath           string
 	StaticHTMLPath           string
 	TemplateSnippets         string
 	IgnitionConfig           string
@@ -49,7 +49,7 @@ type pxeManagerT struct {
 	bindAddress              string
 	tlsCertFile              string
 	tlsKeyFile               string
-	yochuPath                string
+	fileServerPath           string
 	staticHTMLPath           string
 	templateSnippets         string
 	ignitionConfig           string
@@ -104,7 +104,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		bindAddress:              c.BindAddress,
 		tlsCertFile:              c.TLSCertFile,
 		tlsKeyFile:               c.TLSKeyFile,
-		yochuPath:                c.YochuPath,
+		fileServerPath:           c.FileServerPath,
 		staticHTMLPath:           c.StaticHTMLPath,
 		templateSnippets:         c.TemplateSnippets,
 		ignitionConfig:           c.IgnitionConfig,
@@ -241,14 +241,11 @@ func (mgr *pxeManagerT) startAPIserver() error {
 		glog.V(8).Infoln("Enabling internal etcd discovery")
 	}
 
-	// serve assets for yochu like etcd, fleet, docker, kubectl and rkt
-	mgr.apiRouter.PathPrefix("/yochu").Handler(http.StripPrefix("/yochu", http.FileServer(http.Dir(mgr.yochuPath))))
+	// serve static file assets
+	mgr.apiRouter.PathPrefix("/fileserver").Handler(http.StripPrefix("/fileserver", http.FileServer(http.Dir(mgr.fileServerPath))))
 
 	// add welcome handler for debugging
 	mgr.apiRouter.Path("/").HandlerFunc(mgr.welcomeHandler)
-
-	// serve static files like infopusher and mayuctl etc.
-	mgr.apiRouter.PathPrefix("/").Handler(http.FileServer(http.Dir(mgr.staticHTMLPath)))
 
 	glogWrapper := logging.NewGlogWrapper(8)
 	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.apiRouter)
