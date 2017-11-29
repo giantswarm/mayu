@@ -14,8 +14,8 @@ Check [mayuctl](mayuctl.md) for more information about the client.
 |-- config.yaml.dist                  - mayu configuration file template
 |-- templates
 |   |-- dnsmasq_template.conf         - template file used to generate the dnsmasq configuration
-|   |-- ignition.yaml.yaml            - template used to generate the ignition
-|   |-- snippets                 - directory containing some template snippets used in the  ignition template
+|   |-- ignition.yaml                 - template used to generate the ignition
+|   |-- snippets                      - directory containing some template snippets used in the  ignition template
 |   |   |-- net_bond.yaml
 |   |   |-- net_singlenic.yaml
 |   |   |-- extra.yaml

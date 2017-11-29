@@ -45,7 +45,7 @@ systemd:
       enable: true
       contents: |
         [Unit]
-        Description=Ensures theres connectivity before starting etcd2
+        Description=Ensures theres connectivity before starting etcd
         After=systemd-networkd.service
         Wants=systemd-networkd.service
         Before=etcd3.service
