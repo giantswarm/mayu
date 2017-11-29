@@ -57,30 +57,12 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target
-    - name: set-environment.service
-      enable: true
-      contents: |
-        [Unit]
-        Description=Configures giantswarm environment
-        Wants=network-online.target
-        After=network-online.target
-
-        [Service]
-        Type=oneshot
-        ExecStartPre=/bin/sh -c "hostnamectl set-hostname machine-{{.Host.Hostname}}"
-        ExecStartPre=/bin/sh -c 'echo "SERIAL={{.Host.Serial}}" > /etc/mayu-env'
-        ExecStart=/bin/sh -c 'echo "COREOS_PRIVATE_IPV4={{.Host.InternalAddr}}" > /etc/environment'
-
-        [Install]
-        WantedBy=multi-user.target
     - name: finish-install.service
       enable: true
       contents: |
         [Unit]
         Description=finish mayu installation
         Before=etcd3.service
-        Wants=set-giantswarm-environment.service
-        After=set-giantswarm-environment.service
 
         [Service]
         Type=oneshot
@@ -130,7 +112,6 @@ systemd:
 {{template "extra_units" .}}
 {{end}}
 
-
 {{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
 {{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
 
@@ -144,6 +125,27 @@ storage:
           options:
           - "-Ldocker"
   files:
+    - filesystem: root
+      path: /etc/hostname
+      mode: 0644
+      user:
+        id: 0
+        group: 0
+      contents:
+        source:
+          scheme: data
+          opaque: ",{{if eq .Host.Profile "core"}}master{{else}}worker{{end}}-{{.Host.Hostname}}"
+    - filesystem: root
+      path: /etc/mayu-env
+      mode: 0644
+      user:
+        id: 0
+        group: 0
+      contents:
+        source:
+          scheme: data
+          opaque: ",SERIAL={{.Host.Serial}}"
+
 {{if eq .ClusterNetwork.NetworkModel "bond"}}
     - filesystem: root
       path: /etc/modprobe.d/bonding.conf
