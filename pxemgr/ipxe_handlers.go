@@ -32,7 +32,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
 
 	buffer.WriteString("#!ipxe\n")
-        buffer.WriteString("dhcp\n")
+	buffer.WriteString("dhcp\n")
 	buffer.WriteString("sleep 1\n")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
