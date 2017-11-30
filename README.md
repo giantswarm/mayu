@@ -19,8 +19,8 @@ DHCP request.
 
 Developing Mayu requires the following tools to be installed.
 
-* `wget
-* `go-bindata
+* `wget`
+* `go-bindata`
 * `cpio`
 
 ## Getting Mayu
