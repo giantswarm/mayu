@@ -33,7 +33,9 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	buffer.WriteString("#!ipxe\n")
 	buffer.WriteString("dhcp\n")
-	buffer.WriteString("sleep 1\n")
+	buffer.WriteString("echo " + kernel)
+	buffer.WriteString("echo " + initrd)
+	buffer.WriteString("shell\n")
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
 	buffer.WriteString("boot\n")
