@@ -28,7 +28,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer := bytes.NewBufferString("")
 
 	// for ignition we use only 1phase installation without mayu-infopusher
-	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s?uuid=${uuid}&serial=${serial} systemd.journald.max_level_console=debug debug ignore_loglevel log_buf_len=10M print_fatal_signals=1 LOGLEVEL=8 earlyprintk=vga,keep sched_debug\n", mgr.pxeURL(), mgr.ignitionURL())
+	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz console=ttyS0,115200n8 coreos.config.url=%s?uuid=${uuid}&serial=${serial} systemd.journald.max_level_console=debug debug ignore_loglevel log_buf_len=10M print_fatal_signals=1 LOGLEVEL=8 earlyprintk=vga,keep sched_debug initcall_debug udev.log_priority=8 \n", mgr.pxeURL(), mgr.ignitionURL())
 	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
 
 	buffer.WriteString("#!ipxe\n")
@@ -37,7 +37,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer.WriteString("echo " + initrd)
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
-	buffer.WriteString("shell")
+	buffer.WriteString("shell\n")
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
