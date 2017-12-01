@@ -37,6 +37,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer.WriteString("echo " + initrd)
 	buffer.WriteString(kernel)
 	buffer.WriteString(initrd)
+	buffer.WriteString("shell")
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
