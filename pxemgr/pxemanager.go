@@ -13,6 +13,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/url"
 	"strconv"
 )
@@ -246,6 +247,9 @@ func (mgr *pxeManagerT) startAPIserver() error {
 
 	// add welcome handler for debugging
 	mgr.apiRouter.Path("/").HandlerFunc(mgr.welcomeHandler)
+
+	// metrics endpoint
+	mgr.apiRouter.Path("/metrics").Handler(promhttp.Handler())
 
 	glogWrapper := logging.NewGlogWrapper(8)
 	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.apiRouter)
