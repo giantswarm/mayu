@@ -29,6 +29,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	extraFlags := ""
 	if mgr.coreosAutologin {
 		extraFlags += "coreos.autologin=1 "
+		glog.V(2).Infoln("adding coreos.autologin=1 to kernel args")
 	}
 
 	// for ignition we use only 1phase installation without mayu-infopusher
