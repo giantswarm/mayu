@@ -28,7 +28,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer := bytes.NewBufferString("")
 	extraFlags := ""
 	//if mgr.coreosAutologin {
-	extraFlags += "coreos.autologin=1 "
+	extraFlags += "coreos.autologin=1"
 	glog.V(2).Infof("adding coreos.autologin=1 to kernel args becasue coreos-autlogin=%t\n", mgr.coreosAutologin)
 	//}
 
@@ -44,6 +44,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(buffer.Bytes())
 
+	glog.V(2).Infof("kernel = %s\n", kernel)
 }
 
 func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
