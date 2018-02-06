@@ -27,10 +27,10 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	buffer := bytes.NewBufferString("")
 	extraFlags := ""
-	//if mgr.coreosAutologin {
-	extraFlags += "coreos.autologin"
-	glog.V(2).Infof("adding coreos.autologin=1 to kernel args becasue coreos-autlogin=%t\n", mgr.coreosAutologin)
-	//}
+	if mgr.coreosAutologin {
+		extraFlags += "coreos.autologin"
+		glog.V(2).Infoln("adding coreos.autologin to kernel args")
+	}
 
 	// for ignition we use only 1phase installation without mayu-infopusher
 	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz coreos.config.url=%s?uuid=${uuid}&serial=${serial} systemd.journald.max_level_console=debug verbose log_buf_len=10M "+extraFlags+"\n", mgr.pxeURL(), mgr.ignitionURL())
@@ -43,8 +43,6 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer.WriteString("boot\n")
 
 	w.Write(buffer.Bytes())
-
-	glog.V(2).Infof("kernel = %s\n", kernel)
 }
 
 func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
