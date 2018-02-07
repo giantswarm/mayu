@@ -29,6 +29,7 @@ const (
 	DefaultEtcdDiscoveryUrl         string = ""
 	DefaultEtcdEndpoint             string = "http://127.0.0.1:2379"
 	DefaultEtcdCA                   string = ""
+	DefaultCoreosAutologin          bool   = false
 )
 
 type MayuFlags struct {
@@ -60,6 +61,7 @@ type MayuFlags struct {
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
 	etcdCAfile               string
+	coreosAutologin          bool
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
