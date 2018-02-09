@@ -114,7 +114,7 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	uuid := r.URL.Query().Get("uuid")
 	serial := r.URL.Query().Get("serial")
 
-	glog.Warningf("uuid: %s, serial %s, querry: %s\n", uuid,serial, r.URL.RawQuery)
+	glog.Warningf("uuid: %s, serial %s, querry: %s\n", uuid, serial, r.URL.RawQuery)
 
 	hostData := &machinedata.HostData{}
 
