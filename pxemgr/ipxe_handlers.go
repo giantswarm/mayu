@@ -21,6 +21,8 @@ const (
 	defaultProfileName = "default"
 
 	kvmStaticSerial = "0123456789"
+
+	vmwareIdentifier = "VMware"
 )
 
 func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +118,10 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	hostData := &machinedata.HostData{}
 
-	if serial == "" || serial == kvmStaticSerial {
+	// If there is no reliable serial then use uuid for identification of machine.
+	// Case 1: serial from kvm vm is static and not unique so we need to use uuid.
+	// Case 2: serial sent by ipxe from vmware machines is truncated and not unique so we need to use uuid.
+	if serial == "" || serial == kvmStaticSerial || strings.Contains(serial, vmwareIdentifier) {
 		hostData.Serial = uuid
 	} else {
 		hostData.Serial = serial
