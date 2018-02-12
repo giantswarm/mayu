@@ -118,6 +118,9 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	hostData := &machinedata.HostData{}
 
+	// If there is no reliable serial then use uuid for identification of machine.
+	// Case 1: serial from kvm vm is static and not unique so we need to use uuid.
+	// Case 2: serial sent by ipxe from vmware machines is truncated and not unique so we need to use uuid.
 	if serial == "" || serial == kvmStaticSerial || strings.Contains(serial, vmwareIdentifier) {
 		hostData.Serial = uuid
 	} else {
