@@ -28,9 +28,8 @@ func ValidateFileHashFromDataURL() types.Test {
 	name := "Validate File Hash from Data URL"
 	in := types.GetBaseDisk()
 	out := types.GetBaseDisk()
-	var mntDevices []types.MntDevice
 	config := `{
-	  "ignition": { "version": "2.0.0" },
+	  "ignition": { "version": "$version" },
 	  "storage": {
 	    "files": [{
 	      "filesystem": "root",
@@ -51,17 +50,23 @@ func ValidateFileHashFromDataURL() types.Test {
 			Contents: "example file\n",
 		},
 	})
+	configMinVersion := "2.0.0"
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }
 
 func ValidateFileHashFromHTTPURL() types.Test {
 	name := "Validate File Hash from HTTP URL"
 	in := types.GetBaseDisk()
 	out := types.GetBaseDisk()
-	var mntDevices []types.MntDevice
 	config := `{
-	  "ignition": { "version": "2.0.0" },
+	  "ignition": { "version": "$version" },
 	  "storage": {
 	    "files": [{
 	      "filesystem": "root",
@@ -82,6 +87,13 @@ func ValidateFileHashFromHTTPURL() types.Test {
 			Contents: "asdf\nfdsa",
 		},
 	})
+	configMinVersion := "2.0.0"
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }

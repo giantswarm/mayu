@@ -21,15 +21,16 @@ import (
 
 func init() {
 	register.Register(register.PositiveTest, CreateDirectoryOnRoot())
+	register.Register(register.PositiveTest, ForceDirCreation())
+	register.Register(register.PositiveTest, ForceDirCreationOverNonemptyDir())
 }
 
 func CreateDirectoryOnRoot() types.Test {
 	name := "Create a Directory on the Root Filesystem"
 	in := types.GetBaseDisk()
 	out := types.GetBaseDisk()
-	var mntDevices []types.MntDevice
 	config := `{
-	  "ignition": { "version": "2.1.0" },
+	  "ignition": { "version": "$version" },
 	  "storage": {
 	    "directories": [{
 	      "filesystem": "root",
@@ -45,6 +46,98 @@ func CreateDirectoryOnRoot() types.Test {
 			},
 		},
 	})
+	configMinVersion := "2.1.0"
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
+}
+
+func ForceDirCreation() types.Test {
+	name := "Force Directory Creation"
+	in := types.GetBaseDisk()
+	out := types.GetBaseDisk()
+	config := `{
+	  "ignition": { "version": "$version" },
+	  "storage": {
+	    "directories": [{
+	      "filesystem": "root",
+	      "path": "/foo/bar",
+		  "overwrite": true
+	    }]
+	  }
+	}`
+	in[0].Partitions.AddFiles("ROOT", []types.File{
+		{
+			Node: types.Node{
+				Directory: "foo",
+				Name:      "bar",
+			},
+			Contents: "hello, world",
+		},
+	})
+	out[0].Partitions.AddDirectories("ROOT", []types.Directory{
+		{
+			Node: types.Node{
+				Directory: "foo",
+				Name:      "bar",
+			},
+		},
+	})
+	configMinVersion := "2.2.0"
+
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
+}
+
+func ForceDirCreationOverNonemptyDir() types.Test {
+	name := "Force Directory Creation Over Nonempty Directory"
+	in := types.GetBaseDisk()
+	out := types.GetBaseDisk()
+	config := `{
+	  "ignition": { "version": "$version" },
+	  "storage": {
+	    "directories": [{
+	      "filesystem": "root",
+	      "path": "/foo/bar",
+		  "overwrite": true
+	    }]
+	  }
+	}`
+	in[0].Partitions.AddFiles("ROOT", []types.File{
+		{
+			Node: types.Node{
+				Directory: "foo/bar",
+				Name:      "baz",
+			},
+			Contents: "hello, world",
+		},
+	})
+	out[0].Partitions.AddDirectories("ROOT", []types.Directory{
+		{
+			Node: types.Node{
+				Directory: "foo",
+				Name:      "bar",
+			},
+		},
+	})
+	configMinVersion := "2.2.0"
+	// TODO: add ability to ensure that foo/bar/baz doesn't exist here.
+
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }

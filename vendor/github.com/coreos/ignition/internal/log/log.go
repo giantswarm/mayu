@@ -43,15 +43,20 @@ type Logger struct {
 }
 
 // New creates a new logger.
-// syslog is tried first, if syslog fails Stdout is used.
-func New() Logger {
+// If logToStdout is true, syslog is tried first. If syslog fails or logToStdout
+// is false Stdout is used.
+func New(logToStdout bool) Logger {
 	logger := Logger{}
-	if slogger, err := syslog.New(syslog.LOG_DEBUG, "ignition"); err == nil {
-		logger.ops = slogger
-	} else {
-		logger.ops = Stdout{}
-		logger.Err("unable to open syslog: %v", err)
+	if !logToStdout {
+		var err error
+		logger.ops, err = syslog.New(syslog.LOG_DEBUG, "ignition")
+		if err != nil {
+			logger.ops = Stdout{}
+			logger.Err("unable to open syslog: %v", err)
+		}
+		return logger
 	}
+	logger.ops = Stdout{}
 	return logger
 }
 
@@ -116,8 +121,8 @@ func (l *Logger) PopPrefix() {
 	l.prefixStack = l.prefixStack[:len(l.prefixStack)-1]
 }
 
-// quotedCmd returns a concatenated, quoted form of cmd's cmdline
-func quotedCmd(cmd *exec.Cmd) string {
+// QuotedCmd returns a concatenated, quoted form of cmd's cmdline
+func QuotedCmd(cmd *exec.Cmd) string {
 	if len(cmd.Args) == 0 {
 		return fmt.Sprintf("%q", cmd.Path)
 	}
@@ -135,7 +140,7 @@ func quotedCmd(cmd *exec.Cmd) string {
 func (l *Logger) LogCmd(cmd *exec.Cmd, format string, a ...interface{}) (int, error) {
 	code := -1
 	f := func() error {
-		cmdLine := quotedCmd(cmd)
+		cmdLine := QuotedCmd(cmd)
 		l.Debug("executing: %s", cmdLine)
 
 		stdout := &bytes.Buffer{}

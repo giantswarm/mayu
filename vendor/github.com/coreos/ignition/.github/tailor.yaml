@@ -1,10 +1,10 @@
 rules:
   - name: commit title
-    description: all commit titles must have a scope, be lowercase, and be no more than 50 characters
+    description: all commit titles must have a scope and be no more than 72 characters
     expression:  |-
-      .commits all(((.message test "^[a-z/*-]+: [[:alnum:] -'./-]+") and (.message test "^.{0,50}\\n")) or (.message test "^Revert"))
+      .commits all(((.title test "^[a-z0-9/*_.-]+: [[:alnum:] -`'\".:/_,-]+$") and (.title length < 73)) or (.title test "^Revert"))
 
-  - name: commit body
-    description: all commits must have a message body with each line having no more than 72 characters
+  - name: commit description
+    description: all commit descriptions must have lines no longer than 72 characters
     expression: |-
-      .commits all((.message test "^.*\\n\\n.{10,72}(\\n.{0,72})*$") or (.message test "^Revert"))
+      .commits all(.description lines all(. length < 73))

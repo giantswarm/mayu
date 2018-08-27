@@ -26,6 +26,9 @@ import (
 
 func init() {
 	register.Register(register.NegativeTest, DecreaseHTTPResponseHeadersTimeout())
+	register.Register(register.NegativeTest, AppendWithHTTPTimeouts())
+	register.Register(register.NegativeTest, AppendLowerHTTPTimeouts())
+	register.Register(register.NegativeTest, AppendNoneThenLowerHTTPTimeouts())
 }
 
 var (
@@ -34,19 +37,40 @@ var (
 		time.Sleep(time.Second * 2)
 		w.WriteHeader(http.StatusOK)
 	}))
+
+	configDelayServerURL string
+	configDelayServer    = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Hold the connection open for 2 seconds, then return
+		time.Sleep(time.Second * 2)
+		// Give a config that appends ourselves and sets the timeouts to 1
+		// second (less than we wait!)
+		w.Write([]byte(fmt.Sprintf(`{
+			"ignition": {
+				"version": "$version",
+				"config": {
+					"append": [{
+						"source": %q
+					}]
+				},
+				"timeouts": {
+					"httpResponseHeaders": 1,
+					"httpTotal": 1
+				}
+			}
+		}`, configDelayServerURL)))
+	}))
 )
 
 func DecreaseHTTPResponseHeadersTimeout() types.Test {
 	name := "Decrease HTTP Response Headers Timeout"
 	in := types.GetBaseDisk()
 	out := in
-	var mntDevices []types.MntDevice
 	config := fmt.Sprintf(`{
 		"ignition": {
-			"version": "2.1.0",
+			"version": "$version",
 			"timeouts": {
 				"httpResponseHeaders": 1,
-				"httpTotal": 10,
+				"httpTotal": 10
 			}
 		},
 		"storage": {
@@ -61,6 +85,130 @@ func DecreaseHTTPResponseHeadersTimeout() types.Test {
 			]
 		}
 	}`, respondDelayServer.URL)
+	configMinVersion := "2.1.0"
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
+}
+
+func AppendWithHTTPTimeouts() types.Test {
+	name := "AppendWithHTTPTimeouts"
+	in := types.GetBaseDisk()
+	out := in
+	config := fmt.Sprintf(`{
+		"ignition": {
+			"version": "$version",
+			"config": {
+				"append": [{
+					"source": %q
+				}]
+			},
+			"timeouts": {
+				"httpResponseHeaders": 1,
+				"httpTotal": 1
+			}
+		}
+	}`, configDelayServer.URL)
+	configDelayServerURL = configDelayServer.URL
+	configMinVersion := "2.1.0"
+
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
+}
+
+func AppendLowerHTTPTimeouts() types.Test {
+	name := "AppendLowerHTTPTimeouts"
+	in := types.GetBaseDisk()
+	out := in
+	config := fmt.Sprintf(`{
+		"ignition": {
+			"version": "$version",
+			"config": {
+				"append": [{
+					"source": %q
+				}]
+			}
+		}
+	}`, configDelayServer.URL)
+	configDelayServerURL = configDelayServer.URL
+	configMinVersion := "2.1.0"
+
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
+}
+
+func AppendNoneThenLowerHTTPTimeouts() types.Test {
+	// If an initial config specifies timeouts, and then appends a config with
+	// no timeouts, the initial timeouts should still apply
+
+	var (
+		emptyConfigDelayServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Hold the connection open for 2 seconds, then return
+			time.Sleep(time.Second * 2)
+			// Give a config that appends ourselves and sets the timeouts to 1
+			// second (less than we wait!)
+			w.Write([]byte(`{
+				"ignition": {
+					"version": "$version"
+				}
+			}`))
+		}))
+
+		configNoDelayServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Give a config that appends ourselves and sets the timeouts to 1
+			// second (less than we wait!)
+			w.Write([]byte(fmt.Sprintf(`{
+			"ignition": 
+				"version": "$version",
+				"config": {
+					"append": [{
+						"source": %q
+					}]
+				}
+			}
+		}`, emptyConfigDelayServer.URL)))
+		}))
+	)
+
+	name := "AppendNoneThenLowerHTTPTimeouts"
+	in := types.GetBaseDisk()
+	out := in
+	config := fmt.Sprintf(`{
+		"ignition": {
+			"version": "$version",
+			"config": {
+				"append": [{
+					"source": %q
+				}]
+			},
+			"timeouts": {
+				"httpResponseHeaders": 1,
+				"httpTotal": 1
+			}
+		}
+	}`, configNoDelayServer.URL)
+	configMinVersion := "2.1.0"
+
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }

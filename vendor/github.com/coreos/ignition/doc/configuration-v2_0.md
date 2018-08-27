@@ -1,6 +1,6 @@
 # Configuration Specification v2.0.0 #
 
-*NOTE*: The [configuration specification 2.1.0][v2_1] is currently the latest stable version of the spec, and it's advised to use that over version 2.0.0.
+*NOTE*: The [configuration specification 2.2.0][v2_2] is currently the latest stable version of the spec, and it's advised to use that over version 2.0.0.
 
 The Ignition configuration is a JSON document conforming to the following specification, with **_italicized_** entries being optional:
 
@@ -8,13 +8,13 @@ The Ignition configuration is a JSON document conforming to the following specif
   * **version** (string): the semantic version number of the spec. The spec version must be compatible with the latest version (`2.0.0`). Compatibility requires the major versions to match and the spec version be less than or equal to the latest version.
   * **_config_** (objects): options related to the configuration.
     * **_append_** (list of objects): a list of the configs to be appended to the current config.
-      * **source** (string): the URL of the config. Supported schemes are http and https. Note: When using http, it is advisable to use the verification option to ensure the contents haven't been modified.
+      * **source** (string): the URL of the config. Supported schemes are `http`, `https`, and [`data`][rfc2397]. Note: When using `http`, it is advisable to use the verification option to ensure the contents haven't been modified.
       * **_verification_** (object): options related to the verification of the config.
-        * **_hash_** (string): the hash of the config, in the form `<type>-<value>` where type is sha512.
+        * **_hash_** (string): the hash of the config, in the form `<type>-<value>` where type is `sha512`.
     * **_replace_** (object): the config that will replace the current.
-      * **source** (string): the URL of the config. Supported schemes are http and https. Note: When using http, it is advisable to use the verification option to ensure the contents haven't been modified.
+      * **source** (string): the URL of the config. Supported schemes are `http`, `https`, and [`data`][rfc2397]. Note: When using `http`, it is advisable to use the verification option to ensure the contents haven't been modified.
       * **_verification_** (object): options related to the verification of the config.
-        * **_hash_** (string): the hash of the config, in the form `<type>-<value>` where type is sha512.
+        * **_hash_** (string): the hash of the config, in the form `<type>-<value>` where type is `sha512`.
 * **_storage_** (object): describes the desired state of the system's storage devices.
   * **_disks_** (list of objects): the list of disks to be configured and their options.
     * **device** (string): the absolute path to the device. Devices are typically referenced by the `/dev/disk/by-*` symlinks.
@@ -22,8 +22,8 @@ The Ignition configuration is a JSON document conforming to the following specif
     * **_partitions_** (list of objects): the list of partitions and their configuration for this particular disk.
       * **_label_** (string): the PARTLABEL for the partition.
       * **_number_** (integer): the partition number, which dictates it's position in the partition table (one-indexed). If zero, use the next available partition slot.
-      * **_size_** (integer): the size of the partition (in device logical sectors, 512 or 4096 bytes). If zero, the partition will fill the remainder of the disk.
-      * **_start_** (integer): the start of the partition (in device logical sectors). If zero, the partition will be positioned at the earliest available part of the disk.
+      * **_size_** (integer): the size of the partition (in device logical sectors, 512 or 4096 bytes). If zero, the partition will be made as large as possible.
+      * **_start_** (integer): the start of the partition (in device logical sectors). If zero, the partition will be positioned at the start of the largest block available.
       * **_typeGuid_** (string): the GPT [partition type GUID][part-types]. If omitted, the default will be 0FC63DAF-8483-4772-8E79-3D69D8477DE4 (Linux filesystem data).
   * **_raid_** (list of objects): the list of RAID arrays to be configured.
     * **name** (string): the name to use for the resulting md device.
@@ -44,9 +44,9 @@ The Ignition configuration is a JSON document conforming to the following specif
     * **path** (string): the absolute path to the file.
     * **_contents_** (object): options related to the contents of the file.
       * **_compression_** (string): the type of compression used on the contents (null or gzip)
-      * **_source_** (string): the URL of the file contents. Supported schemes are http, https, and [data][rfc2397]. Note: When using http, it is advisable to use the verification option to ensure the contents haven't been modified.
+      * **_source_** (string): the URL of the file contents. Supported schemes are `http`, `https`, and [`data`][rfc2397]. Note: When using `http`, it is advisable to use the verification option to ensure the contents haven't been modified.
       * **_verification_** (object): options related to the verification of the file contents.
-        * **_hash_** (string): the hash of the config, in the form `<type>-<value>` where type is sha512.
+        * **_hash_** (string): the hash of the config, in the form `<type>-<value>` where type is `sha512`.
     * **_mode_** (integer): the file's permission mode. Note that the mode must be properly specified as a **decimal** value (i.e. 0644 -> 420).
     * **_user_** (object): specifies the file's owner.
       * **_id_** (integer): the user ID of the owner.
@@ -80,11 +80,13 @@ The Ignition configuration is a JSON document conforming to the following specif
       * **_noUserGroup_** (boolean): whether or not to create a group with the same name as the user.
       * **_noLogInit_** (boolean): whether or not to add the user to the lastlog and faillog databases.
       * **_shell_** (string): the login shell of the new account.
+      * **_system_** (bool): whether or not to make the user a system user.
   * **_groups_** (list of objects): the list of groups to be added.
     * **name** (string): the name of the group.
     * **_gid_** (integer): the group ID of the new group.
     * **_passwordHash_** (string): the encrypted password of the new group.
+    * **_system_** (bool): whether or not the group should be a system group. This only has an effect if the group doesn't exist yet.
 
-[v2_1]: configuration-v2_1.md
+[v2_2]: configuration-v2_2.md
 [part-types]: http://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs
 [rfc2397]: https://tools.ietf.org/html/rfc2397

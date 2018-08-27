@@ -28,9 +28,8 @@ func ModifySystemdService() types.Test {
 	name := "Modify Services"
 	in := types.GetBaseDisk()
 	out := types.GetBaseDisk()
-	var mntDevices []types.MntDevice
 	config := `{
-	  "ignition": { "version": "2.0.0" },
+	  "ignition": { "version": "$version" },
 	  "systemd": {
 	    "units": [{
 	      "name": "systemd-networkd.service",
@@ -41,6 +40,7 @@ func ModifySystemdService() types.Test {
 	    }]
 	  }
 	}`
+	configMinVersion := "2.0.0"
 	out[0].Partitions.AddFiles("ROOT", []types.File{
 		{
 			Node: types.Node{
@@ -51,16 +51,21 @@ func ModifySystemdService() types.Test {
 		},
 	})
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }
 
 func MaskSystemdServices() types.Test {
 	name := "Mask Services"
 	in := types.GetBaseDisk()
 	out := types.GetBaseDisk()
-	var mntDevices []types.MntDevice
 	config := `{
-	  "ignition": { "version": "2.0.0" },
+	  "ignition": { "version": "$version" },
 	  "systemd": {
 	    "units": [{
 	      "name": "systemd-networkd.service",
@@ -68,6 +73,7 @@ func MaskSystemdServices() types.Test {
 	    }]
 	  }
 	}`
+	configMinVersion := "2.0.0"
 	out[0].Partitions.AddLinks("ROOT", []types.Link{
 		{
 			Node: types.Node{
@@ -79,5 +85,11 @@ func MaskSystemdServices() types.Test {
 		},
 	})
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }

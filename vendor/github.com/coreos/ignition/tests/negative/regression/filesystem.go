@@ -31,21 +31,29 @@ func VFATIgnoresWipeFilesystem() types.Test {
 	out := in
 	mntDevices := []types.MntDevice{
 		{
-			Label:        "EFI-SYSTEM",
+			Label:        "OEM",
 			Substitution: "$DEVICE",
 		},
 	}
 	config := `{
-                "ignition": {"version": "2.1.0"},
+                "ignition": {"version": "$version"},
                 "storage": {
                         "filesystems": [{
                                 "mount": {
                                         "device": "$DEVICE",
                                         "format": "vfat",
                                         "wipeFilesystem": false
-                                }}],
+                                }}]
                         }
         }`
+	configMinVersion := "2.1.0"
 
-	return types.Test{name, in, out, mntDevices, config}
+	return types.Test{
+		Name:             name,
+		In:               in,
+		Out:              out,
+		MntDevices:       mntDevices,
+		Config:           config,
+		ConfigMinVersion: configMinVersion,
+	}
 }

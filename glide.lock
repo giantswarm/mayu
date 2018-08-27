@@ -1,12 +1,12 @@
-hash: 012d2808df340f120d0e45c5df4df22a912bc8ea74a3ff187e21f6236de47cde
-updated: 2018-01-09T13:14:21.083851325+01:00
+hash: 4fd99babd5cd8c1059e9bb1dbe30f5a80eefe24aa37c6957a5c85cb2c75f2fda
+updated: 2018-08-27T13:25:57.746958295+03:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
 - name: github.com/coreos/etcd
-  version: 95a726a27e09030f9ccbd9982a1508f5a6d25ada
+  version: 420a452267a7ce45b3fcbed04d54030d69964fc1
   subpackages:
   - client
   - pkg/pathutil
@@ -22,8 +22,10 @@ imports:
   subpackages:
   - unit
 - name: github.com/coreos/ignition
-  version: 01c039a5ce59acd39e5741713e59abfcb74d0782
+  version: f7079129b8651ac51dba14c3af65692bb413c1dd
   subpackages:
+  - config/shared/errors
+  - config/shared/validations
   - config/types
   - config/v2_0/types
   - config/validate/report
@@ -32,7 +34,7 @@ imports:
   subpackages:
   - machinedata
 - name: github.com/golang/glog
-  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/golang/protobuf
   version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
   subpackages:
@@ -76,9 +78,9 @@ imports:
 - name: github.com/ryanuber/columnize
   version: 983d3a5fab1bf04d1b412465d2d9f8430e2e917e
 - name: github.com/spf13/cobra
-  version: b95ab734e27d33e0d8fbabf71ca990568d4e2020
+  version: b78744579491c1ceeaaa3b40205e56b0591b93a3
 - name: github.com/spf13/pflag
-  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
+  version: 7aff26db30c1be810f9de5038ec5ef96ac41fd7c
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -90,5 +92,5 @@ imports:
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
-  version: d670f9405373e636a5a2765eea47fac0c9bc91a4
+  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports: []

@@ -17,18 +17,15 @@ package files
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
-	"sort"
-	"syscall"
+	"strings"
 
-	"github.com/coreos/ignition/config/types"
+	"github.com/coreos/ignition/internal/config/types"
+	"github.com/coreos/ignition/internal/distro"
 	"github.com/coreos/ignition/internal/exec/stages"
 	"github.com/coreos/ignition/internal/exec/util"
 	"github.com/coreos/ignition/internal/log"
 	"github.com/coreos/ignition/internal/resource"
-	internalUtil "github.com/coreos/ignition/internal/util"
 )
 
 const (
@@ -61,431 +58,115 @@ func (creator) Name() string {
 
 type stage struct {
 	util.Util
+	toRelabel []string
 }
 
 func (stage) Name() string {
 	return name
 }
 
-func (s stage) Run(config types.Config) bool {
+func (s stage) Run(config types.Config) error {
+	if err := s.checkRelabeling(); err != nil {
+		return fmt.Errorf("failed to check if SELinux labeling required: %v", err)
+	}
+
 	if err := s.createPasswd(config); err != nil {
-		s.Logger.Crit("failed to create users/groups: %v", err)
-		return false
+		return fmt.Errorf("failed to create users/groups: %v", err)
 	}
 
 	if err := s.createFilesystemsEntries(config); err != nil {
-		s.Logger.Crit("failed to create files: %v", err)
-		return false
+		return fmt.Errorf("failed to create files: %v", err)
 	}
 
 	if err := s.createUnits(config); err != nil {
-		s.Logger.Crit("failed to create units: %v", err)
-		return false
+		return fmt.Errorf("failed to create units: %v", err)
 	}
 
-	return true
+	// add systemd unit to relabel files
+	if err := s.addRelabelUnit(config); err != nil {
+		return fmt.Errorf("failed to add relabel unit: %v", err)
+	}
+
+	return nil
 }
 
-// createFilesystemsEntries creates the files described in config.Storage.{Files,Directories}.
-func (s stage) createFilesystemsEntries(config types.Config) error {
-	if len(config.Storage.Filesystems) == 0 {
+// checkRelabeling determines whether relabeling is supported/requested so that
+// we only collect filenames if we need to.
+func (s *stage) checkRelabeling() error {
+	if !distro.SelinuxRelabel() || distro.RestoreconCmd() == "" {
+		s.Logger.Debug("compiled without relabeling support, skipping")
 		return nil
 	}
-	s.Logger.PushPrefix("createFilesystemsFiles")
-	defer s.Logger.PopPrefix()
 
-	entryMap, err := s.mapEntriesToFilesystems(config)
+	exists, err := s.PathExists(distro.RestoreconCmd())
 	if err != nil {
+		return err
+	} else if !exists {
+		s.Logger.Debug("targeting root without %s, skipping relabel", distro.RestoreconCmd())
+		return nil
+	}
+
+	// initialize to non-nil (whereas a nil slice means not to append, even
+	// though they're functionally equivalent)
+	s.toRelabel = []string{}
+	return nil
+}
+
+// relabeling returns true if we are relabeling, false otherwise.
+func (s *stage) relabeling() bool {
+	return s.toRelabel != nil
+}
+
+// relabel adds one or more paths to the list of paths that need relabeling.
+func (s *stage) relabel(paths ...string) {
+	if s.toRelabel != nil {
+		s.toRelabel = append(s.toRelabel, paths...)
+	}
+}
+
+// addRelabelUnit creates and enables a runtime systemd unit to run restorecon
+// if there are files that need to be relabeled.
+func (s *stage) addRelabelUnit(config types.Config) error {
+	if s.toRelabel == nil || len(s.toRelabel) == 0 {
+		return nil
+	}
+
+	// create the unit file itself
+	unit := types.Unit{
+		Name: "ignition-relabel.service",
+		Contents: `[Unit]
+Description=Relabel files created by Ignition
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target
+ConditionSecurity=selinux
+ConditionPathExists=/etc/selinux/ignition.relabel
+OnFailure=emergency.target
+OnFailureJobMode=replace-irreversibly
+
+[Service]
+Type=oneshot
+ExecStart=` + distro.RestoreconCmd() + ` -0vRf /etc/selinux/ignition.relabel
+ExecStart=/usr/bin/rm /etc/selinux/ignition.relabel
+RemainAfterExit=yes`,
+	}
+
+	if err := s.writeSystemdUnit(unit, true); err != nil {
 		return err
 	}
 
-	for fs, f := range entryMap {
-		if err := s.createEntries(fs, f); err != nil {
-			return fmt.Errorf("failed to create files: %v", err)
-		}
+	if err := s.EnableRuntimeUnit(unit, "sysinit.target"); err != nil {
+		return err
 	}
 
-	return nil
-}
-
-// filesystemEntry represent a thing that knows how to create itself.
-type filesystemEntry interface {
-	create(l *log.Logger, u util.Util) error
-}
-
-type fileEntry types.File
-
-func (tmp fileEntry) create(l *log.Logger, u util.Util) error {
-	f := types.File(tmp)
-
-	if f.User.ID == nil {
-		f.User.ID = internalUtil.IntToPtr(0)
-	}
-	if f.Group.ID == nil {
-		f.Group.ID = internalUtil.IntToPtr(0)
-	}
-
-	fetchOp := u.PrepareFetch(l, f)
-	if fetchOp == nil {
-		return fmt.Errorf("failed to resolve file %q", f.Path)
-	}
-
-	if err := l.LogOp(
-		func() error { return u.PerformFetch(fetchOp) },
-		"writing file %q", string(f.Path),
-	); err != nil {
-		return fmt.Errorf("failed to create file %q: %v", fetchOp.Path, err)
-	}
-
-	return nil
-}
-
-type dirEntry types.Directory
-
-func (tmp dirEntry) create(l *log.Logger, u util.Util) error {
-	d := types.Directory(tmp)
-
-	d.User.ID, d.Group.ID = u.GetUserGroupID(l, d.User, d.Group)
-	if d.User.ID == nil || d.Group.ID == nil {
-		return fmt.Errorf("failed to resolve directory %q", d.Path)
-	}
-
-	err := l.LogOp(func() error {
-		path := filepath.Clean(u.JoinPath(string(d.Path)))
-
-		// Build a list of paths to create. Since os.MkdirAll only sets the mode for new directories and not the
-		// ownership, we need to determine which directories will be created so we don't chown something that already
-		// exists.
-		newPaths := []string{path}
-		for p := filepath.Dir(path); p != "/"; p = filepath.Dir(p) {
-			_, err := os.Stat(p)
-			if err == nil {
-				break
-			}
-			if !os.IsNotExist(err) {
-				return err
-			}
-			newPaths = append(newPaths, p)
-		}
-
-		if err := os.MkdirAll(path, os.FileMode(d.Mode)); err != nil {
-			return err
-		}
-
-		for _, newPath := range newPaths {
-			if err := os.Chmod(newPath, os.FileMode(d.Mode)); err != nil {
-				return err
-			}
-			if err := os.Chown(newPath, *d.User.ID, *d.Group.ID); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}, "creating directory %q", string(d.Path))
+	// and now create the list of files to relabel
+	f, err := os.Create(s.JoinPath("etc/selinux/ignition.relabel"))
 	if err != nil {
-		return fmt.Errorf("failed to create directory %q: %v", d.Path, err)
+		return err
 	}
+	defer f.Close()
 
-	return nil
-}
-
-type linkEntry types.Link
-
-func (tmp linkEntry) create(l *log.Logger, u util.Util) error {
-	s := types.Link(tmp)
-
-	s.User.ID, s.Group.ID = u.GetUserGroupID(l, s.User, s.Group)
-	if s.User.ID == nil || s.Group.ID == nil {
-		return fmt.Errorf("failed to resolve link %q", s.Path)
-	}
-
-	if err := l.LogOp(
-		func() error { return u.WriteLink(s) },
-		"writing link %q -> %q", s.Path, s.Target,
-	); err != nil {
-		return fmt.Errorf("failed to create link %q: %v", s.Path, err)
-	}
-
-	return nil
-}
-
-// ByDirectorySegments is used to sort directories so /foo gets created before /foo/bar if they are both specified.
-type ByDirectorySegments []types.Directory
-
-func (lst ByDirectorySegments) Len() int { return len(lst) }
-
-func (lst ByDirectorySegments) Swap(i, j int) {
-	lst[i], lst[j] = lst[j], lst[i]
-}
-
-func (lst ByDirectorySegments) Less(i, j int) bool {
-	return lst[i].Depth() < lst[j].Depth()
-}
-
-// mapEntriesToFilesystems builds a map of filesystems to files. If multiple
-// definitions of the same filesystem are present, only the final definition is
-// used. The directories are sorted to ensure /foo gets created before /foo/bar.
-func (s stage) mapEntriesToFilesystems(config types.Config) (map[types.Filesystem][]filesystemEntry, error) {
-	filesystems := map[string]types.Filesystem{}
-	for _, fs := range config.Storage.Filesystems {
-		filesystems[fs.Name] = fs
-	}
-
-	entryMap := map[types.Filesystem][]filesystemEntry{}
-
-	// Sort directories to ensure /a gets created before /a/b.
-	sortedDirs := config.Storage.Directories
-	sort.Sort(ByDirectorySegments(sortedDirs))
-
-	// Add directories first to ensure they are created before files.
-	for _, d := range sortedDirs {
-		if fs, ok := filesystems[d.Filesystem]; ok {
-			entryMap[fs] = append(entryMap[fs], dirEntry(d))
-		} else {
-			s.Logger.Crit("the filesystem (%q), was not defined", d.Filesystem)
-			return nil, ErrFilesystemUndefined
-		}
-	}
-
-	for _, f := range config.Storage.Files {
-		if fs, ok := filesystems[f.Filesystem]; ok {
-			entryMap[fs] = append(entryMap[fs], fileEntry(f))
-		} else {
-			s.Logger.Crit("the filesystem (%q), was not defined", f.Filesystem)
-			return nil, ErrFilesystemUndefined
-		}
-	}
-
-	for _, sy := range config.Storage.Links {
-		if fs, ok := filesystems[sy.Filesystem]; ok {
-			entryMap[fs] = append(entryMap[fs], linkEntry(sy))
-		} else {
-			s.Logger.Crit("the filesystem (%q), was not defined", sy.Filesystem)
-			return nil, ErrFilesystemUndefined
-		}
-	}
-
-	return entryMap, nil
-}
-
-// createEntries creates any files or directories listed for the filesystem in Storage.{Files,Directories}.
-func (s stage) createEntries(fs types.Filesystem, files []filesystemEntry) error {
-	s.Logger.PushPrefix("createFiles")
-	defer s.Logger.PopPrefix()
-
-	var mnt string
-	if fs.Path == nil {
-		var err error
-		mnt, err = ioutil.TempDir("", "ignition-files")
-		if err != nil {
-			return fmt.Errorf("failed to create temp directory: %v", err)
-		}
-		defer os.Remove(mnt)
-
-		dev := string(fs.Mount.Device)
-		format := string(fs.Mount.Format)
-
-		if err := s.Logger.LogOp(
-			func() error { return syscall.Mount(dev, mnt, format, 0, "") },
-			"mounting %q at %q", dev, mnt,
-		); err != nil {
-			return fmt.Errorf("failed to mount device %q at %q: %v", dev, mnt, err)
-		}
-		defer s.Logger.LogOp(
-			func() error { return syscall.Unmount(mnt, 0) },
-			"unmounting %q at %q", dev, mnt,
-		)
-	} else {
-		mnt = *fs.Path
-	}
-
-	u := util.Util{
-		DestDir: mnt,
-		Fetcher: s.Util.Fetcher,
-		Logger:  s.Logger,
-	}
-
-	for _, e := range files {
-		if err := e.create(s.Logger, u); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// createUnits creates the units listed under systemd.units and networkd.units.
-func (s stage) createUnits(config types.Config) error {
-	for _, unit := range config.Systemd.Units {
-		if err := s.writeSystemdUnit(unit); err != nil {
-			return err
-		}
-		if unit.Enable {
-			s.Logger.Warning("the enable field has been deprecated in favor of enabled")
-			if err := s.Logger.LogOp(
-				func() error { return s.EnableUnit(unit) },
-				"enabling unit %q", unit.Name,
-			); err != nil {
-				return err
-			}
-		}
-		if unit.Enabled != nil {
-			if *unit.Enabled {
-				if err := s.Logger.LogOp(
-					func() error { return s.EnableUnit(unit) },
-					"enabling unit %q", unit.Name,
-				); err != nil {
-					return err
-				}
-			} else {
-				if err := s.Logger.LogOp(
-					func() error { return s.DisableUnit(unit) },
-					"disabling unit %q", unit.Name,
-				); err != nil {
-					return err
-				}
-			}
-		}
-		if unit.Mask {
-			if err := s.Logger.LogOp(
-				func() error { return s.MaskUnit(unit) },
-				"masking unit %q", unit.Name,
-			); err != nil {
-				return err
-			}
-		}
-	}
-	for _, unit := range config.Networkd.Units {
-		if err := s.writeNetworkdUnit(unit); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// writeSystemdUnit creates the specified unit and any dropins for that unit.
-// If the contents of the unit or are empty, the unit is not created. The same
-// applies to the unit's dropins.
-func (s stage) writeSystemdUnit(unit types.Unit) error {
-	return s.Logger.LogOp(func() error {
-		for _, dropin := range unit.Dropins {
-			if dropin.Contents == "" {
-				continue
-			}
-
-			f, err := util.FileFromUnitDropin(unit, dropin)
-			if err != nil {
-				s.Logger.Crit("error converting dropin: %v", err)
-				return err
-			}
-			if err := s.Logger.LogOp(
-				func() error { return s.PerformFetch(f) },
-				"writing drop-in %q at %q", dropin.Name, f.Path,
-			); err != nil {
-				return err
-			}
-		}
-
-		if unit.Contents == "" {
-			return nil
-		}
-
-		f, err := util.FileFromSystemdUnit(unit)
-		if err != nil {
-			s.Logger.Crit("error converting unit: %v", err)
-			return err
-		}
-		if err := s.Logger.LogOp(
-			func() error { return s.PerformFetch(f) },
-			"writing unit %q at %q", unit.Name, f.Path,
-		); err != nil {
-			return err
-		}
-
-		return nil
-	}, "processing unit %q", unit.Name)
-}
-
-// writeNetworkdUnit creates the specified unit. If the contents of the unit or
-// are empty, the unit is not created.
-func (s stage) writeNetworkdUnit(unit types.Networkdunit) error {
-	return s.Logger.LogOp(func() error {
-		if unit.Contents == "" {
-			return nil
-		}
-
-		f, err := util.FileFromNetworkdUnit(unit)
-		if err != nil {
-			s.Logger.Crit("error converting unit: %v", err)
-			return err
-		}
-		if err := s.Logger.LogOp(
-			func() error { return s.PerformFetch(f) },
-			"writing unit %q at %q", unit.Name, f.Path,
-		); err != nil {
-			return err
-		}
-
-		return nil
-	}, "processing unit %q", unit.Name)
-}
-
-// createPasswd creates the users and groups as described in config.Passwd.
-func (s stage) createPasswd(config types.Config) error {
-	if err := s.createGroups(config); err != nil {
-		return fmt.Errorf("failed to create groups: %v", err)
-	}
-
-	if err := s.createUsers(config); err != nil {
-		return fmt.Errorf("failed to create users: %v", err)
-	}
-
-	return nil
-}
-
-// createUsers creates the users as described in config.Passwd.Users.
-func (s stage) createUsers(config types.Config) error {
-	if len(config.Passwd.Users) == 0 {
-		return nil
-	}
-	s.Logger.PushPrefix("createUsers")
-	defer s.Logger.PopPrefix()
-
-	for _, u := range config.Passwd.Users {
-		if err := s.EnsureUser(u); err != nil {
-			return fmt.Errorf("failed to create user %q: %v",
-				u.Name, err)
-		}
-
-		if err := s.SetPasswordHash(u); err != nil {
-			return fmt.Errorf("failed to set password for %q: %v",
-				u.Name, err)
-		}
-
-		if err := s.AuthorizeSSHKeys(u); err != nil {
-			return fmt.Errorf("failed to add keys to user %q: %v",
-				u.Name, err)
-		}
-	}
-
-	return nil
-}
-
-// createGroups creates the users as described in config.Passwd.Groups.
-func (s stage) createGroups(config types.Config) error {
-	if len(config.Passwd.Groups) == 0 {
-		return nil
-	}
-	s.Logger.PushPrefix("createGroups")
-	defer s.Logger.PopPrefix()
-
-	for _, g := range config.Passwd.Groups {
-		if err := s.CreateGroup(g); err != nil {
-			return fmt.Errorf("failed to create group %q: %v",
-				g.Name, err)
-		}
-	}
-
-	return nil
+	// yes, apparently the final \0 is needed
+	_, err = f.WriteString(strings.Join(s.toRelabel, "\000") + "\000")
+	return err
 }
