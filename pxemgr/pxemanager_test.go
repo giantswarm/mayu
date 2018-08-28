@@ -28,15 +28,12 @@ templates_env:
 	configOK  = baseConfig + `  update: "no_updates"`
 	configErr = baseConfig + `  update: "update"`
 	ignition  = `ignition:
-  version:
-    major: 2
-    minor: 0
-    patch: 0
+  version: "2.2.0"
 systemd:
 {{if eq  .TemplatesEnv.update "no_updates"}}
   units:
     - name: update-engine.service
-      enable: false
+      enabled: false
       mask: true{{end}}
 `
 )
@@ -123,15 +120,15 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 
 	// call handler func and make assertions on the response recorder
 	mgr.ignitionGenerator(h.w, h.req)
-
 	if status := h.w.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
 
 	actual := h.w.Body.String()
-	expected := `{"ignition":{"version":"2.2.0","config":{}},"storage":{},"systemd":{"units":[{"name":"update-engine.service","mask":true}]},"networkd":{},"passwd":{}}
+	expected := `{"ignition":{"config":{},"security":{"tls":{}},"timeouts":{},"version":"2.2.0"},"networkd":{},"passwd":{},"storage":{},"systemd":{"units":[{"enabled":false,"mask":true,"name":"update-engine.service"}]}}
 `
+
 	if actual != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			actual, expected)
