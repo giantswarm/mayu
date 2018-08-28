@@ -128,9 +128,7 @@ storage:
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: ",{{if eq .Host.Profile "core"}}master{{else}}worker{{end}}-{{.Host.Hostname}}"
+        source: "data:,{{if eq .Host.Profile "core"}}master{{else}}worker{{end}}-{{.Host.Hostname}}"
     - filesystem: root
       path: /etc/mayu-env
       mode: 0644
@@ -138,9 +136,7 @@ storage:
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: ",SERIAL={{.Host.Serial}}"
+        source: "data,SERIAL={{.Host.Serial}}"
 
 {{if eq .ClusterNetwork.NetworkModel "bond"}}
     - filesystem: root
@@ -150,9 +146,7 @@ storage:
         id: 0
         group: 0
       contents:
-        source: 
-     a     scheme: data
-          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "conf/lacp-bonding.conf" }}"
+        source: "data:,text/plain;charset=utf-8;base64,{{  index .Files "conf/lacp-bonding.conf" }}"
     - filesystem: root
       path: /etc/modules-load.d/bonding.conf
       mode: 0644
@@ -160,9 +154,7 @@ storage:
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "conf/module-bonding.conf" }}"
+          source: "data:,text/plain;charset=utf-8;base64,{{  index .Files "conf/module-bonding.conf" }}"
 {{end}}
 
 {{if eq .Host.Profile "core"}}

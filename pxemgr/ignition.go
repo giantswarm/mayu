@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io"
 	"reflect"
 
 	"github.com/coreos/ignition/config/v2_2/types"
 	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
 
 	"github.com/giantswarm/mayu/hostmgr"
 	"io/ioutil"
