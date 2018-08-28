@@ -7,7 +7,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/ignition/config/v2_2/types"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 

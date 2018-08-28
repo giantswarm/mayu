@@ -1,24 +1,24 @@
 ignition:
   version:
    major: 2
-   minor: 0
+   minor: 2
    patch: 0
 systemd:
   units:
     - name: etcd2.service
-      enable: false
+      enabled: false
       mask: true
     - name: fleet.service
-      enable: false
+      enabled: false
       mask: true
     - name: systemd-modules-load.service
-      enable: true
+      enabled: true
     - name: systemd-networkd-wait-online.service
-      enable: true
+      enabled: true
     - name: docker.service
-      enable: true
+      enabled: true
     - name: var-lib-docker.mount
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=Mount /dev/sda to /var/lib/docker
@@ -42,7 +42,7 @@ systemd:
             Environment="DOCKER_OPT_IPMASQ="
             Environment="DOCKER_OPT_MTU="
     - name: ensure-connectivity.service
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=Ensures theres connectivity before starting etcd
@@ -58,7 +58,7 @@ systemd:
         [Install]
         WantedBy=multi-user.target
     - name: finish-install.service
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=finish mayu installation
@@ -75,7 +75,7 @@ systemd:
         WantedBy=multi-user.target
     - name: etcd3.service
       command: start
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=etcd
@@ -120,10 +120,9 @@ storage:
     - mount:
         device: "/dev/sda"
         format: "xfs"
-        create:
-          force: true
-          options:
-          - "-Ldocker"
+        wipeFilesystem: true
+        options:
+        - "-Ldocker"
   files:
     - filesystem: root
       path: /etc/hostname
@@ -176,11 +175,10 @@ storage:
 passwd:
   users:
 {{ range $index, $user := (index .TemplatesEnv "users")}}    - name: {{ $user.Name }}
-      create:
-        shell: "/bin/bash"
-        groups:
-          - "sudo"
-          - "docker"
+      shell: "/bin/bash"
+      groups:
+        - "sudo"
+        - "docker"
       sshauthorizedkeys:
         - "{{ $user.Key }}"
 {{end}}

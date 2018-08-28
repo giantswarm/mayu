@@ -130,7 +130,7 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	}
 
 	actual := h.w.Body.String()
-	expected := `{"ignition":{"version":"2.0.0","config":{}},"storage":{},"systemd":{"units":[{"name":"update-engine.service","mask":true}]},"networkd":{},"passwd":{}}
+	expected := `{"ignition":{"version":"2.2.0","config":{}},"storage":{},"systemd":{"units":[{"name":"update-engine.service","mask":true}]},"networkd":{},"passwd":{}}
 `
 	if actual != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
