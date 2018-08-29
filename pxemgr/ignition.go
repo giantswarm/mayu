@@ -65,7 +65,8 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		glog.Fatalln(err)
 		return err
 	}
-
+	err = ioutil.WriteFile("/etc/mayu/ignition.yaml", data.Bytes(), 0644)
+	fmt.Printf("%v", string(data.Bytes()))
 	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
 	if e != nil {
 		glog.Fatalln(e)
