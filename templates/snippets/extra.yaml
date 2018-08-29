@@ -23,7 +23,5 @@
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "my-service/my-service.conf" }}"
+        source: "data,text/plain;charset=utf-8;base64,{{  index .Files "my-service/my-service.conf" }}"
 {{end}}
