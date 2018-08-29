@@ -1,5 +1,5 @@
 hash: 4fd99babd5cd8c1059e9bb1dbe30f5a80eefe24aa37c6957a5c85cb2c75f2fda
-updated: 2018-08-28T15:09:12.307813839+03:00
+updated: 2018-08-29T16:56:59.524847291+03:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -24,11 +24,7 @@ imports:
 - name: github.com/coreos/ignition
   version: f7079129b8651ac51dba14c3af65692bb413c1dd
   subpackages:
-  - config/shared/errors
-  - config/shared/validations
   - config/types
-  - config/v2_2/types
-  - config/validate/report
 - name: github.com/giantswarm/mayu-infopusher
   version: 144692a49fd2e01089f2361b2645a412990b076b
   subpackages:
@@ -85,8 +81,6 @@ imports:
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
-- name: github.com/vincent-petithory/dataurl
-  version: 9a301d65acbb728fcc3ace14f45f511a4cfeea9c
 - name: golang.org/x/net
   version: 66aacef3dd8a676686c7ae3716979581e8b03c47
   subpackages:

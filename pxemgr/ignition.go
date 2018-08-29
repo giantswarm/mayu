@@ -8,7 +8,6 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/coreos/ignition/config/v2_2/types"
 	"github.com/golang/glog"
 
 	"github.com/giantswarm/mayu/hostmgr"
@@ -106,7 +105,7 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 }
 
 func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
-	cfg := types.Config{}
+	cfg := Config{}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
