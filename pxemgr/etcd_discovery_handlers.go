@@ -14,9 +14,9 @@ import (
 
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/giantswarm/microerror"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/giantswarm/microerror"
 )
 
 type EtcdNode struct {
@@ -109,7 +109,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	}
 	u, err := url.Parse(mgr.etcdEndpoint)
 	if err != nil {
-		return nil,microerror.Mask( errors.New("invalid etcd-endpoint: " + err.Error()))
+		return nil, microerror.Mask(errors.New("invalid etcd-endpoint: " + err.Error()))
 	}
 
 	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))

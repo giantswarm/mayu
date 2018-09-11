@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"text/template"
 
-	"github.com/golang/glog"
 	"github.com/giantswarm/microerror"
+	"github.com/golang/glog"
 )
 
 type DNSmasqConfiguration struct {

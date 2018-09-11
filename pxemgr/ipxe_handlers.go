@@ -13,9 +13,9 @@ import (
 
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/microerror"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/giantswarm/microerror"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/giantswarm/mayu/hostmgr"
-	"gopkg.in/yaml.v2"
 	"github.com/giantswarm/microerror"
+	"gopkg.in/yaml.v2"
 )
 
 func LoadConfig(filePath string) (Configuration, error) {

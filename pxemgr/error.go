@@ -2,7 +2,6 @@ package pxemgr
 
 import "github.com/giantswarm/microerror"
 
-
 var executionFailedError = &microerror.Error{
 	Kind: "executionFailedError",
 }
@@ -20,4 +19,3 @@ var invalidConfigError = &microerror.Error{
 func IsInvalidConfig(err error) bool {
 	return microerror.Cause(err) == invalidConfigError
 }
-
