@@ -11,6 +11,7 @@ import (
 	"github.com/giantswarm/mayu/fs"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/pxemgr"
+	"github.com/giantswarm/micrologger"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -96,9 +97,17 @@ func mainRun(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	glog.V(8).Infof("Starting mayu version %s", projectVersion)
-
 	var err error
+	var logger micrologger.Logger
+	{
+		logger, err = micrologger.New(micrologger.Config{})
+		if err != nil {
+			println("ERROR: failed to init logger")
+			os.Exit(1)
+		}
+	}
+
+	logger.Log("level", "info", "msg", fmt.Sprintf("Starting mayu version %s", projectVersion))
 
 	// hack to make some dnsmasq versions happy
 	globalFlags.tFTPRoot, err = filepath.Abs(globalFlags.tFTPRoot)
@@ -118,7 +127,8 @@ func mainRun(cmd *cobra.Command, args []string) {
 	}
 
 	if err != nil {
-		glog.Fatalf("unable to get a cluster: %s\n", err)
+		logger.Log("level", "error", "msg", fmt.Sprintf("unable to get a cluster: %s", err))
+		os.Exit(1)
 	}
 
 	globalFlags.templateSnippets = DefaultTemplateSnippets
@@ -147,9 +157,12 @@ func mainRun(cmd *cobra.Command, args []string) {
 		FilesDir:                 globalFlags.filesDir,
 		CoreosAutologin:          globalFlags.coreosAutologin,
 		Version:                  projectVersion,
+
+		Logger: logger,
 	}, cluster)
 	if err != nil {
-		glog.Fatalf("unable to create a pxe manager: %s\n", err)
+		logger.Log("level", "error", "msg", fmt.Sprintf("unable to create a pxe manager:: %s", err))
+		os.Exit(1)
 	}
 
 	if globalFlags.showTemplates {
@@ -157,7 +170,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 		b := bytes.NewBuffer(nil)
 		if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
-			glog.Error("error found while checking generated ignition config: ", err)
+			logger.Log("level", "error", "msg", fmt.Sprintf("error found while checking generated ignition config %s", err))
 			os.Exit(1)
 		}
 		os.Stdout.WriteString("ignition config:\n")
@@ -168,7 +181,8 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	err = pxeManager.Start()
 	if err != nil {
-		glog.Errorln(err)
+		logger.Log("level", "error", "msg",  err)
+		os.Exit(1)
 	}
 }
 

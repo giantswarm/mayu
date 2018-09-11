@@ -6,6 +6,7 @@ import (
 
 	"github.com/giantswarm/mayu/hostmgr"
 	"gopkg.in/yaml.v2"
+	"github.com/giantswarm/microerror"
 )
 
 func LoadConfig(filePath string) (Configuration, error) {
@@ -13,27 +14,27 @@ func LoadConfig(filePath string) (Configuration, error) {
 
 	f, err := os.Open(filePath)
 	if err != nil {
-		return conf, err
+		return conf, microerror.Mask(err)
 	}
 	defer f.Close()
 
 	confBytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		return conf, err
+		return conf, microerror.Mask(err)
 	}
 
 	err = yaml.Unmarshal(confBytes, &conf)
 
-	return conf, err
+	return conf, microerror.Mask(err)
 }
 
 func saveConfig(filePath string, conf Configuration) error {
 	confBytes, err := yaml.Marshal(conf)
 	ioutil.WriteFile(filePath, confBytes, 0660)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
-	return err
+	return nil
 }
 
 type Configuration struct {

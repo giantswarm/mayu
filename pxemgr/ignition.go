@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"text/template"
+	"github.com/giantswarm/microerror"
 )
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {
@@ -58,19 +59,19 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
 	if err != nil {
 		glog.Fatalln(err)
-		return err
+		return microerror.Mask(err)
 	}
 
 	var data bytes.Buffer
 	if err = tmpl.Execute(&data, ctx); err != nil {
 		glog.Fatalln(err)
-		return err
+		return microerror.Mask(err)
 	}
 
-	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
-	if e != nil {
-		glog.Fatalln(e)
-		return e
+	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
+	if err != nil {
+		glog.Fatalln(err)
+		return microerror.Mask(err)
 	}
 	host.State = hostmgr.Installing
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
@@ -102,14 +103,18 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 	templates = append(templates, snippetsFiles...)
 	glog.V(10).Infof("templates: %+v\n", templates)
 
-	return template.ParseFiles(templates...)
+	tmpl, err := template.ParseFiles(templates...)
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+	return tmpl, nil
 }
 
 func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	cfg := types.Config{}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
+		return nil, microerror.Maskf(executionFailedError, "failed to unmarshal input: %v", err)
 	}
 
 	var (
@@ -120,13 +125,13 @@ func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	if pretty {
 		dataOut, err = json.MarshalIndent(&cfg, "", "  ")
 		if err != nil {
-			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+			return nil, microerror.Maskf(executionFailedError, "failed to marshal output: %v", err)
 		}
 		dataOut = append(dataOut, '\n')
 	} else {
 		dataOut, err = json.Marshal(&cfg)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+			return nil, microerror.Maskf(executionFailedError, "failed to marshal output: %v", err)
 		}
 	}
 
