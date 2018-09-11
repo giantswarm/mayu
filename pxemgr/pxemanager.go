@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
-	"sync"
 	"net/url"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/mayu/logging"
 )
 
 type PXEManagerConfiguration struct {
@@ -217,7 +218,8 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	// add welcome handler for debugging
 	mgr.pxeRouter.Path("/").HandlerFunc(mgr.welcomeHandler)
 
-	loggedRouter := handlers.LoggingHandler()
+	logWrapper := logging.NewMicrologgerWrapper(mgr.logger)
+	loggedRouter := handlers.LoggingHandler(logWrapper, mgr.pxeRouter)
 
 	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
 
@@ -259,8 +261,8 @@ func (mgr *pxeManagerT) startAPIserver() error {
 	// metrics endpoint
 	mgr.apiRouter.Path("/metrics").Handler(promhttp.Handler())
 
-	glogWrapper := mgr.logger
-	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.apiRouter)
+	logWrapper := logging.NewMicrologgerWrapper(mgr.logger)
+	loggedRouter := handlers.LoggingHandler(logWrapper, mgr.apiRouter)
 
 	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("starting API server at at %s:%d", mgr.bindAddress, mgr.apiPort))
 

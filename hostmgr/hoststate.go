@@ -1,6 +1,9 @@
 package hostmgr
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/giantswarm/microerror"
+)
 
 type hostState int
 
@@ -30,7 +33,7 @@ func (s hostState) MarshalJSON() ([]byte, error) {
 		return []byte(stringVal), nil
 	}
 
-	return []byte{}, fmt.Errorf("don't know how to marshal '%d'", s)
+	return []byte{}, microerror.Mask(fmt.Errorf("don't know how to marshal '%d'", s))
 }
 
 func HostState(state string) (hostState, error) {
@@ -44,7 +47,7 @@ func HostState(state string) (hostState, error) {
 	case "running":
 		return Running, nil
 	default:
-		return -1, fmt.Errorf("wrong host state '%s'", state)
+		return -1, microerror.Mask(fmt.Errorf("wrong host state '%s'", state))
 	}
 }
 
@@ -60,7 +63,7 @@ func (s *hostState) UnmarshalJSON(b []byte) error {
 	case `"running"`:
 		*s = Running
 	default:
-		return fmt.Errorf("don't know how to unmarshal '%+v'", b)
+		return microerror.Mask(fmt.Errorf("don't know how to unmarshal '%+v'", b))
 	}
 	return nil
 }

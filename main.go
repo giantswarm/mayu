@@ -121,9 +121,9 @@ func mainRun(cmd *cobra.Command, args []string) {
 	var cluster *hostmgr.Cluster
 
 	if fileExists(fmt.Sprintf("%s/cluster.json", globalFlags.clusterDir)) {
-		cluster, err = hostmgr.OpenCluster(globalFlags.clusterDir)
+		cluster, err = hostmgr.OpenCluster(globalFlags.clusterDir, logger)
 	} else {
-		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, true)
+		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, true, logger)
 	}
 
 	if err != nil {
@@ -181,7 +181,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	err = pxeManager.Start()
 	if err != nil {
-		logger.Log("level", "error", "msg",  err)
+		logger.Log("level", "error", "msg", err)
 		os.Exit(1)
 	}
 }

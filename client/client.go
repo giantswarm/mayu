@@ -12,6 +12,7 @@ import (
 	mayuerror "github.com/giantswarm/mayu/error"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
+	"github.com/giantswarm/microerror"
 )
 
 const contentType = "application/json"
@@ -44,12 +45,12 @@ func (c *Client) BootComplete(serial string, host hostmgr.Host) error {
 	data, err := json.Marshal(host)
 
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/boot_complete", c.Scheme, c.Host, c.Port, serial), "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 	return nil
@@ -61,17 +62,17 @@ func (c *Client) SetProviderId(serial, value string) error {
 		ProviderId: value,
 	})
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_provider_id", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
 	return nil
@@ -83,17 +84,17 @@ func (c *Client) SetIPMIAddr(serial, value string) error {
 		IPMIAddr: net.ParseIP(value),
 	})
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_ipmi_addr", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
 	return nil
@@ -105,17 +106,17 @@ func (c *Client) SetEtcdClusterToken(serial, value string) error {
 		EtcdClusterToken: value,
 	})
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_etcd_cluster_token", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
 	return nil
@@ -125,24 +126,24 @@ func (c *Client) SetEtcdClusterToken(serial, value string) error {
 func (c *Client) SetState(serial, value string) error {
 	state, err := hostmgr.HostState(value)
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	data, err := json.Marshal(hostmgr.Host{
 		State: state,
 	})
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/set_state", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
 	return nil
@@ -154,17 +155,17 @@ func (c *Client) Override(serial, property, value string) error {
 		Overrides: map[string]interface{}{property: value},
 	})
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 
 	resp, err := httputil.Put(fmt.Sprintf("%s://%s:%d/admin/host/%s/override", c.Scheme, c.Host, c.Port, serial), contentType, bytes.NewBuffer(data))
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 399 {
-		return mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
 	return nil
@@ -176,21 +177,21 @@ func (c *Client) List() ([]hostmgr.Host, error) {
 
 	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/hosts", c.Scheme, c.Host, c.Port))
 	if err != nil {
-		return list, mayuerror.MaskAny(err)
+		return list, microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode > 399 {
-		return nil, mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return nil, microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return list, mayuerror.MaskAny(err)
+		return list, microerror.Mask(err)
 	}
 
 	err = json.Unmarshal(body, &list)
 	if err != nil {
-		return list, mayuerror.MaskAny(err)
+		return list, microerror.Mask(err)
 	}
 
 	return list, nil
@@ -202,22 +203,22 @@ func (c *Client) Status(serial string) (hostmgr.Host, error) {
 
 	resp, err := http.Get(fmt.Sprintf("%s://%s:%d/admin/hosts", c.Scheme, c.Host, c.Port))
 	if err != nil {
-		return host, mayuerror.MaskAny(err)
+		return host, microerror.Mask(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode > 399 {
-		return host, mayuerror.MaskAny(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
+		return host, microerror.Mask(fmt.Errorf("invalid status code '%d'", resp.StatusCode))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return host, mayuerror.MaskAny(err)
+		return host, microerror.Mask(err)
 	}
 
 	list := []hostmgr.Host{}
 	err = json.Unmarshal(body, &list)
 	if err != nil {
-		return host, mayuerror.MaskAny(err)
+		return host, microerror.Mask(err)
 	}
 
 	for _, host = range list {
@@ -226,5 +227,5 @@ func (c *Client) Status(serial string) (hostmgr.Host, error) {
 		}
 	}
 
-	return host, fmt.Errorf("host %s not found.", serial)
+	return host, microerror.Mask(fmt.Errorf("host %s not found", serial))
 }

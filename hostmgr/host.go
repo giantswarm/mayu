@@ -3,6 +3,7 @@ package hostmgr
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/giantswarm/microerror"
 	"net"
 	"os"
 	"path"
@@ -69,17 +70,17 @@ func HostFromDir(hostdir string) (*Host, error) {
 	h := &Host{}
 	err := loadJson(h, confPath)
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 
 	h.hostDir, err = os.Open(hostdir)
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 
 	fi, err := os.Stat(confPath)
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 	h.lastModTime = fi.ModTime()
 
@@ -93,7 +94,7 @@ func createHost(serial string, hostDir string) (*Host, error) {
 
 	hostDirFile, err := os.Open(hostDir)
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 
 	h := &Host{
@@ -103,7 +104,7 @@ func createHost(serial string, hostDir string) (*Host, error) {
 		Enabled: true,
 	}
 	err = h.Commit("host created")
-	return h, err
+	return h, microerror.Mask(err)
 }
 
 func (h *Host) save() error {
@@ -111,10 +112,10 @@ func (h *Host) save() error {
 		if fi, err := os.Stat(h.confPath()); err == nil {
 			h.lastModTime = fi.ModTime()
 		} else {
-			return err
+			return microerror.Mask(err)
 		}
 	} else {
-		return err
+		return microerror.Mask(err)
 	}
 	return nil
 }
@@ -126,7 +127,7 @@ func (h *Host) confPath() string {
 func (h *Host) maybeGitCommit(msg string) error {
 	absHostDir, err := filepath.Abs(h.hostDir.Name())
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 	clusterDir := filepath.Clean(filepath.Join(absHostDir, ".."))
 	if isGitRepo(clusterDir) {
