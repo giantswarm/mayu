@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 
-	mayuerror "github.com/giantswarm/mayu/error"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
 	"github.com/giantswarm/microerror"
