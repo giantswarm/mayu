@@ -107,7 +107,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	logger.Log("level", "info", "msg", fmt.Sprintf("Starting mayu version %s", projectVersion))
+	logger.Log("level", "info", "message", fmt.Sprintf("Starting mayu version %s", projectVersion))
 
 	// hack to make some dnsmasq versions happy
 	globalFlags.tFTPRoot, err = filepath.Abs(globalFlags.tFTPRoot)
@@ -127,7 +127,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 	}
 
 	if err != nil {
-		logger.Log("level", "error", "msg", fmt.Sprintf("unable to get a cluster: %s", err))
+		logger.Log("level", "error", "message", "unable to get a cluster", "stack", err)
 		os.Exit(1)
 	}
 
@@ -161,7 +161,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		Logger: logger,
 	}, cluster)
 	if err != nil {
-		logger.Log("level", "error", "msg", fmt.Sprintf("unable to create a pxe manager:: %s", err))
+		logger.Log("level", "error", "message", "unable to create a pxe manager", "stack", err)
 		os.Exit(1)
 	}
 
@@ -170,7 +170,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 		b := bytes.NewBuffer(nil)
 		if err := pxeManager.WriteIgnitionConfig(placeholderHost, b); err != nil {
-			logger.Log("level", "error", "msg", fmt.Sprintf("error found while checking generated ignition config %s", err))
+			logger.Log("level", "error", "message", "error found while checking generated ignition config ", "stack", err)
 			os.Exit(1)
 		}
 		os.Stdout.WriteString("ignition config:\n")
@@ -181,7 +181,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	err = pxeManager.Start()
 	if err != nil {
-		logger.Log("level", "error", "msg", err)
+		logger.Log("level", "error", "message", err)
 		os.Exit(1)
 	}
 }

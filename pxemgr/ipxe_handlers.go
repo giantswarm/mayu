@@ -129,7 +129,7 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	}
 
 	if hostData.Serial == "" {
-		mgr.logger.Log("level", "error", "msg", fmt.Sprintf("empty serial. %+v\n", hostData))
+		mgr.logger.Log("level", "error", "message", fmt.Sprintf("empty serial. %+v\n", hostData))
 
 		w.WriteHeader(400)
 		w.Write([]byte("no serial ? :/"))
@@ -138,12 +138,12 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	host, err := mgr.maybeCreateHost(hostData.Serial)
 	if err != nil {
-		mgr.logger.Log("level", "error", "msg", fmt.Sprintf("failed to create machine host %+v\n", hostData))
+		mgr.logger.Log("level", "error", "message", fmt.Sprintf("failed to create machine host %+v\n", hostData))
 	}
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
-	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("got host %+v\n", host))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("got host %+v\n", host))
 
 	host.State = hostmgr.Installing
 	host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
@@ -152,24 +152,24 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	buf := &bytes.Buffer{}
 
-	mgr.logger.Log("level", "info", "msg", "generating a ignition config")
+	mgr.logger.Log("level", "info", "message", "generating a ignition config")
 
 	if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("generating ignition config failed: " + err.Error()))
 
-		mgr.logger.Log("level", "error", "msg", fmt.Sprintf("generating ignition config failed: %s", err))
+		mgr.logger.Log("level", "error", "message", "generating ignition config failed", "stack", err)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		mgr.logger.Log("level", "error", "msg", fmt.Sprintf("failed to write response: %s", err))
+		mgr.logger.Log("level", "error", "message", "failed to write response", "stack", err)
 	}
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
 
-	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
 
 	var (
 		img *os.File
@@ -251,7 +251,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 		return
 	}
 
-	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("host '%s' just finished booting", serial))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("host '%s' just finished booting", serial))
 
 	decoder := json.NewDecoder(r.Body)
 	payload := hostmgr.Host{}

@@ -121,12 +121,12 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 		glog.V(2).Infof("found predefined values for '%s'", serial)
 		if s, exists := predef["ipmiaddr"]; exists {
 			newHost.IPMIAddr = net.ParseIP(s)
-			c.logger.Log("level", "info", "msg", fmt.Sprintf("setting IPMIAdddress for '%s': %s", serial, newHost.IPMIAddr.String()))
+			c.logger.Log("level", "info", "message", fmt.Sprintf("setting IPMIAdddress for '%s': %s", serial, newHost.IPMIAddr.String()))
 
 		}
 		if s, exists := predef["internaladdr"]; exists {
 			newHost.InternalAddr = net.ParseIP(s)
-			c.logger.Log("level", "info", "msg", fmt.Sprintf("setting internal address for '%s': %s", serial, newHost.InternalAddr.String()))
+			c.logger.Log("level", "info", "message", fmt.Sprintf("setting internal address for '%s': %s", serial, newHost.InternalAddr.String()))
 
 			newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 		}
@@ -134,7 +134,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 			newHost.EtcdClusterToken = s
 		}
 	} else {
-		c.logger.Log("level", "info", "msg", fmt.Sprintf("no predefined values for '%s'", serial))
+		c.logger.Log("level", "info", "message", fmt.Sprintf("no predefined values for '%s'", serial))
 	}
 
 	machineID := genMachineID()
@@ -142,7 +142,7 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	if newHost.InternalAddr != nil {
 		newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 	}
-	c.logger.Log("level", "info", "msg", fmt.Sprintf("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname))
+	c.logger.Log("level", "info", "message", fmt.Sprintf("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname))
 	newHost.Commit("updated with predefined settings")
 
 	err = c.reindex()
@@ -184,7 +184,7 @@ func (c *Cluster) Update() error {
 // is returned as second return value.
 func (c *Cluster) HostWithMacAddress(macAddr string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "msg", fmt.Sprintf("error getting the mac address using the internal cache: %#v", err))
+		c.logger.Log("level", "error", "message", "error getting the mac address using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -202,7 +202,7 @@ func (c *Cluster) HostWithMacAddress(macAddr string) (*Host, bool) {
 // is returned as second return value.
 func (c *Cluster) HostWithInternalAddr(ipAddr net.IP) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "msg", fmt.Sprintf("error getting the ip address using the internal cache: %#v", err))
+		c.logger.Log("level", "error", "message", "error getting the ip address using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -220,7 +220,7 @@ func (c *Cluster) HostWithInternalAddr(ipAddr net.IP) (*Host, bool) {
 // returned as second return value.
 func (c *Cluster) HostWithSerial(serial string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "msg", fmt.Sprintf("error getting the serial number using the internal cache: %#v", err))
+		c.logger.Log("level", "error", "message", "error getting the serial number using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -262,7 +262,7 @@ func (c *Cluster) GetAllHosts() []*Host {
 	hosts := make([]*Host, 0, len(c.hostsCache))
 
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "msg", fmt.Sprintf("error getting the list of hosts based on the internal cache: %#v", err))
+		c.logger.Log("level", "error", "message", "error getting the list of hosts based on the internal cache: %#v", "stack", err)
 		return hosts
 	}
 
@@ -276,7 +276,7 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	ch := make(chan *Host)
 
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "msg", fmt.Sprintf("error filtering the hosts: %#v", err))
+		c.logger.Log("level", "error", "message", "error filtering the hosts: %#v", "stack", err)
 		return ch
 	}
 
@@ -429,14 +429,14 @@ func (c *Cluster) cacheHosts() error {
 			if fileExists(hostConfPath) {
 				host, err := HostFromDir(path.Join(c.baseDir, fi.Name()))
 				if err != nil {
-					c.logger.Log("level", "warning", "msg", fmt.Sprintf("unable to process '%s': %s", hostConfPath, err))
+					c.logger.Log("level", "warning", "message", fmt.Sprintf("unable to process '%s'", hostConfPath), "stack", err)
 				}
 				newCache[strings.ToLower(fi.Name())] = &cachedHost{
 					host:        host,
 					lastModTime: host.lastModTime,
 				}
 			} else {
-				c.logger.Log("level", "error", "msg", fmt.Sprintf("file '%s' doesn't exist, skipping directory '%s'", hostConfPath, fi.Name()))
+				c.logger.Log("level", "error", "message", fmt.Sprintf("file '%s' doesn't exist, skipping directory '%s'", hostConfPath, fi.Name()))
 			}
 		}
 	}

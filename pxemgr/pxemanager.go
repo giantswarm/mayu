@@ -153,7 +153,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			if err != nil {
 				return nil, microerror.Maskf(executionFailedError, fmt.Sprintf("Can't store discovery token in etcd. %s %s", baseUrl, mgr.etcdDiscoveryUrl))
 			}
-			c.Logger.Log("level", "warning", "msg", "Transferred etcd token to internal discovery. Note that your machines still have the old discovery url in their cloud-config and that you need to transfer the current member data yourself.")
+			c.Logger.Log("level", "warning", "message", "Transferred etcd token to internal discovery. Note that your machines still have the old discovery url in their cloud-config and that you need to transfer the current member data yourself.")
 		} else if mgr.etcdDiscoveryUrl != baseUrl {
 			return nil, microerror.Maskf(invalidConfigError, fmt.Sprintf("Deprecated EtcdDiscoveryURL ('%s') in your cluster.json differs from the --etcd-discovery parameter ('%s').", baseUrl, mgr.etcdDiscoveryUrl))
 		}
@@ -221,7 +221,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	logWrapper := logging.NewMicrologgerWrapper(mgr.logger)
 	loggedRouter := handlers.LoggingHandler(logWrapper, mgr.pxeRouter)
 
-	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
 
 	err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.pxePort)), loggedRouter)
 	if err != nil {
@@ -249,7 +249,7 @@ func (mgr *pxeManagerT) startAPIserver() error {
 		etcdRouter := mgr.apiRouter.PathPrefix("/etcd").Subrouter()
 		mgr.defineEtcdDiscoveryRoutes(etcdRouter)
 
-		mgr.logger.Log("level", "info", "msg", "Enabling internal etcd discovery")
+		mgr.logger.Log("level", "info", "message", "Enabling internal etcd discovery")
 	}
 
 	// serve static file assets
@@ -264,7 +264,7 @@ func (mgr *pxeManagerT) startAPIserver() error {
 	logWrapper := logging.NewMicrologgerWrapper(mgr.logger)
 	loggedRouter := handlers.LoggingHandler(logWrapper, mgr.apiRouter)
 
-	mgr.logger.Log("level", "info", "msg", fmt.Sprintf("starting API server at at %s:%d", mgr.bindAddress, mgr.apiPort))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("starting API server at at %s:%d", mgr.bindAddress, mgr.apiPort))
 
 	if mgr.noTLS {
 		err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.apiPort)), loggedRouter)
@@ -387,6 +387,6 @@ func (mgr *pxeManagerT) ignitionURL() string {
 }
 
 func (mgr *pxeManagerT) httpError(w http.ResponseWriter, msg string, status int) {
-	mgr.logger.Log("level", "warning", "msg", msg)
+	mgr.logger.Log("level", "warning", "message", msg)
 	http.Error(w, msg, status)
 }

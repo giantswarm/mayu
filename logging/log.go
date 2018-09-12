@@ -16,7 +16,7 @@ func NewMicrologgerWrapper(logger micrologger.Logger) MicrologgerWrapper {
 }
 
 func (l MicrologgerWrapper) Write(p []byte) (int, error) {
-	err := l.logger.Log("level", "info", "type", "http log", "msg", string(p))
+	err := l.logger.Log("level", "info", "type", "http log", "message", string(p))
 	if err != nil {
 		return 0, microerror.Mask(err)
 	}
