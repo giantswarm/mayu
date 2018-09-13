@@ -16,9 +16,9 @@ import (
 
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"github.com/coreos/etcd/client"
-	"github.com/golang/glog"
+	"github.com/giantswarm/microerror"
+	"github.com/giantswarm/micrologger"
 	"golang.org/x/net/context"
 )
 
@@ -41,6 +41,8 @@ type Cluster struct {
 
 	// z
 	predefinedVals map[string]map[string]string
+
+	logger micrologger.Logger
 }
 
 type ClusterConfig struct {
@@ -55,12 +57,12 @@ type cachedHost struct {
 	host        *Host
 }
 
-func OpenCluster(baseDir string) (*Cluster, error) {
-	cluster := &Cluster{}
+func OpenCluster(baseDir string, logger micrologger.Logger) (*Cluster, error) {
+	cluster := &Cluster{logger: logger}
 
 	err := loadJson(cluster, path.Join(baseDir, clusterConfFile))
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 
 	cluster.baseDir = baseDir
@@ -73,18 +75,18 @@ func OpenCluster(baseDir string) (*Cluster, error) {
 // NewCluster creates a new cluster based on the cluster directory. gitStore
 // defines whether cluster changes should be tracked using version control or
 // not.
-func NewCluster(baseDir string, gitStore bool) (*Cluster, error) {
+func NewCluster(baseDir string, gitStore bool, logger micrologger.Logger) (*Cluster, error) {
 	if !fileExists(baseDir) {
 		err := os.Mkdir(baseDir, 0755)
 		if err != nil {
-			return nil, err
+			return nil, microerror.Mask(err)
 		}
 	}
 
 	if gitStore && !isGitRepo(baseDir) {
 		err := gitInit(baseDir)
 		if err != nil {
-			return nil, err
+			return nil, microerror.Mask(err)
 		}
 	}
 
@@ -95,9 +97,14 @@ func NewCluster(baseDir string, gitStore bool) (*Cluster, error) {
 		Config:         ClusterConfig{},
 		predefinedVals: map[string]map[string]string{},
 		hostsCache:     map[string]*cachedHost{},
+		logger:         logger,
 	}
 
-	return c, c.Commit("initial commit")
+	err := c.Commit("initial commit")
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+	return c, nil
 }
 
 // CreateNewHost creates a new host with the given serial.
@@ -106,25 +113,28 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	hostDir := path.Join(c.baseDir, strings.ToLower(serial))
 	newHost, err := createHost(serial, hostDir)
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 
 	if predef, exists := c.predefinedVals[serial]; exists {
-		glog.V(2).Infof("found predefined values for '%s'", serial)
+		c.logger.Log("level", "info", "message", fmt.Sprintf("found predefined values for '%s'", serial))
+
 		if s, exists := predef["ipmiaddr"]; exists {
 			newHost.IPMIAddr = net.ParseIP(s)
-			glog.V(4).Infof("setting IPMIAdddress for '%s': %s", serial, newHost.IPMIAddr.String())
+			c.logger.Log("level", "info", "message", fmt.Sprintf("setting IPMIAdddress for '%s': %s", serial, newHost.IPMIAddr.String()))
+
 		}
 		if s, exists := predef["internaladdr"]; exists {
 			newHost.InternalAddr = net.ParseIP(s)
-			glog.V(4).Infof("setting internal address for '%s': %s", serial, newHost.InternalAddr.String())
+			c.logger.Log("level", "info", "message", fmt.Sprintf("setting internal address for '%s': %s", serial, newHost.InternalAddr.String()))
+
 			newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 		}
 		if s, exists := predef["etcdclustertoken"]; exists {
 			newHost.EtcdClusterToken = s
 		}
 	} else {
-		glog.V(2).Infof("no predefined values for '%s'", serial)
+		c.logger.Log("level", "info", "message", fmt.Sprintf("no predefined values for '%s'", serial))
 	}
 
 	machineID := genMachineID()
@@ -132,15 +142,19 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	if newHost.InternalAddr != nil {
 		newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 	}
-	glog.V(2).Infof("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname)
+	c.logger.Log("level", "info", "message", fmt.Sprintf("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname))
 	newHost.Commit("updated with predefined settings")
 
-	return newHost, c.reindex()
+	err = c.reindex()
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+	return newHost, nil
 }
 
 func (c *Cluster) Commit(msg string) error {
 	if err := c.save(); err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	if c.GitStore {
@@ -155,9 +169,14 @@ func (c *Cluster) Update() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.cacheHosts(); err != nil {
-		return err
+		return microerror.Mask(err)
 	}
-	return c.reindex()
+
+	err := c.reindex()
+	if err != nil {
+		return microerror.Mask(err)
+	}
+	return nil
 }
 
 // HostWithMacAddress returns the host object given by macAddr based on the
@@ -165,7 +184,7 @@ func (c *Cluster) Update() error {
 // is returned as second return value.
 func (c *Cluster) HostWithMacAddress(macAddr string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		glog.Error("error getting the mac address using the internal cache: ", err)
+		c.logger.Log("level", "error", "message", "error getting the mac address using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -183,7 +202,7 @@ func (c *Cluster) HostWithMacAddress(macAddr string) (*Host, bool) {
 // is returned as second return value.
 func (c *Cluster) HostWithInternalAddr(ipAddr net.IP) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		glog.Error("error getting the ip address using the internal cache ", err)
+		c.logger.Log("level", "error", "message", "error getting the ip address using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -201,7 +220,7 @@ func (c *Cluster) HostWithInternalAddr(ipAddr net.IP) (*Host, bool) {
 // returned as second return value.
 func (c *Cluster) HostWithSerial(serial string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		glog.Error("error getting the serial number using the internal cache: ", err)
+		c.logger.Log("level", "error", "message", "error getting the serial number using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -243,7 +262,7 @@ func (c *Cluster) GetAllHosts() []*Host {
 	hosts := make([]*Host, 0, len(c.hostsCache))
 
 	if err := c.Update(); err != nil {
-		glog.Error("error getting the list of hosts based on the internal cache: ", err)
+		c.logger.Log("level", "error", "message", "error getting the list of hosts based on the internal cache: %#v", "stack", err)
 		return hosts
 	}
 
@@ -257,7 +276,7 @@ func (c *Cluster) FilterHostsFunc(predicate func(*Host) bool) chan *Host {
 	ch := make(chan *Host)
 
 	if err := c.Update(); err != nil {
-		glog.Error("error filtering the hosts: ", err)
+		c.logger.Log("level", "error", "message", "error filtering the hosts: %#v", "stack", err)
 		return ch
 	}
 
@@ -278,7 +297,7 @@ func (c *Cluster) GenerateEtcdDiscoveryToken() (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", err
+		return "", microerror.Mask(err)
 	}
 	token := hex.EncodeToString(b)
 
@@ -294,7 +313,7 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 
 		pemData, err := ioutil.ReadFile(etcdCAFile)
 		if err != nil {
-			return errors.New("Unable to read custom CA file: " + err.Error())
+			return microerror.Maskf(err, "Unable to read custom CA file: ")
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
@@ -317,7 +336,7 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 	}
 	etcdClient, err := client.New(cfg)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 	kapi := client.NewKeysAPI(etcdClient)
 
@@ -326,29 +345,33 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 		Dir:       true,
 	})
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	_, err = kapi.Set(context.Background(), path.Join("_etcd", "registry", token, "_config", "size"), strconv.Itoa(size), &client.SetOptions{
 		PrevExist: client.PrevNoExist,
 	})
-	return err
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	return nil
 }
 
 func (c *Cluster) FetchEtcdDiscoveryToken(etcdDiscoveryUrl string, size int) (string, error) {
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/new", etcdDiscoveryUrl), strings.NewReader(fmt.Sprintf("size=%d", size)))
 	if err != nil {
-		return "", err
+		return "", microerror.Mask(err)
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", microerror.Mask(err)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return "", err
+		return "", microerror.Mask(err)
 	}
 
 	token := strings.TrimPrefix(string(body), etcdDiscoveryUrl+"/")
@@ -388,14 +411,14 @@ func (c *Cluster) confPath() string {
 func (c *Cluster) cacheHosts() error {
 	baseDirFileInfo, err := os.Stat(c.baseDir)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	modTime := baseDirFileInfo.ModTime()
 
 	fis, err := ioutil.ReadDir(c.baseDir)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	newCache := map[string]*cachedHost{}
@@ -406,22 +429,25 @@ func (c *Cluster) cacheHosts() error {
 			if fileExists(hostConfPath) {
 				host, err := HostFromDir(path.Join(c.baseDir, fi.Name()))
 				if err != nil {
-					glog.Warningf("unable to process '%s': %s", hostConfPath, err)
+					c.logger.Log("level", "warning", "message", fmt.Sprintf("unable to process '%s'", hostConfPath), "stack", err)
 				}
 				newCache[strings.ToLower(fi.Name())] = &cachedHost{
 					host:        host,
 					lastModTime: host.lastModTime,
 				}
 			} else {
-				glog.V(14).Infof("file '%s' doesn't exist, skipping directory '%s'", hostConfPath, fi.Name())
+				c.logger.Log("level", "error", "message", fmt.Sprintf("file '%s' doesn't exist, skipping directory '%s'", hostConfPath, fi.Name()))
 			}
-
 		}
 	}
 
 	c.hostsCache = newCache
 	c.cachedModTime = modTime
-	return c.reindex()
+	err = c.reindex()
+	if err != nil {
+		return microerror.Mask(err)
+	}
+	return nil
 }
 
 func fileExists(path string) bool {

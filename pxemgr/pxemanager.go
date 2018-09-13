@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 
-	mayuerror "github.com/giantswarm/mayu/error"
-	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/mayu/logging"
-	"github.com/golang/glog"
+	"github.com/giantswarm/microerror"
+	"github.com/giantswarm/micrologger"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/url"
-	"strconv"
+
+	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/mayu/logging"
 )
 
 type PXEManagerConfiguration struct {
@@ -42,6 +43,8 @@ type PXEManagerConfiguration struct {
 	FilesDir                 string
 	Version                  string
 	CoreosAutologin          bool
+
+	Logger micrologger.Logger
 }
 
 type pxeManagerT struct {
@@ -74,28 +77,30 @@ type pxeManagerT struct {
 
 	apiRouter *mux.Router
 	pxeRouter *mux.Router
+
+	logger micrologger.Logger
 }
 
 func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManagerT, error) {
 	conf, err := LoadConfig(c.ConfigFile)
 	if err != nil {
-		glog.Fatalln(err)
+		return nil, microerror.Maskf(err, "failed to load config from file")
 	}
 
 	if conf.DefaultCoreOSVersion == "" {
-		glog.Fatalf("No default_coreos_version specified in %s\n", c.ConfigFile)
+		return nil, microerror.Maskf(invalidConfigError, "No default_coreos_version specified in %s", c.ConfigFile)
 	}
 
 	if c.APIPort == c.PXEPort {
-		glog.Fatalln("API port and PXE port cannot be same")
+		return nil, microerror.Maskf(invalidConfigError, "API port and PXE port cannot be same")
 	}
 
 	if c.EtcdDiscoveryUrl != "" && c.UseInternalEtcdDiscovery {
-		glog.Fatalln("External etcd discovery url is set and internal etcd discovery is activated. Please choose only one.")
+		return nil, microerror.Maskf(invalidConfigError, "External etcd discovery url is set and internal etcd discovery is activated. Please choose only one.")
 	} else if c.EtcdDiscoveryUrl == "" && !c.UseInternalEtcdDiscovery {
-		glog.Fatalln("The internal etcd discovery is deactivated and no external discovery url is given")
+		return nil, microerror.Maskf(invalidConfigError, "The internal etcd discovery is deactivated and no external discovery url is given.")
 	} else if c.UseInternalEtcdDiscovery && c.EtcdEndpoint == "" {
-		glog.Fatalln("The internal etcd discovery is activated but no etcd endpoint is given")
+		return nil, microerror.Maskf(invalidConfigError, "The internal etcd discovery is activated but no etcd endpoint is given.")
 	}
 
 	c.EtcdDiscoveryUrl = strings.TrimRight(c.EtcdDiscoveryUrl, "/")
@@ -129,8 +134,12 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			Template:   c.DNSmasqTemplate,
 			TFTPRoot:   c.TFTPRoot,
 			PXEPort:    c.PXEPort,
+
+			Logger: c.Logger,
 		}),
 		mu: new(sync.Mutex),
+
+		logger: c.Logger,
 	}
 
 	// check for deprecated EtcdDiscoveryUrl
@@ -144,12 +153,11 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			// convert token to internal etcd discovery
 			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, mgr.defaultEtcdQuorumSize)
 			if err != nil {
-				glog.Fatal("Can't store discovery token in etcd.", baseUrl, mgr.etcdDiscoveryUrl)
+				return nil, microerror.Maskf(executionFailedError, fmt.Sprintf("Can't store discovery token in etcd. %s %s", baseUrl, mgr.etcdDiscoveryUrl))
 			}
-
-			glog.Warningf("Transferred etcd token to internal discovery. Note that your machines still have the old discovery url in their cloud-config and that you need to transfer the current member data yourself.")
+			c.Logger.Log("level", "warning", "message", "Transferred etcd token to internal discovery. Note that your machines still have the old discovery url in their cloud-config and that you need to transfer the current member data yourself.")
 		} else if mgr.etcdDiscoveryUrl != baseUrl {
-			glog.Fatalf("Deprecated EtcdDiscoveryURL ('%s') in your cluster.json differs from the --etcd-discovery parameter ('%s').", baseUrl, mgr.etcdDiscoveryUrl)
+			return nil, microerror.Maskf(invalidConfigError, fmt.Sprintf("Deprecated EtcdDiscoveryURL ('%s') in your cluster.json differs from the --etcd-discovery parameter ('%s').", baseUrl, mgr.etcdDiscoveryUrl))
 		}
 		mgr.cluster.Config.EtcdDiscoveryURL = ""
 		mgr.cluster.Config.DefaultEtcdClusterToken = token
@@ -164,16 +172,16 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		if mgr.useInternalEtcdDiscovery {
 			token, err = mgr.cluster.GenerateEtcdDiscoveryToken()
 			if err != nil {
-				glog.Fatalf("Failed to generate etcd cluster token: %s", err)
+				return nil, microerror.Maskf(err, "Failed to generate etcd cluster token")
 			}
 			err := mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, mgr.defaultEtcdQuorumSize)
 			if err != nil {
-				glog.Fatalf("Failed to store etcd cluster token in etcd: %s", err)
+				return nil, microerror.Maskf(err, "Failed to store etcd cluster token in etcd")
 			}
 		} else {
 			token, err = mgr.cluster.FetchEtcdDiscoveryToken(mgr.etcdDiscoveryUrl, mgr.defaultEtcdQuorumSize)
 			if err != nil {
-				glog.Fatalf("Failed to fetch etcd cluster token from external registry: %s", err)
+				return nil, microerror.Maskf(err, "Failed to fetch etcd cluster token from external registry")
 			}
 		}
 		mgr.cluster.Config.DefaultEtcdClusterToken = token
@@ -212,14 +220,14 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	// add welcome handler for debugging
 	mgr.pxeRouter.Path("/").HandlerFunc(mgr.welcomeHandler)
 
-	glogWrapper := logging.NewGlogWrapper(8)
-	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.pxeRouter)
+	logWrapper := logging.NewMicrologgerWrapper(mgr.logger)
+	loggedRouter := handlers.LoggingHandler(logWrapper, mgr.pxeRouter)
 
-	glog.V(8).Infoln(fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("starting iPXE server at %s:%d", mgr.bindAddress, mgr.pxePort))
 
 	err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.pxePort)), loggedRouter)
 	if err != nil {
-		return mayuerror.MaskAny(err)
+		return microerror.Mask(err)
 
 	}
 	return nil
@@ -242,7 +250,8 @@ func (mgr *pxeManagerT) startAPIserver() error {
 	if mgr.useInternalEtcdDiscovery {
 		etcdRouter := mgr.apiRouter.PathPrefix("/etcd").Subrouter()
 		mgr.defineEtcdDiscoveryRoutes(etcdRouter)
-		glog.V(8).Infoln("Enabling internal etcd discovery")
+
+		mgr.logger.Log("level", "info", "message", "Enabling internal etcd discovery")
 	}
 
 	// serve static file assets
@@ -254,21 +263,21 @@ func (mgr *pxeManagerT) startAPIserver() error {
 	// metrics endpoint
 	mgr.apiRouter.Path("/metrics").Handler(promhttp.Handler())
 
-	glogWrapper := logging.NewGlogWrapper(8)
-	loggedRouter := handlers.LoggingHandler(glogWrapper, mgr.apiRouter)
+	logWrapper := logging.NewMicrologgerWrapper(mgr.logger)
+	loggedRouter := handlers.LoggingHandler(logWrapper, mgr.apiRouter)
 
-	glog.V(8).Infoln(fmt.Sprintf("starting API server at %s:%d", mgr.bindAddress, mgr.apiPort))
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("starting API server at at %s:%d", mgr.bindAddress, mgr.apiPort))
 
 	if mgr.noTLS {
 		err := http.ListenAndServe(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.apiPort)), loggedRouter)
 		if err != nil {
-			return mayuerror.MaskAny(err)
+			return microerror.Mask(err)
 
 		}
 	} else {
 		err := http.ListenAndServeTLS(net.JoinHostPort(mgr.bindAddress, strconv.Itoa(mgr.apiPort)), mgr.tlsCertFile, mgr.tlsKeyFile, loggedRouter)
 		if err != nil {
-			return mayuerror.MaskAny(err)
+			return microerror.Mask(err)
 
 		}
 	}
@@ -288,11 +297,11 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 
 	err := mgr.DNSmasq.updateConf(mgr.config.Network)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 	err = mgr.DNSmasq.Restart()
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	return nil
@@ -301,12 +310,12 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 func (mgr *pxeManagerT) Start() error {
 	err := mgr.DNSmasq.Start()
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	err = mgr.updateDNSmasqs()
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	go func() {
@@ -379,15 +388,7 @@ func (mgr *pxeManagerT) ignitionURL() string {
 	return u.String()
 }
 
-func (mgr *pxeManagerT) reloadConfig() {
-	newConf, err := LoadConfig(mgr.configFile)
-	if err != nil {
-		glog.Fatalln(err)
-	}
-	mgr.config = &newConf
-}
-
-func httpError(w http.ResponseWriter, msg string, status int) {
-	glog.Warningln(msg)
+func (mgr *pxeManagerT) httpError(w http.ResponseWriter, msg string, status int) {
+	mgr.logger.Log("level", "warning", "message", msg)
 	http.Error(w, msg, status)
 }

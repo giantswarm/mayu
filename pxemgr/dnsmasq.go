@@ -7,7 +7,8 @@ import (
 	"os/exec"
 	"text/template"
 
-	"github.com/golang/glog"
+	"github.com/giantswarm/microerror"
+	"github.com/giantswarm/micrologger"
 )
 
 type DNSmasqConfiguration struct {
@@ -15,6 +16,8 @@ type DNSmasqConfiguration struct {
 	Template   string
 	TFTPRoot   string
 	PXEPort    int
+
+	Logger micrologger.Logger
 }
 
 type DNSmasqInstance struct {
@@ -37,61 +40,63 @@ func NewDNSmasq(baseFile string, conf DNSmasqConfiguration) *DNSmasqInstance {
 }
 
 func (dnsmasq *DNSmasqInstance) Start() error {
-	glog.V(8).Infoln("starting Dnsmasq server")
+	dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "starting Dnsmasq server")
 	cmd := exec.Command(dnsmasq.conf.Executable, dnsmasq.args...)
 
-	if glog.V(8) {
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			return err
-		}
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			return err
-		}
-
-		pipeLogger := func(rdr io.Reader) {
-			scanner := bufio.NewScanner(rdr)
-			for scanner.Scan() {
-				glog.V(8).Infoln(scanner.Text())
-			}
-		}
-
-		go pipeLogger(stdout)
-		go pipeLogger(stderr)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return microerror.Mask(err)
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	pipeLogger := func(rdr io.Reader) {
+		scanner := bufio.NewScanner(rdr)
+		for scanner.Scan() {
+			dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", scanner.Text())
+		}
+	}
+	go pipeLogger(stdout)
+	go pipeLogger(stderr)
 
 	cmd.SysProcAttr = genPlatformSysProcAttr()
 	dnsmasq.cmd = cmd
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
-		glog.Errorln(err)
-		return err
+		dnsmasq.conf.Logger.Log("level", "error", "component", "dnsmasq", "message", "failed to start dns command", "stack", err)
+		return microerror.Mask(err)
 	}
 	go func(cmd *exec.Cmd) {
 		err := cmd.Wait()
 		if err != nil {
-			glog.Errorln(err)
+			dnsmasq.conf.Logger.Log("level", "error", "component", "dnsmasq", "message", "failed to start dns command", "stack", err)
 		}
 	}(cmd)
+
 	return nil
 }
 
 func (dnsmasq *DNSmasqInstance) Restart() error {
-	glog.V(8).Infoln("restarting Dnsmasq server")
+	dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "restarting Dnsmasq server")
 
 	if dnsmasq.cmd != nil {
 		dnsmasq.cmd.Process.Kill()
 	}
-	return dnsmasq.Start()
+	err := dnsmasq.Start()
+	if err != nil {
+		return microerror.Mask(err)
+	}
+	return nil
 }
 
 func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
-	glog.V(8).Infoln("updating Dnsmasq configuration")
+	dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "updating Dnsmasq configuration")
 
 	tmpl, err := template.ParseFiles(dnsmasq.conf.Template)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	tmplArgs := struct {
@@ -104,9 +109,13 @@ func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 
 	file, err := os.Create(dnsmasq.confpath)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 	defer file.Close()
 
-	return tmpl.Execute(file, tmplArgs)
+	err = tmpl.Execute(file, tmplArgs)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+	return nil
 }

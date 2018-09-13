@@ -8,10 +8,10 @@ import (
 	"reflect"
 
 	"github.com/coreos/ignition/config/v2_0/types"
-	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 
 	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/microerror"
 	"io/ioutil"
 	"os"
 	"path"
@@ -53,24 +53,25 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		TemplatesEnv:     mergedTemplatesEnv,
 	}
 
-	ctx.Files = *mgr.RenderFiles(ctx)
+	files, err := mgr.RenderFiles(ctx)
+	if err != nil {
+		return microerror.Mask(err)
+	}
 
+	ctx.Files = *files
 	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
 	if err != nil {
-		glog.Fatalln(err)
-		return err
+		return microerror.Mask(err)
 	}
 
 	var data bytes.Buffer
 	if err = tmpl.Execute(&data, ctx); err != nil {
-		glog.Fatalln(err)
-		return err
+		return microerror.Mask(err)
 	}
 
-	ignitionJSON, e := convertTemplatetoJSON(data.Bytes(), false)
-	if e != nil {
-		glog.Fatalln(e)
-		return e
+	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
+	if err != nil {
+		return microerror.Mask(err)
 	}
 	host.State = hostmgr.Installing
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
@@ -100,16 +101,19 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 	maybeInitSnippets(snippets)
 	templates := []string{path}
 	templates = append(templates, snippetsFiles...)
-	glog.V(10).Infof("templates: %+v\n", templates)
 
-	return template.ParseFiles(templates...)
+	tmpl, err := template.ParseFiles(templates...)
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+	return tmpl, nil
 }
 
 func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	cfg := types.Config{}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal input: %v", err)
+		return nil, microerror.Maskf(executionFailedError, "failed to unmarshal input: %v", err)
 	}
 
 	var (
@@ -120,13 +124,13 @@ func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	if pretty {
 		dataOut, err = json.MarshalIndent(&cfg, "", "  ")
 		if err != nil {
-			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+			return nil, microerror.Maskf(executionFailedError, "failed to marshal output: %v", err)
 		}
 		dataOut = append(dataOut, '\n')
 	} else {
 		dataOut, err = json.Marshal(&cfg)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to marshal output: %v", err)
+			return nil, microerror.Maskf(executionFailedError, "failed to marshal output: %v", err)
 		}
 	}
 
@@ -155,7 +159,7 @@ func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool
 				}
 			}
 
-			glog.Errorf("Unrecognized keyword: %v", key)
+			fmt.Printf("Unrecognized keyword: %v", key)
 			warnings = true
 		}
 	case []interface{}:

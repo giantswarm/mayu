@@ -13,7 +13,7 @@ import (
 
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/golang/glog"
+	"github.com/giantswarm/microerror"
 	"github.com/gorilla/mux"
 )
 
@@ -31,7 +31,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	extraFlags := ""
 	if mgr.coreosAutologin {
 		extraFlags += "coreos.autologin"
-		glog.V(2).Infoln("adding coreos.autologin to kernel args")
+		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
 	}
 
 	// for ignition we use only 1phase installation without mayu-infopusher
@@ -47,7 +47,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
-func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
+func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 	host, exists := mgr.cluster.HostWithSerial(serial)
@@ -55,14 +55,14 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 		var err error
 		host, err = mgr.cluster.CreateNewHost(serial)
 		if err != nil {
-			glog.Fatalln(err)
+			return nil, microerror.Mask(err)
 		}
 
 		if host.InternalAddr == nil {
 			host.InternalAddr = mgr.getNextInternalIP()
 			err = host.Commit("updated host InternalAddr")
 			if err != nil {
-				glog.Fatalln(err)
+				return nil, microerror.Mask(err)
 			}
 		}
 
@@ -76,7 +76,7 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 
 			err = host.Commit("updated host profile and metadata")
 			if err != nil {
-				glog.Fatalln(err)
+				return nil, microerror.Mask(err)
 			}
 		}
 
@@ -84,14 +84,14 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) *hostmgr.Host {
 			host.EtcdClusterToken = mgr.cluster.Config.DefaultEtcdClusterToken
 			err = host.Commit("set default etcd discovery token")
 			if err != nil {
-				glog.Fatalln(err)
+				return nil, microerror.Mask(err)
 			}
 		}
 		if host.InternalAddr != nil {
 			host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
 		}
 	}
-	return host
+	return host, nil
 }
 
 func (mgr *pxeManagerT) profileCoreOSVersion(profileName string) string {
@@ -128,17 +128,21 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	}
 
 	if hostData.Serial == "" {
-		glog.Warningf("empty serial. %+v\n", hostData)
+		mgr.logger.Log("level", "error", "message", fmt.Sprintf("empty serial. %+v\n", hostData))
+
 		w.WriteHeader(400)
 		w.Write([]byte("no serial ? :/"))
 		return
 	}
 
-	host := mgr.maybeCreateHost(hostData.Serial)
+	host, err := mgr.maybeCreateHost(hostData.Serial)
+	if err != nil {
+		mgr.logger.Log("level", "error", "message", fmt.Sprintf("failed to create machine host %+v\n", hostData))
+	}
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
-	glog.V(2).Infof("got host %+v\n", host)
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("got host %+v\n", host))
 
 	host.State = hostmgr.Installing
 	host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
@@ -147,22 +151,24 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	buf := &bytes.Buffer{}
 
-	glog.V(2).Infoln("generating a final stage ignitionConfig")
+	mgr.logger.Log("level", "info", "message", "generating a ignition config")
+
 	if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
-		glog.V(2).Infoln("generating ignition config failed: " + err.Error())
 		w.WriteHeader(500)
 		w.Write([]byte("generating ignition config failed: " + err.Error()))
+
+		mgr.logger.Log("level", "error", "message", "generating ignition config failed", "stack", err)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		glog.Fatalln("writing response failed: " + err.Error())
+		mgr.logger.Log("level", "error", "message", "failed to write response", "stack", err)
 	}
-
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	coreOSversion := mgr.hostCoreOSVersion(r)
-	glog.V(3).Infof("sending Container Linux %s image", coreOSversion)
+
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
 
 	var (
 		img *os.File
@@ -200,7 +206,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 func setContentLength(w http.ResponseWriter, f *os.File) error {
 	fi, err := f.Stat()
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 	w.Header().Set("Content-Length", strconv.FormatInt(fi.Size(), 10))
 	return nil
@@ -244,7 +250,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 		return
 	}
 
-	glog.V(1).Infof("host '%s' just finished booting\n", serial)
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("host '%s' just finished booting", serial))
 
 	decoder := json.NewDecoder(r.Body)
 	payload := hostmgr.Host{}

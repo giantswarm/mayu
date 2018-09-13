@@ -14,6 +14,7 @@ import (
 
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/micrologger"
 )
 
 const (
@@ -72,7 +73,12 @@ func setUp(t *testing.T) *helper {
 		t.Fatal(err)
 	}
 
-	h.cluster, err = hostmgr.NewCluster(h.dir, true)
+	logger, err := micrologger.New(micrologger.Config{})
+	if err != nil {
+		t.Fatalf("failed to create logger cluster: %s", err)
+	}
+
+	h.cluster, err = hostmgr.NewCluster(h.dir, true, logger)
 	if err != nil {
 		t.Fatalf("creating cluster: %s", err)
 	}
@@ -114,6 +120,12 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	defer tearDown(h)
 
 	h.pxeCfg.ConfigFile = filepath.Join(h.dir, "config_ok.yaml")
+
+	logger, err := micrologger.New(micrologger.Config{})
+	if err != nil {
+		t.Fatalf("failed to create logger cluster: %s", err)
+	}
+	h.pxeCfg.Logger = logger
 
 	// instantiate PXEManager (no need to start it)
 	mgr, err := PXEManager(h.pxeCfg, h.cluster)
