@@ -19,7 +19,6 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 )
 
@@ -118,7 +117,8 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	}
 
 	if predef, exists := c.predefinedVals[serial]; exists {
-		glog.V(2).Infof("found predefined values for '%s'", serial)
+		c.logger.Log("level", "info", "message", fmt.Sprintf("found predefined values for '%s'", serial))
+
 		if s, exists := predef["ipmiaddr"]; exists {
 			newHost.IPMIAddr = net.ParseIP(s)
 			c.logger.Log("level", "info", "message", fmt.Sprintf("setting IPMIAdddress for '%s': %s", serial, newHost.IPMIAddr.String()))

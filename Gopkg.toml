@@ -46,10 +46,6 @@
   name = "github.com/giantswarm/micrologger"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/golang/glog"
-
-[[constraint]]
   name = "github.com/gorilla/handlers"
   version = "1.4.0"
 

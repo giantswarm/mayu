@@ -12,7 +12,6 @@ import (
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/pxemgr"
 	"github.com/giantswarm/micrologger"
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -32,11 +31,6 @@ var (
 )
 
 func init() {
-	// make sure Mayu logs to stderr
-	if err := flag.Lookup("logtostderr").Value.Set("true"); err != nil {
-		panic(err)
-	}
-
 	// Map any flags registered in the standard "flag" package into the
 	// top-level mayu command (eg. log flags)
 	pf := mainCmd.PersistentFlags()
@@ -113,7 +107,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 	globalFlags.tFTPRoot, err = filepath.Abs(globalFlags.tFTPRoot)
 
 	if ok, err := globalFlags.Validate(); !ok {
-		glog.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	hostmgr.DisableGit = globalFlags.noGit
