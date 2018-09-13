@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"text/template"
 
+	"github.com/giantswarm/microerror"
 	"github.com/golang/glog"
 )
 
@@ -43,11 +44,11 @@ func (dnsmasq *DNSmasqInstance) Start() error {
 	if glog.V(8) {
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			return err
+			return microerror.Mask(err)
 		}
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
-			return err
+			return microerror.Mask(err)
 		}
 
 		pipeLogger := func(rdr io.Reader) {
@@ -66,7 +67,7 @@ func (dnsmasq *DNSmasqInstance) Start() error {
 	err := cmd.Start()
 	if err != nil {
 		glog.Errorln(err)
-		return err
+		return microerror.Mask(err)
 	}
 	go func(cmd *exec.Cmd) {
 		err := cmd.Wait()
@@ -83,7 +84,13 @@ func (dnsmasq *DNSmasqInstance) Restart() error {
 	if dnsmasq.cmd != nil {
 		dnsmasq.cmd.Process.Kill()
 	}
-	return dnsmasq.Start()
+
+	err := dnsmasq.Start()
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	return nil
 }
 
 func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
@@ -91,7 +98,7 @@ func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 
 	tmpl, err := template.ParseFiles(dnsmasq.conf.Template)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 
 	tmplArgs := struct {
@@ -104,9 +111,14 @@ func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 
 	file, err := os.Create(dnsmasq.confpath)
 	if err != nil {
-		return err
+		return microerror.Mask(err)
 	}
 	defer file.Close()
 
-	return tmpl.Execute(file, tmplArgs)
+	err = tmpl.Execute(file, tmplArgs)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	return nil
 }

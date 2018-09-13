@@ -14,6 +14,7 @@ import (
 
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/giantswarm/microerror"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
@@ -64,20 +65,20 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 	if s != "" {
 		size, err = strconv.Atoi(s)
 		if err != nil {
-			httpError(w, err.Error(), http.StatusBadRequest)
+			mgr.httpError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 
 	token, err := mgr.cluster.GenerateEtcdDiscoveryToken()
 	if err != nil {
-		httpError(w, fmt.Sprintf("Unable to generate token '%v'", err), 400)
+		mgr.httpError(w, fmt.Sprintf("Unable to generate token '%v'", err), 400)
 		return
 	}
 
 	err = mgr.cluster.StoreEtcdDiscoveryToken(mgr.etcdEndpoint, mgr.etcdCAFile, token, size)
 	if err != nil {
-		httpError(w, fmt.Sprintf("Unable to store token in etcd '%v'", err), 400)
+		mgr.httpError(w, fmt.Sprintf("Unable to store token in etcd '%v'", err), 400)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (mgr *pxeManagerT) etcdDiscoveryBaseURL() string {
 func (mgr *pxeManagerT) etcdDiscoveryProxyHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := mgr.etcdDiscoveryProxyRequest(r)
 	if err != nil {
-		httpError(w, fmt.Sprintf("Error proxying request to etcd '%v'", err), 500)
+		mgr.httpError(w, fmt.Sprintf("Error proxying request to etcd '%v'", err), 500)
 	}
 
 	copyHeader(w.Header(), resp.Header)
@@ -104,11 +105,11 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyHandler(w http.ResponseWriter, r *http
 func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Response, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return nil, microerror.Mask(err)
 	}
 	u, err := url.Parse(mgr.etcdEndpoint)
 	if err != nil {
-		return nil, errors.New("invalid etcd-endpoint: " + err.Error())
+		return nil, microerror.Mask(errors.New("invalid etcd-endpoint: " + err.Error()))
 	}
 
 	u.Path = path.Join("v2", "keys", "_etcd", "registry", strings.TrimPrefix(r.URL.Path, "/etcd"))
@@ -120,7 +121,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 
 		pemData, err := ioutil.ReadFile(mgr.etcdCAFile)
 		if err != nil {
-			return nil, errors.New("unable to read custom CA file: " + err.Error())
+			return nil, microerror.Mask(errors.New("unable to read custom CA file: " + err.Error()))
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
@@ -135,7 +136,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 
 		outreq, err := http.NewRequest(r.Method, u.String(), buf)
 		if err != nil {
-			return nil, err
+			return nil, microerror.Mask(err)
 		}
 
 		copyHeader(outreq.Header, r.Header)
@@ -143,13 +144,13 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 		client := http.Client{Transport: transport}
 		resp, err := client.Do(outreq)
 		if err != nil {
-			return nil, err
+			return nil, microerror.Mask(err)
 		}
 
 		return resp, nil
 	}
 
-	return nil, errors.New("All attempts at proxying to etcd failed")
+	return nil, microerror.Mask(errors.New("all attempts at proxying to etcd failed"))
 }
 
 // copyHeader copies all of the headers from dst to src.
