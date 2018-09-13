@@ -31,11 +31,6 @@ var (
 )
 
 func init() {
-	// make sure Mayu logs to stderr
-	if err := flag.Lookup("logtostderr").Value.Set("true"); err != nil {
-		panic(err)
-	}
-
 	// Map any flags registered in the standard "flag" package into the
 	// top-level mayu command (eg. log flags)
 	pf := mainCmd.PersistentFlags()

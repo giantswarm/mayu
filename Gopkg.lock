@@ -82,12 +82,6 @@
   version = "v1.8.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/golang/glog"
-  packages = ["."]
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
-
-[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
@@ -199,7 +193,7 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "161cd47e91fd58ac17490ef4d742dc98bb4cf60e"
+  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -210,6 +204,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "76822aeca7f6bbca7686922f184eeba7719f8eea64f14dcdb4175b19217d9fc2"
+  inputs-digest = "81e09cef3884c933f886206d648bccf046c26874b667999de589d092b8588994"
   solver-name = "gps-cdcl"
   solver-version = 1
