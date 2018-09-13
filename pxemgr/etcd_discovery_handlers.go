@@ -15,7 +15,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/giantswarm/microerror"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -82,7 +81,7 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	glog.V(2).Infof("New cluster created '%s'", token)
+	mgr.logger.Log("level", "info", "message", fmt.Sprintf("New cluster created '%s'", token))
 
 	fmt.Fprintf(w, "%s/%s", mgr.etcdDiscoveryBaseURL(), token)
 }
@@ -132,7 +131,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	for i := 0; i <= 10; i++ {
 
 		buf := bytes.NewBuffer(body)
-		glog.V(2).Infof("Body '%s'", body)
+		mgr.logger.Log("level", "info", "message", fmt.Sprintf("Body '%s'", body))
 
 		outreq, err := http.NewRequest(r.Method, u.String(), buf)
 		if err != nil {

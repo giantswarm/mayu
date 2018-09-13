@@ -1,17 +1,13 @@
 package hostmgr
 
 import (
-	"bufio"
-	"io"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/giantswarm/microerror"
-	"github.com/golang/glog"
 )
 
 func parentDir(p string) string {
@@ -36,7 +32,6 @@ func isGitRepo(p string) bool {
 func gitAddCommit(baseDir string, path string, commitMsg string) error {
 	err := gitAdd(baseDir, path)
 	if err != nil {
-		glog.V(5).Infoln("error git-adding:", err)
 		return microerror.Mask(err)
 	}
 	return gitCommit(baseDir, commitMsg)
@@ -49,7 +44,6 @@ func gitExec(baseDir string, args ...string) error {
 	defer gitMutex.Unlock()
 	cmdline := []string{"git"}
 	if DisableGit {
-		glog.V(4).Infoln("GIT", strings.Join(args, " "))
 		return nil
 	}
 	err := cmdExec(baseDir, append(cmdline, args...)...)
@@ -62,26 +56,8 @@ func gitExec(baseDir string, args ...string) error {
 func cmdExec(cwd string, args ...string) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = cwd
-	glog.V(6).Infoln("running", args)
 	cmd.Stdin = os.Stdin
-	if glog.V(8) {
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-		multiReader := io.MultiReader(stdout, stderr)
-		pipeLogger := func(rdr io.Reader) {
-			scanner := bufio.NewScanner(rdr)
-			for scanner.Scan() {
-				glog.V(8).Infoln(scanner.Text())
-			}
-		}
-		go pipeLogger(multiReader)
-	}
+
 	err := cmd.Run()
 	if err != nil {
 		return microerror.Mask(err)
@@ -91,7 +67,6 @@ func cmdExec(cwd string, args ...string) error {
 
 func gitAdd(baseDir string, path string) error {
 	absPath, err := filepath.Abs(path)
-	glog.V(3).Infof("adding file '%s' to '%s'\n", absPath, baseDir)
 	if err != nil {
 		return microerror.Mask(err)
 	}

@@ -3,7 +3,8 @@ package pxemgr
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/golang/glog"
+	"fmt"
+	"github.com/giantswarm/microerror"
 	"io/ioutil"
 	"path"
 	"text/template"
@@ -12,23 +13,26 @@ import (
 // Files is map[string]string for files that we fetched from disk and then filled with data.
 type Files map[string]string
 
-func (mgr *pxeManagerT) RenderFiles(ctx interface{}) *Files {
+func (mgr *pxeManagerT) RenderFiles(ctx interface{}) (*Files, error) {
 	files := Files{}
 	dirList, err := ioutil.ReadDir(mgr.filesDir)
 	if err != nil {
-		glog.Fatalf("Failed to read files dir: %s, error: %#v", mgr.filesDir, err)
+		mgr.logger.Log("level", "error", "message", fmt.Sprintf("Failed to read files dir: %s", mgr.filesDir), "stack", err)
+		return nil, microerror.Mask(err)
 	}
 
 	for _, dir := range dirList {
 		fileList, err := ioutil.ReadDir(path.Join(mgr.filesDir, dir.Name()))
 		if err != nil {
-			glog.Errorf("Failed to read dir: %s, error: %#v", path.Join(mgr.filesDir, dir.Name()), err)
+			mgr.logger.Log("level", "error", "message", fmt.Sprintf("Failed to read dir: %s", path.Join(mgr.filesDir, dir.Name())), "stack", err)
+			return nil, microerror.Mask(err)
 		}
 
 		for _, file := range fileList {
 			tmpl, err := template.ParseFiles(path.Join(mgr.filesDir, dir.Name(), file.Name()))
 			if err != nil {
-				glog.Errorf("Failed to file: %s, error: %#v", path.Join(mgr.filesDir, dir.Name(), file.Name()), err)
+				mgr.logger.Log("level", "error", "message", fmt.Sprintf("Failed to file: %s", path.Join(mgr.filesDir, dir.Name(), file.Name())), "stack", err)
+				return nil, microerror.Mask(err)
 			}
 			var data bytes.Buffer
 			tmpl.Execute(&data, ctx)
@@ -36,5 +40,5 @@ func (mgr *pxeManagerT) RenderFiles(ctx interface{}) *Files {
 			files[dir.Name()+"/"+file.Name()] = base64.StdEncoding.EncodeToString(data.Bytes())
 		}
 	}
-	return &files
+	return &files, nil
 }

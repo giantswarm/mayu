@@ -12,7 +12,6 @@ import (
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/pxemgr"
 	"github.com/giantswarm/micrologger"
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -113,7 +112,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 	globalFlags.tFTPRoot, err = filepath.Abs(globalFlags.tFTPRoot)
 
 	if ok, err := globalFlags.Validate(); !ok {
-		glog.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	hostmgr.DisableGit = globalFlags.noGit

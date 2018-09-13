@@ -14,7 +14,6 @@ import (
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/microerror"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -32,7 +31,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	extraFlags := ""
 	if mgr.coreosAutologin {
 		extraFlags += "coreos.autologin"
-		glog.V(2).Infoln("adding coreos.autologin to kernel args")
+		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
 	}
 
 	// for ignition we use only 1phase installation without mayu-infopusher

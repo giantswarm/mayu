@@ -134,6 +134,8 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 			Template:   c.DNSmasqTemplate,
 			TFTPRoot:   c.TFTPRoot,
 			PXEPort:    c.PXEPort,
+
+			Logger: c.Logger,
 		}),
 		mu: new(sync.Mutex),
 

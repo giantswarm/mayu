@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/coreos/ignition/config/v2_0/types"
-	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 
 	"github.com/giantswarm/mayu/hostmgr"
@@ -54,23 +53,24 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		TemplatesEnv:     mergedTemplatesEnv,
 	}
 
-	ctx.Files = *mgr.RenderFiles(ctx)
+	files, err := mgr.RenderFiles(ctx)
+	if err != nil {
+		return microerror.Mask(err)
+	}
 
+	ctx.Files = *files
 	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
 	if err != nil {
-		glog.Fatalln(err)
 		return microerror.Mask(err)
 	}
 
 	var data bytes.Buffer
 	if err = tmpl.Execute(&data, ctx); err != nil {
-		glog.Fatalln(err)
 		return microerror.Mask(err)
 	}
 
 	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
 	if err != nil {
-		glog.Fatalln(err)
 		return microerror.Mask(err)
 	}
 	host.State = hostmgr.Installing
@@ -101,7 +101,6 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 	maybeInitSnippets(snippets)
 	templates := []string{path}
 	templates = append(templates, snippetsFiles...)
-	glog.V(10).Infof("templates: %+v\n", templates)
 
 	tmpl, err := template.ParseFiles(templates...)
 	if err != nil {
@@ -160,7 +159,7 @@ func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool
 				}
 			}
 
-			glog.Errorf("Unrecognized keyword: %v", key)
+			fmt.Printf("Unrecognized keyword: %v", key)
 			warnings = true
 		}
 	case []interface{}:
