@@ -65,16 +65,17 @@ type Network struct {
 		Start string
 		End   string
 	} `yaml:"ip_range"`
-	Router        string
-	DNS           []string
-	NTP           []string
-	PXE           bool
-	UEFI          bool
-	SubnetSize    string `yaml:"subnet_size"`
-	SubnetGateway string `yaml:"subnet_gateway"`
-	VlanId        string `yaml:"vlan_id"`
-	NetworkModel  string `yaml:"network_model"`
-	BondMode      string `yaml:"bond_mode"`
+	Router             string
+	DNS                []string
+	NTP                []string
+	PXE                bool
+	UEFI               bool
+	SubnetSize         string `yaml:"subnet_size"`
+	SubnetGateway      string `yaml:"subnet_gateway"`
+	VlanId             string `yaml:"vlan_id"`
+	NetworkModel       string `yaml:"network_model"`
+	BondMode           string `yaml:"bond_mode"`
+	BondInterfaceMatch string `yaml:"bond_interface_match"`
 
 	IgnoredHosts []string
 	StaticHosts  []hostmgr.IPMac

@@ -4,7 +4,7 @@ networkd:
   - name: 10-bond0-slave.network
     contents: |
       [Match]
-      Name=en*
+      Name={{ or .ClusterNetwork.BondInterfaceMatch "en*" }}
 
       [Network]
       Bond=bond0
