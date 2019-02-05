@@ -35,7 +35,11 @@ func (mgr *pxeManagerT) RenderFiles(ctx interface{}) (*Files, error) {
 				return nil, microerror.Mask(err)
 			}
 			var data bytes.Buffer
-			tmpl.Execute(&data, ctx)
+			err = tmpl.Execute(&data, ctx)
+			if err != nil {
+				mgr.logger.Log("level", "error", "message", fmt.Sprintf("Failed to execute tmpl ofr  %s", path.Join(mgr.filesDir, dir.Name(), file.Name())), "stack", err)
+				return nil, microerror.Mask(err)
+			}
 
 			files[dir.Name()+"/"+file.Name()] = base64.StdEncoding.EncodeToString(data.Bytes())
 		}
