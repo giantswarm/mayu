@@ -89,7 +89,7 @@ func setUp(t *testing.T) *helper {
 
 	h.pxeCfg = PXEManagerConfiguration{
 		UseInternalEtcdDiscovery: true,
-		NoTLS: true,
+		NoTLS:                    true,
 		// This port is declared only to allow PXEMAnager instantiation (APIPort and
 		// PXEPort must be different), the server is not going to be started and we
 		// are going to test the handler method directly
