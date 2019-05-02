@@ -43,6 +43,7 @@ type PXEManagerConfiguration struct {
 	FilesDir                 string
 	Version                  string
 	CoreosAutologin          bool
+	ConsoleTTY               bool
 
 	Logger micrologger.Logger
 }
@@ -68,6 +69,7 @@ type pxeManagerT struct {
 	version                  string
 	configFile               string
 	coreosAutologin          bool
+	consoleTTY               bool
 
 	config  *Configuration
 	cluster *hostmgr.Cluster
@@ -126,6 +128,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		configFile:               c.ConfigFile,
 		version:                  c.Version,
 		coreosAutologin:          c.CoreosAutologin,
+		consoleTTY:               c.ConsoleTTY,
 
 		config:  &conf,
 		cluster: cluster,
