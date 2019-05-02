@@ -29,14 +29,14 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	buffer := bytes.NewBufferString("")
 	extraFlags := ""
+	if mgr.consoleTTY {
+		extraFlags += "console=ttyS0"
+		mgr.logger.Log("level", "info", "message", "adding 'console=ttyS0' to kernel args")
+	}
+
 	if mgr.coreosAutologin {
 		extraFlags += "coreos.autologin"
 		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
-	}
-
-	if mgr.consoleTTY {
-		extraFlags += "console=ttyS0"
-		mgr.logger.Log("level", "info", "message", "adding console=ttyS0 to kernel args")
 	}
 
 	// for ignition we use only 1phase installation without mayu-infopusher
