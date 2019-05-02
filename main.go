@@ -151,6 +151,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		ImagesCacheDir:           globalFlags.imagesCacheDir,
 		FilesDir:                 globalFlags.filesDir,
 		CoreosAutologin:          globalFlags.coreosAutologin,
+		ConsoleTTY:               globalFlags.consoleTTY,
 		Version:                  projectVersion,
 
 		Logger: logger,
