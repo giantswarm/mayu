@@ -30,12 +30,12 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer := bytes.NewBufferString("")
 	extraFlags := ""
 	if mgr.consoleTTY {
-		extraFlags += "console=ttyS0"
+		extraFlags += " console=ttyS0"
 		mgr.logger.Log("level", "info", "message", "adding 'console=ttyS0' to kernel args")
 	}
 
 	if mgr.coreosAutologin {
-		extraFlags += "coreos.autologin"
+		extraFlags += " coreos.autologin"
 		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
 	}
 
