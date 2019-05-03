@@ -69,7 +69,6 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	if err = tmpl.Execute(&data, ctx); err != nil {
 		return microerror.Mask(err)
 	}
-	fmt.Println(data.String())
 	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
 	if err != nil {
 		return microerror.Mask(err)
