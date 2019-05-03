@@ -19,18 +19,15 @@ import (
 	"github.com/coreos/ignition/config/validate/report"
 )
 
-type Raid struct {
-	Name    string `json:"name"`
-	Level   string `json:"level"`
-	Devices []Path `json:"devices,omitempty"`
-	Spares  int    `json:"spares,omitempty"`
-}
-
-func (n Raid) Validate() report.Report {
+func (n Raid) ValidateLevel() report.Report {
+	r := report.Report{}
 	switch n.Level {
 	case "linear", "raid0", "0", "stripe":
 		if n.Spares != 0 {
-			return report.ReportFromError(errors.ErrSparesUnsupportedForLevel, report.EntryError)
+			r.Add(report.Entry{
+				Message: errors.ErrSparesUnsupportedForLevel.Error(),
+				Kind:    report.EntryError,
+			})
 		}
 	case "raid1", "1", "mirror":
 	case "raid4", "4":
@@ -38,7 +35,23 @@ func (n Raid) Validate() report.Report {
 	case "raid6", "6":
 	case "raid10", "10":
 	default:
-		return report.ReportFromError(errors.ErrUnrecognizedRaidLevel, report.EntryError)
+		r.Add(report.Entry{
+			Message: errors.ErrUnrecognizedRaidLevel.Error(),
+			Kind:    report.EntryError,
+		})
 	}
-	return report.Report{}
+	return r
+}
+
+func (n Raid) ValidateDevices() report.Report {
+	r := report.Report{}
+	for _, d := range n.Devices {
+		if err := validatePath(string(d)); err != nil {
+			r.Add(report.Entry{
+				Message: errors.ErrPathRelative.Error(),
+				Kind:    report.EntryError,
+			})
+		}
+	}
+	return r
 }

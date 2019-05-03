@@ -7,15 +7,16 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/coreos/ignition/config/v2_0/types"
+	"github.com/coreos/ignition/config/v2_2/types"
 	"gopkg.in/yaml.v2"
 
-	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/microerror"
 	"io/ioutil"
 	"os"
 	"path"
 	"text/template"
+
+	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/microerror"
 )
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {

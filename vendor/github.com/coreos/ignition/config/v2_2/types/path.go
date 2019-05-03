@@ -14,6 +14,15 @@
 
 package types
 
-type Networkd struct {
-	Units []NetworkdUnit `json:"units,omitempty"`
+import (
+	"path"
+
+	"github.com/coreos/ignition/config/shared/errors"
+)
+
+func validatePath(p string) error {
+	if !path.IsAbs(p) {
+		return errors.ErrPathRelative
+	}
+	return nil
 }

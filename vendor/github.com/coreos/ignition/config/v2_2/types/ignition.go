@@ -15,49 +15,37 @@
 package types
 
 import (
-	"encoding/json"
-
 	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/ignition/config/shared/errors"
 	"github.com/coreos/ignition/config/validate/report"
 )
 
-type Ignition struct {
-	Version IgnitionVersion `json:"version,omitempty" merge:"old"`
-	Config  IgnitionConfig  `json:"config,omitempty"  merge:"new"`
-}
-
-type IgnitionConfig struct {
-	Append  []ConfigReference `json:"append,omitempty"`
-	Replace *ConfigReference  `json:"replace,omitempty"`
-}
-
-type ConfigReference struct {
-	Source       Url          `json:"source,omitempty"`
-	Verification Verification `json:"verification,omitempty"`
-}
-
-type IgnitionVersion semver.Version
-
-func (v *IgnitionVersion) UnmarshalJSON(data []byte) error {
-	tv := semver.Version(*v)
-	if err := json.Unmarshal(data, &tv); err != nil {
-		return err
+func (c ConfigReference) ValidateSource() report.Report {
+	r := report.Report{}
+	err := validateURL(c.Source)
+	if err != nil {
+		r.Add(report.Entry{
+			Message: err.Error(),
+			Kind:    report.EntryError,
+		})
 	}
-	*v = IgnitionVersion(tv)
-	return nil
+	return r
 }
 
-func (v IgnitionVersion) MarshalJSON() ([]byte, error) {
-	return semver.Version(v).MarshalJSON()
+func (v Ignition) Semver() (*semver.Version, error) {
+	return semver.NewVersion(v.Version)
 }
 
-func (v IgnitionVersion) Validate() report.Report {
-	if MaxVersion.Major > v.Major {
+func (v Ignition) Validate() report.Report {
+	tv, err := v.Semver()
+	if err != nil {
+		return report.ReportFromError(errors.ErrInvalidVersion, report.EntryError)
+	}
+	if MaxVersion.Major > tv.Major {
 		return report.ReportFromError(errors.ErrOldVersion, report.EntryError)
 	}
-	if MaxVersion.LessThan(semver.Version(v)) {
+	if MaxVersion.LessThan(*tv) {
 		return report.ReportFromError(errors.ErrNewVersion, report.EntryError)
 	}
 	return report.Report{}

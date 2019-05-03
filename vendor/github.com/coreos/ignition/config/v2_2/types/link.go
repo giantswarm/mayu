@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2017 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,20 @@
 
 package types
 
-type Storage struct {
-	Disks       []Disk       `json:"disks,omitempty"`
-	Arrays      []Raid       `json:"raid,omitempty"`
-	Filesystems []Filesystem `json:"filesystems,omitempty"`
-	Files       []File       `json:"files,omitempty"`
+import (
+	"github.com/coreos/ignition/config/validate/report"
+)
+
+func (s LinkEmbedded1) ValidateTarget() report.Report {
+	r := report.Report{}
+	if !s.Hard {
+		err := validatePath(s.Target)
+		if err != nil {
+			r.Add(report.Entry{
+				Message: err.Error(),
+				Kind:    report.EntryError,
+			})
+		}
+	}
+	return r
 }
