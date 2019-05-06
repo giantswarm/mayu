@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go/types"
 	"io"
 	"reflect"
 
@@ -110,7 +109,7 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 }
 
 func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
-	cfg := types.Config{}
+	cfg := Config{}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
 		return nil, microerror.Maskf(executionFailedError, "failed to unmarshal input: %v", err)
