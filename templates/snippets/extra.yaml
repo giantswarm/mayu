@@ -1,6 +1,6 @@
 {{define "extra_units"}}
     - name: extra_unit.service
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=extraUnit
@@ -18,12 +18,9 @@
 {{define "extra_files"}}
     - filesystem: root
       path: /etc/my-service/config.conf
-      mode: 0600
+      mode: 420
       user:  
         id: 0
         group: 0
-      contents:
-        source:
-          scheme: data
-          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "my-service/my-service.conf" }}"
+      contents: "data:text/plain;charset=utf-8;base64,{{  index .Files "my-service/my-service.conf" }}"
 {{end}}

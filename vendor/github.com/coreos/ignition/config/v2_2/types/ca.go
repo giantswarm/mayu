@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,14 @@
 
 package types
 
-type Group struct {
-	Name         string `json:"name,omitempty"`
-	Gid          *uint  `json:"gid,omitempty"`
-	PasswordHash string `json:"passwordHash,omitempty"`
-	System       bool   `json:"system,omitempty"`
+import (
+	"github.com/coreos/ignition/config/validate/report"
+)
+
+func (c CaReference) ValidateSource() report.Report {
+	err := validateURL(c.Source)
+	if err != nil {
+		return report.ReportFromError(err, report.EntryError)
+	}
+	return report.Report{}
 }

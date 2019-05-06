@@ -7,15 +7,15 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/coreos/ignition/config/v2_0/types"
 	"gopkg.in/yaml.v2"
 
-	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/microerror"
 	"io/ioutil"
 	"os"
 	"path"
 	"text/template"
+
+	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/microerror"
 )
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {
@@ -68,7 +68,6 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	if err = tmpl.Execute(&data, ctx); err != nil {
 		return microerror.Mask(err)
 	}
-
 	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
 	if err != nil {
 		return microerror.Mask(err)
@@ -110,7 +109,7 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 }
 
 func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
-	cfg := types.Config{}
+	cfg := Config{}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
 		return nil, microerror.Maskf(executionFailedError, "failed to unmarshal input: %v", err)
