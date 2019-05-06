@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/types"
 	"io"
 	"reflect"
 
-	"github.com/coreos/ignition/config/v2_2/types"
 	"gopkg.in/yaml.v2"
 
 	"io/ioutil"
