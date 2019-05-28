@@ -39,6 +39,8 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
 	}
 
+	extraFlags += " systemd.unified_cgroup_hierarchy=false systemd.legacy_systemd_cgroup_controller=false"
+
 	// for ignition we use only 1phase installation without mayu-infopusher
 	kernel := fmt.Sprintf("kernel %s/images/vmlinuz coreos.first_boot=1 initrd=initrd.cpio.gz coreos.config.url=%s?uuid=${uuid}&serial=${serial} systemd.journald.max_level_console=debug verbose log_buf_len=10M "+extraFlags+"\n", mgr.pxeURL(), mgr.ignitionURL())
 	initrd := fmt.Sprintf("initrd %s/images/initrd.cpio.gz\n", mgr.pxeURL())
