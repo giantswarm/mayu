@@ -20,5 +20,12 @@ networkd:
       {{ end }}
       {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}
       {{ end }}
+
+      {{ range $r := .ClusterNetwork.PrimaryNIC.Routes }}
+      [Route]
+      Destination={{ $r.DestinationCIDR }}
+      Gateway={{ $r.RouteHop }}
+      GatewayOnlink=yes
+      {{ end }}
 {{end}}
 

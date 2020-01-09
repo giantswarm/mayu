@@ -1,6 +1,7 @@
 package pxemgr
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -25,16 +26,9 @@ func LoadConfig(filePath string) (Configuration, error) {
 
 	err = yaml.Unmarshal(confBytes, &conf)
 
-	return conf, microerror.Mask(err)
-}
+	fmt.Printf("loaded config: %#v\n", conf)
 
-func saveConfig(filePath string, conf Configuration) error {
-	confBytes, err := yaml.Marshal(conf)
-	ioutil.WriteFile(filePath, confBytes, 0660)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-	return nil
+	return conf, microerror.Mask(err)
 }
 
 type Configuration struct {
@@ -76,6 +70,7 @@ type NetworkInterface struct {
 	IPRange       NetworkRange   `yaml:"ip_range"`
 	SubnetSize    string         `yaml:"subnet_size"`
 	SubnetGateway string         `yaml:"subnet_gateway"`
+	Model         NetworkModel   `yaml:"network_model"`
 }
 
 type Network struct {
@@ -83,7 +78,7 @@ type Network struct {
 	PXE      struct {
 		Enabled      bool
 		PxeInterface NetworkInterface `yaml:"pxe_interface"`
-	}
+	} `yaml:"pxe"`
 
 	PrimaryNIC NetworkInterface   `yaml:"primary_nic"`
 	ExtraNICs  []NetworkInterface `yaml:"extra_nics"`
