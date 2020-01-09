@@ -7,8 +7,6 @@ import (
 	"net"
 	"os"
 	"path"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -16,19 +14,20 @@ const hostConfFile = "conf.json"
 
 // Host represents a node within the mayu cluster.
 type Host struct {
-	Id               int       `json:",omitempty"`
-	ProviderId       string    `json:",omitempty"`
-	Enabled          bool      `json:",omitempty"`
-	Name             string    `json:",omitempty"`
-	Serial           string    `json:",omitempty"`
-	MacAddresses     []string  `json:",omitempty"`
-	InternalAddr     net.IP    `json:",omitempty"`
-	IPMIAddr         net.IP    `json:",omitempty"`
-	Hostname         string    `json:",omitempty"`
-	MachineID        string    `json:",omitempty"`
-	LastBoot         time.Time `json:",omitempty"`
-	Profile          string    `json:",omitempty"`
-	EtcdClusterToken string    `json:",omitempty"`
+	Id               int               `json:",omitempty"`
+	ProviderId       string            `json:",omitempty"`
+	Enabled          bool              `json:",omitempty"`
+	Name             string            `json:",omitempty"`
+	Serial           string            `json:",omitempty"`
+	MacAddresses     []string          `json:",omitempty"`
+	InternalAddr     net.IP            `json:",omitempty"`
+	AdditionalAddrs  map[string]net.IP `json:",omitempty"`
+	IPMIAddr         net.IP            `json:",omitempty"`
+	Hostname         string            `json:",omitempty"`
+	MachineID        string            `json:",omitempty"`
+	LastBoot         time.Time         `json:",omitempty"`
+	Profile          string            `json:",omitempty"`
+	EtcdClusterToken string            `json:",omitempty"`
 
 	Overrides map[string]interface{} `json:",omitempty"`
 
@@ -40,17 +39,9 @@ type Host struct {
 	lastModTime time.Time
 }
 
-type FleetMeta []string
-
 type IPMac struct {
 	IP      net.IP
 	MacAddr string
-}
-
-// Commit stores the given msg in git version control.
-func (h *Host) Commit(msg string) error {
-	h.save()
-	return h.maybeGitCommit(h.Serial + ": " + msg)
 }
 
 func genMachineID() string {
@@ -88,8 +79,12 @@ func HostFromDir(hostdir string) (*Host, error) {
 }
 
 func createHost(serial string, hostDir string) (*Host, error) {
+	var err error
 	if !fileExists(hostDir) {
-		os.Mkdir(hostDir, 0755)
+		err = os.Mkdir(hostDir, 0755)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
 	}
 
 	hostDirFile, err := os.Open(hostDir)
@@ -99,39 +94,32 @@ func createHost(serial string, hostDir string) (*Host, error) {
 
 	h := &Host{
 		hostDir: hostDirFile,
-		Serial:  strings.ToLower(serial),
-
+		Serial:  serial,
 		Enabled: true,
 	}
-	err = h.Commit("host created")
-	return h, microerror.Mask(err)
+	err = h.Save()
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+
+	return h, nil
 }
 
-func (h *Host) save() error {
-	if err := saveJson(h, h.confPath()); err == nil {
-		if fi, err := os.Stat(h.confPath()); err == nil {
-			h.lastModTime = fi.ModTime()
-		} else {
-			return microerror.Mask(err)
-		}
-	} else {
+func (h *Host) Save() error {
+	err := saveJson(h, h.confPath())
+	if err != nil {
 		return microerror.Mask(err)
 	}
+
+	fi, err := os.Stat(h.confPath())
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	h.lastModTime = fi.ModTime()
 	return nil
 }
 
 func (h *Host) confPath() string {
 	return path.Join(h.hostDir.Name(), hostConfFile)
-}
-
-func (h *Host) maybeGitCommit(msg string) error {
-	absHostDir, err := filepath.Abs(h.hostDir.Name())
-	if err != nil {
-		return microerror.Mask(err)
-	}
-	clusterDir := filepath.Clean(filepath.Join(absHostDir, ".."))
-	if isGitRepo(clusterDir) {
-		gitAddCommit(clusterDir, h.confPath(), msg)
-	}
-	return nil
 }

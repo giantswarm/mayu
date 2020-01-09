@@ -53,29 +53,47 @@ type Profile struct {
 	EtcdClusterToken string `yaml:"etcd_cluster_token"`
 }
 
-type Network struct {
-	PxeInterface     string `yaml:"pxe_interface"`
-	MachineInterface string `yaml:"machine_interface"`
-	BindAddr         string `yaml:"bind_addr"`
-	BootstrapRange   struct {
-		Start string
-		End   string
-	} `yaml:"bootstrap_range"`
-	IPRange struct {
-		Start string
-		End   string
-	} `yaml:"ip_range"`
-	Router             string
-	DNS                []string
-	NTP                []string
-	PXE                bool
-	UEFI               bool
-	SubnetSize         string `yaml:"subnet_size"`
-	SubnetGateway      string `yaml:"subnet_gateway"`
+type NetworkRange struct {
+	Start string
+	End   string
+}
+
+type NetworkRoute struct {
+	DestinationCIDR string `yaml:"destination_cidr"`
+	RouteHop        string `yaml:"route_hop"`
+}
+
+type NetworkModel struct {
+	Type               string `yaml:"type"`
 	VlanId             string `yaml:"vlan_id"`
-	NetworkModel       string `yaml:"network_model"`
 	BondMode           string `yaml:"bond_mode"`
 	BondInterfaceMatch string `yaml:"bond_interface_match"`
+}
+
+type NetworkInterface struct {
+	Routes        []NetworkRoute `yaml:"routes"`
+	InterfaceName string         `yaml:"interface_name"`
+	IPRange       NetworkRange   `yaml:"ip_range"`
+	SubnetSize    string         `yaml:"subnet_size"`
+	SubnetGateway string         `yaml:"subnet_gateway"`
+}
+
+type Network struct {
+	BindAddr     string `yaml:"bind_addr"`
+	PXE struct {
+		Enabled      bool
+		PxeInterface NetworkInterface `yaml:"pxe_interface"`
+	}
+
+	PrimaryNIC NetworkInterface   `yaml:"primary_nic"`
+	ExtraNICs  []NetworkInterface `yaml:"extra_nics"`
+
+	// if set true use UEFI boot, otherwise use legacy BIOS
+	UEFI bool
+
+	// DNS and NTP list for installed machines
+	DNS []string
+	NTP []string
 
 	IgnoredHosts []string
 	StaticHosts  []hostmgr.IPMac

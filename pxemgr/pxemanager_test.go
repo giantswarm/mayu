@@ -20,9 +20,10 @@ import (
 const (
 	baseConfig = `default_coreos_version: myversion
 network:
-  ip_range:
-    start: 1.1.1.1
-    end: 1.1.1.2
+  primary_nic:
+    ip_range:
+      start: 1.1.1.1
+      end: 1.1.1.2
 templates_env:
   mayu_https_endpoint: https://mayu
 `
@@ -75,7 +76,7 @@ func setUp(t *testing.T) *helper {
 		t.Fatalf("failed to create logger cluster: %s", err)
 	}
 
-	h.cluster, err = hostmgr.NewCluster(h.dir, true, logger)
+	h.cluster, err = hostmgr.NewCluster(h.dir, logger)
 	if err != nil {
 		t.Fatalf("creating cluster: %s", err)
 	}
