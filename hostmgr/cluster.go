@@ -25,7 +25,7 @@ import (
 const clusterConfFile = "cluster.json"
 
 type Cluster struct {
-	Config   ClusterConfig
+	Config ClusterConfig
 
 	baseDir string
 	// an cached host is identified by its serial number
@@ -72,11 +72,11 @@ func NewCluster(baseDir string, logger micrologger.Logger) (*Cluster, error) {
 	}
 
 	c := &Cluster{
-		baseDir:        baseDir,
-		mu:             new(sync.Mutex),
-		Config:         ClusterConfig{},
-		hostsCache:     map[string]*cachedHost{},
-		logger:         logger,
+		baseDir:    baseDir,
+		mu:         new(sync.Mutex),
+		Config:     ClusterConfig{},
+		hostsCache: map[string]*cachedHost{},
+		logger:     logger,
 	}
 
 	err := c.Commit("initial commit")

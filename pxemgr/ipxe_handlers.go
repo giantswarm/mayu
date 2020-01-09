@@ -69,7 +69,7 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
 		// generate addresses for the extra NICs
 		extraNicCount := len(mgr.config.Network.ExtraNICs)
 		host.AdditionalAddrs = make(map[string]net.IP)
-		for i:=0 ; i < extraNicCount; i ++ {
+		for i := 0; i < extraNicCount; i++ {
 			host.AdditionalAddrs[mgr.config.Network.ExtraNICs[i].InterfaceName] = mgr.getNextAdditionalIP(i, mgr.config.Network.ExtraNICs[i].InterfaceName)
 		}
 		if host.Profile == "" {
@@ -148,12 +148,12 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	var img *os.File
-	var	err error
+	var err error
 
 	coreOSversion := mgr.config.DefaultCoreOSVersion
 	mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
 
-    if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
+	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
 		img, err = mgr.pxeKernelImage(coreOSversion)
 	} else if strings.HasSuffix(r.URL.Path, "/initrd.cpio.gz") {
 		img, err = mgr.pxeInitRD(coreOSversion)
@@ -366,32 +366,33 @@ func (mgr *pxeManagerT) getNextAdditionalIP(nicIndex int, nicName string) net.IP
 		currentIP = incIP(currentIP)
 	}
 }
+
 // check af all hosts have properly assigned IP addresses to all Network.ExtraNICs entries
 func (mgr *pxeManagerT) checkAdditionalNICAddresses() {
 	hosts := mgr.cluster.GetAllHosts()
 	for _, h := range hosts {
-			// iterate over all extra NICs
-			for i, nic := range mgr.config.Network.ExtraNICs {
-				// check if the interface has already entry on the host config
-				if _, exists := h.AdditionalAddrs[nic.InterfaceName] ; !exists {
-					// no entry, lets add a new clean IP from the range
-					h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i, nic.InterfaceName)
+		// iterate over all extra NICs
+		for i, nic := range mgr.config.Network.ExtraNICs {
+			// check if the interface has already entry on the host config
+			if _, exists := h.AdditionalAddrs[nic.InterfaceName]; !exists {
+				// no entry, lets add a new clean IP from the range
+				h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i, nic.InterfaceName)
+			} else {
+				// host have assigned IP on this NIC, but we need to check if the network range matches
+				ipStart := net.ParseIP(nic.IPRange.Start)
+				ipEnd := net.ParseIP(nic.IPRange.End)
+				if ipLessThanOrEqual(ipStart, h.AdditionalAddrs[nic.InterfaceName]) &&
+					ipMoreThanOrEqual(ipEnd, h.AdditionalAddrs[nic.InterfaceName]) {
+					// we should be good, IP is in the range of Start and End
+					// DO nothing
 				} else {
-					// host have assigned IP on this NIC, but we need to check if the network range matches
-					ipStart := net.ParseIP(nic.IPRange.Start)
-					ipEnd := net.ParseIP(nic.IPRange.End)
-					if  ipLessThanOrEqual(ipStart,h.AdditionalAddrs[nic.InterfaceName]) &&
-						ipMoreThanOrEqual(ipEnd, h.AdditionalAddrs[nic.InterfaceName]) {
-						// we should be good, IP is in the range of Start and End
-						// DO nothing
-					} else {
-						// the ip is not in the range of Start and End
-						// we need to clear this ip and assign a new one
-						// this is tricky, this might not work as expected
-						h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i, nic.InterfaceName)
-					}
+					// the ip is not in the range of Start and End
+					// we need to clear this ip and assign a new one
+					// this is tricky, this might not work as expected
+					h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i, nic.InterfaceName)
 				}
 			}
+		}
 		h.Save()
 	}
 }

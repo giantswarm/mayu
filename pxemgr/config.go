@@ -79,8 +79,8 @@ type NetworkInterface struct {
 }
 
 type Network struct {
-	BindAddr     string `yaml:"bind_addr"`
-	PXE struct {
+	BindAddr string `yaml:"bind_addr"`
+	PXE      struct {
 		Enabled      bool
 		PxeInterface NetworkInterface `yaml:"pxe_interface"`
 	}
