@@ -8,14 +8,14 @@ networkd:
 
       [Network]
       DHCP=no
-  - name: 00-{{.ClusterNetwork.MachineInterface}}.network
+  - name: 00-{{.ClusterNetwork.PrimaryNIC.InterfaceName}}.network
     contents: |
       [Match]
-      Name={{.ClusterNetwork.MachineInterface}}
+      Name={{.ClusterNetwork.PrimaryNIC.InterfaceName}}
 
       [Network]
-      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.SubnetSize}}
-      Gateway={{.ClusterNetwork.SubnetGateway}}
+      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.PrimaryNIC.SubnetSize}}
+      Gateway={{.ClusterNetwork.PrimaryNIC.SubnetGateway}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
       {{ range $server := .ClusterNetwork.NTP }}NTP={{ $server }}

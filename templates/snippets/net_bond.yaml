@@ -4,7 +4,7 @@ networkd:
   - name: 10-bond0-slave.network
     contents: |
       [Match]
-      Name={{ or .ClusterNetwork.BondInterfaceMatch "en*" }}
+      Name={{ or .ClusterNetwork.PrimaryNIC.Model.BondInterfaceMatch "en*" }}
 
       [Network]
       Bond=bond0
@@ -56,8 +56,8 @@ networkd:
       Name=bond0.3
 
       [Network]
-      Address={{.Host.InternalAddr}}/22
-      Gateway=10.0.7.251
+      Address={{.Host.InternalAddr}}/{{.ClusterNetwork.PrimaryNIC.SubnetSize}}
+      Gateway={{{{.ClusterNetwork.PrimaryNIC.SubnetGateway}}}}
       {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
       {{ end }}
 
