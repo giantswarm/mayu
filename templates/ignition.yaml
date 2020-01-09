@@ -111,6 +111,7 @@ systemd:
 
 {{if eq .ClusterNetwork.PrimaryNIC.Model.Type "bond"}}{{template "net_bond" .}}{{end}}
 {{if eq .ClusterNetwork.PrimaryNIC.Model.Type "singlenic"}}{{template "net_singlenic" .}}{{end}}
+{{if eq .ClusterNetwork.ExtraNICs}}{{template "extra_nics" .}}{{end}}
 
 storage:
   filesystems:

@@ -373,6 +373,9 @@ func (mgr *pxeManagerT) checkAdditionalNICAddresses() {
 	for _, h := range hosts {
 		// iterate over all extra NICs
 		for i, nic := range mgr.config.Network.ExtraNICs {
+			if h.AdditionalAddrs == nil {
+				h.AdditionalAddrs = make(map[string]net.IP)
+			}
 			// check if the interface has already entry on the host config
 			if _, exists := h.AdditionalAddrs[nic.InterfaceName]; !exists {
 				// no entry, lets add a new clean IP from the range

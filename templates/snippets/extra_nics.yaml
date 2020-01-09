@@ -1,0 +1,24 @@
+{{define "extra_nics"}}
+  {{ range $i, $nic := .ClusterNetwork.ExtraNICs }}
+  - name: 80-{{$nic.InterfaceName}}.network
+    contents: |
+      [Match]
+      Name={{$nic.InterfaceName}}
+
+      [Network]
+      Address={{index .Host.AdditionalAddrs "$nic.InterfaceName"}}/{{$nic.SubnetSize}}
+
+      {{ range $r := $nic.Routes }}
+      [Route]
+      Destination={{ $r.DestinationCIDR }}
+      Gateway={{ $r.RouteHop }}
+      GatewayOnlink=yes
+      {{ end }}
+
+      # This is ugly workaround to prevent address removal from interface even for static IP.
+      # https://github.com/systemd/systemd/blob/v238/src/network/networkd-link.c#L2599
+      [DHCP]
+      CriticalConnection=yes
+  {{end}}
+{{end}}
+
