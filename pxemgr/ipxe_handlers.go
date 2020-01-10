@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -370,6 +371,11 @@ func (mgr *pxeManagerT) getNextAdditionalIP(nicIndex int, nicName string) net.IP
 // check af all hosts have properly assigned IP addresses to all Network.ExtraNICs entries
 func (mgr *pxeManagerT) checkAdditionalNICAddresses() {
 	hosts := mgr.cluster.GetAllHosts()
+	// sort the array so we have the host ordered by the internal IP
+	// this will sort in a way how hosts are listed with mayuctl
+	sort.SliceStable(hosts, func(i int, j int) bool {
+		return hosts[i].InternalAddr.String() < hosts[j].InternalAddr.String()
+	})
 	for _, h := range hosts {
 		// iterate over all extra NICs
 		for i, nic := range mgr.config.Network.ExtraNICs {
