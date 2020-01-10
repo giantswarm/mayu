@@ -68,10 +68,9 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
 			host.InternalAddr = mgr.getNextInternalIP()
 		}
 		// generate addresses for the extra NICs
-		extraNicCount := len(mgr.config.Network.ExtraNICs)
 		host.AdditionalAddrs = make(map[string]net.IP)
-		for i := 0; i < extraNicCount; i++ {
-			host.AdditionalAddrs[mgr.config.Network.ExtraNICs[i].InterfaceName] = mgr.getNextAdditionalIP(i)
+		for i, nic := range mgr.config.Network.ExtraNICs {
+			host.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i)
 		}
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()

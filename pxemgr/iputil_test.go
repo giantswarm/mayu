@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func Test_IPUtil_IncIP(t *testing.T) {
+func TestIPUtil_IncIP(t *testing.T) {
 	// Create test IPs. Each slice represents a test case. The first IP is the
 	// input. The last IP is the expected output.
 	IPs := [][]net.IP{
@@ -32,7 +32,7 @@ func Test_IPUtil_IncIP(t *testing.T) {
 	}
 }
 
-func Test_IPUtil_IPLessThanOrEqual(t *testing.T) {
+func TestIPUtil_IPLessThanOrEqual(t *testing.T) {
 	// Create test IPs. Each slice represents a test case. The first IP is the
 	// smaller one. The last IP is the bigger or equal one.
 	IPs := [][]net.IP{
@@ -61,7 +61,7 @@ func Test_IPUtil_IPLessThanOrEqual(t *testing.T) {
 	}
 }
 
-func Test_IPUtil_IPMoreThanOrEqual(t *testing.T) {
+func TestIPUtil_IPMoreThanOrEqual(t *testing.T) {
 	// Create test IPs. Each slice represents a test case. The first IP is the
 	// bigger one. The last IP is the smaller or equal one.
 	IPs := [][]net.IP{
@@ -84,6 +84,7 @@ func Test_IPUtil_IPMoreThanOrEqual(t *testing.T) {
 	for _, testCase := range IPs {
 		bigger := testCase[0]
 		smallerOrEqual := testCase[1]
+
 		if !ipMoreThanOrEqual(bigger, smallerOrEqual) {
 			t.Fatalf("expected IP '%s' to be bigger then, or equal to IP '%s', but it was detected to be smaller", bigger, smallerOrEqual)
 		}
