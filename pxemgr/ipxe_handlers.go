@@ -71,7 +71,7 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
 		extraNicCount := len(mgr.config.Network.ExtraNICs)
 		host.AdditionalAddrs = make(map[string]net.IP)
 		for i := 0; i < extraNicCount; i++ {
-			host.AdditionalAddrs[mgr.config.Network.ExtraNICs[i].InterfaceName] = mgr.getNextAdditionalIP(i, mgr.config.Network.ExtraNICs[i].InterfaceName)
+			host.AdditionalAddrs[mgr.config.Network.ExtraNICs[i].InterfaceName] = mgr.getNextAdditionalIP(i)
 		}
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()
@@ -344,7 +344,8 @@ func (mgr *pxeManagerT) getNextInternalIP() net.IP {
 	}
 }
 
-func (mgr *pxeManagerT) getNextAdditionalIP(nicIndex int, nicName string) net.IP {
+func (mgr *pxeManagerT) getNextAdditionalIP(nicIndex int) net.IP {
+	nicName := mgr.config.Network.ExtraNICs[nicIndex].InterfaceName
 	assignedIPs := map[string]struct{}{}
 	for _, host := range mgr.cluster.GetAllHosts() {
 		if _, exists := host.AdditionalAddrs[nicName]; exists {
@@ -383,22 +384,22 @@ func (mgr *pxeManagerT) checkAdditionalNICAddresses() {
 				h.AdditionalAddrs = make(map[string]net.IP)
 			}
 			// check if the interface has already entry on the host config
-			if _, exists := h.AdditionalAddrs[nic.InterfaceName]; !exists {
+			if ip, exists := h.AdditionalAddrs[nic.InterfaceName]; !exists {
 				// no entry, lets add a new clean IP from the range
-				h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i, nic.InterfaceName)
+				h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i)
 			} else {
 				// host have assigned IP on this NIC, but we need to check if the network range matches
 				ipStart := net.ParseIP(nic.IPRange.Start)
 				ipEnd := net.ParseIP(nic.IPRange.End)
-				if ipLessThanOrEqual(ipStart, h.AdditionalAddrs[nic.InterfaceName]) &&
-					ipMoreThanOrEqual(ipEnd, h.AdditionalAddrs[nic.InterfaceName]) {
+				if ipLessThanOrEqual(ipStart, ip) &&
+					ipMoreThanOrEqual(ipEnd, ip) {
 					// we should be good, IP is in the range of Start and End
 					// DO nothing
 				} else {
 					// the ip is not in the range of Start and End
 					// we need to clear this ip and assign a new one
 					// this is tricky, this might not work as expected
-					h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i, nic.InterfaceName)
+					h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i)
 				}
 			}
 		}
