@@ -71,6 +71,8 @@ type NetworkInterface struct {
 	SubnetSize    string         `yaml:"subnet_size"`
 	SubnetGateway string         `yaml:"subnet_gateway"`
 	Model         NetworkModel   `yaml:"network_model"`
+
+	DNS []string `yaml:"dns"`
 }
 
 type Network struct {
@@ -86,8 +88,7 @@ type Network struct {
 	// if set true use UEFI boot, otherwise use legacy BIOS
 	UEFI bool
 
-	// DNS and NTP list for installed machines
-	DNS []string
+	// NTP list for installed machines
 	NTP []string
 
 	IgnoredHosts []string
