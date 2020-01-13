@@ -7,6 +7,8 @@
 
       [Network]
       Address={{index .Host.AdditionalAddrs "$nic.InterfaceName"}}/{{$nic.SubnetSize}}
+      {{ range $server := $nic.DNS }}DNS={{ $server }}
+      {{ end }}
 
       {{ range $r := $nic.Routes }}
       [Route]

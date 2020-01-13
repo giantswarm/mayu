@@ -58,7 +58,7 @@ networkd:
       [Network]
       Address={{.Host.InternalAddr}}/{{.ClusterNetwork.PrimaryNIC.SubnetSize}}
       Gateway={{{{.ClusterNetwork.PrimaryNIC.SubnetGateway}}}}
-      {{ range $server := .ClusterNetwork.DNS }}DNS={{ $server }}
+      {{ range $server := .ClusterNetwork.PrimaryNIC.DNS }}DNS={{ $server }}
       {{ end }}
 
 {{end}}
