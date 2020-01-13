@@ -3,24 +3,45 @@
 default_coreos_version: 1409.7.0
 
 network:
-  pxe: true
+    bind_addr: 10.0.0.254
+  pxe:
+    enabled: true
+    pxe_interface:
+      interface_name: eth0
+      ip_range:
+        start: 10.0.0.10
+        end: 10.0.0.30
+      subnet_gateway: 10.0.0.1
+      subnet_size: 24
+  primary_nic:
+    interface_name: eth0
+    ip_range:
+      start: 10.0.0.101
+      end: 10.0.0.200
+    subnet_size: 24
+    subnet_gateway: 10.0.0.1
+    network_model:
+      type: singlenic
+    routes:
+    - destination_cidr: 87.12.13.0/28
+      route_hop: 10.0.4.199
+    dns:
+    - 8.8.8.8
+    - 1.1.1.1
+   
+  extra_nics:
+  - interface_name: eth1
+    ip_range:
+      start: 10.0.5.210
+      end: 10.0.5.245
+    subnet_size: 24
+    network_model:
+      type: singlenic
+    routes:
+      - destination_cidr: 1.1.4.0/28
+        route_hop: 10.0.5.200
   uefi: false
-  pxe_interface: eth0
-  machine_interface: eth0
-  bind_addr: 10.0.0.254
-  bootstrap_range:
-    start: 10.0.0.10
-    end: 10.0.0.30
-  ip_range:
-    start: 10.0.1.100
-    end: 10.0.1.150
-  dns: [8.8.8.8, 8.8.4.4]
   ntp: [0.pool.ntp.org, 1.pool.ntp.org]
-  router: 10.0.0.1
-  network_model: singlenic
-  subnet_size: 24
-  subnet_gateway: 10.0.1.1
-  vlan_id: -1
 
 profiles:
   - name: core

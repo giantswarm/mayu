@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +16,6 @@ import (
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/microerror"
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -65,56 +66,32 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
 
 		if host.InternalAddr == nil {
 			host.InternalAddr = mgr.getNextInternalIP()
-			err = host.Commit("updated host InternalAddr")
-			if err != nil {
-				return nil, microerror.Mask(err)
-			}
 		}
-
+		// generate addresses for the extra NICs
+		host.AdditionalAddrs = make(map[string]net.IP)
+		for i, nic := range mgr.config.Network.ExtraNICs {
+			host.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i)
+		}
 		if host.Profile == "" {
 			host.Profile = mgr.getNextProfile()
 			if host.Profile == "" {
 				host.Profile = defaultProfileName
 			}
-			host.CoreOSVersion = mgr.profileCoreOSVersion(host.Profile)
-			host.EtcdClusterToken = mgr.profileEtcdClusterToken(host.Profile)
-
-			err = host.Commit("updated host profile and metadata")
-			if err != nil {
-				return nil, microerror.Mask(err)
-			}
+			host.CoreOSVersion = mgr.config.DefaultCoreOSVersion
 		}
-
 		if host.EtcdClusterToken == "" {
 			host.EtcdClusterToken = mgr.cluster.Config.DefaultEtcdClusterToken
-			err = host.Commit("set default etcd discovery token")
-			if err != nil {
-				return nil, microerror.Mask(err)
-			}
 		}
 		if host.InternalAddr != nil {
 			host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
 		}
+
+		err = host.Save()
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
 	}
 	return host, nil
-}
-
-func (mgr *pxeManagerT) profileCoreOSVersion(profileName string) string {
-	for _, v := range mgr.config.Profiles {
-		if v.Name == profileName {
-			return v.CoreOSVersion
-		}
-	}
-	return mgr.config.DefaultCoreOSVersion
-}
-
-func (mgr *pxeManagerT) profileEtcdClusterToken(profileName string) string {
-	for _, v := range mgr.config.Profiles {
-		if v.Name == profileName {
-			return v.EtcdClusterToken
-		}
-	}
-	return ""
 }
 
 func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +111,6 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	if hostData.Serial == "" {
 		mgr.logger.Log("level", "error", "message", fmt.Sprintf("empty serial. %+v\n", hostData))
-
 		w.WriteHeader(400)
 		w.Write([]byte("no serial ? :/"))
 		return
@@ -151,11 +127,11 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 
 	host.State = hostmgr.Installing
 	host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
-	host.Commit("updated host state to installing")
+	host.Save()
+
 	mgr.cluster.Update()
 
 	buf := &bytes.Buffer{}
-
 	mgr.logger.Log("level", "info", "message", "generating a ignition config")
 
 	if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
@@ -171,30 +147,16 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 }
 
 func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
-	coreOSversion := mgr.hostCoreOSVersion(r)
+	var img *os.File
+	var err error
 
+	coreOSversion := mgr.config.DefaultCoreOSVersion
 	mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
 
-	var (
-		img *os.File
-		err error
-	)
-
-	if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s.sha256", qemuImageFile)) {
-		img, err = mgr.qemuImageSHA(coreOSversion)
-	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s", qemuImageFile)) {
-		img, err = mgr.qemuImage(coreOSversion)
-	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s.sha256", qemuKernelFile)) {
-		img, err = mgr.qemuKernelSHA(coreOSversion)
-	} else if strings.HasSuffix(r.URL.Path, fmt.Sprintf("/qemu/%s", qemuKernelFile)) {
-		img, err = mgr.qemuKernel(coreOSversion)
-
-	} else if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
+	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
 		img, err = mgr.pxeKernelImage(coreOSversion)
 	} else if strings.HasSuffix(r.URL.Path, "/initrd.cpio.gz") {
 		img, err = mgr.pxeInitRD(coreOSversion)
-	} else if strings.HasSuffix(r.URL.Path, "/install_image.bin.bz2") {
-		img, err = mgr.pxeInstallImage(coreOSversion)
 	} else {
 		panic(fmt.Sprintf("no handler provided for invalid URL path '%s'", r.URL.Path))
 	}
@@ -217,34 +179,12 @@ func setContentLength(w http.ResponseWriter, f *os.File) error {
 	return nil
 }
 
-func (mgr *pxeManagerT) markFresh(serial string, w http.ResponseWriter, r *http.Request) {
-	host, exists := mgr.cluster.HostWithSerial(serial)
-	if !exists {
-		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
-		return
-	}
-
-	host.State = hostmgr.Configured
-	host.Commit("host flagged as fresh")
-	mgr.cluster.Update()
-
-	w.WriteHeader(202)
-}
-
 func (mgr *pxeManagerT) hostsList(w http.ResponseWriter, r *http.Request) {
 	hosts := mgr.cluster.GetAllHosts()
 
 	w.WriteHeader(200)
 	enc := json.NewEncoder(w)
 	enc.Encode(hosts)
-}
-
-func (mgr *pxeManagerT) hostFromSerialVar(r *http.Request) (*hostmgr.Host, bool) {
-	params := mux.Vars(r)
-	serial := strings.ToLower(params["serial"])
-
-	return mgr.cluster.HostWithSerial(serial)
 }
 
 func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *http.Request) {
@@ -270,7 +210,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 	host.LastBoot = time.Now()
 	host.CoreOSVersion = payload.CoreOSVersion
 
-	err = host.Commit("updated state to running")
+	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host state=running failed"))
@@ -298,7 +238,7 @@ func (mgr *pxeManagerT) setProviderId(serial string, w http.ResponseWriter, r *h
 	}
 
 	host.ProviderId = payload.ProviderId
-	err = host.Commit("updated host provider id")
+	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host provider id failed"))
@@ -326,97 +266,10 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	}
 
 	host.IPMIAddr = payload.IPMIAddr
-	err = host.Commit("updated host ipmi address")
+	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host ipmi address failed"))
-		return
-	}
-	mgr.cluster.Update()
-	w.WriteHeader(202)
-}
-
-func (mgr *pxeManagerT) setState(serial string, w http.ResponseWriter, r *http.Request) {
-	host, exists := mgr.cluster.HostWithSerial(serial)
-	if !exists {
-		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
-		return
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	payload := hostmgr.Host{}
-	err := decoder.Decode(&payload)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in set_state request"))
-		return
-	}
-
-	host.State = payload.State
-	switch payload.State {
-	case hostmgr.Configured:
-		host.State = hostmgr.Configured
-	case hostmgr.Running:
-		host.State = hostmgr.Configured
-	}
-
-	err = host.Commit("updated host state")
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("committing updated host state failed"))
-		return
-	}
-
-	mgr.cluster.Update()
-
-	err = mgr.updateDNSmasqs()
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("updated host state failed in update DNSmasq"))
-		return
-	}
-
-	mgr.cluster.Update()
-	w.WriteHeader(202)
-}
-
-func (mgr *pxeManagerT) override(serial string, w http.ResponseWriter, r *http.Request) {
-	host, exists := mgr.cluster.HostWithSerial(serial)
-	if !exists {
-		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
-		return
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	payload := hostmgr.Host{}
-	err := decoder.Decode(&payload)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in override request"))
-		return
-	}
-
-	if len(payload.Overrides) == 0 {
-		w.WriteHeader(400)
-		w.Write([]byte("nothing to override"))
-		return
-	}
-
-	updatedVars := []string{}
-	if host.Overrides == nil {
-		host.Overrides = make(map[string]interface{})
-	}
-	for k, v := range payload.Overrides {
-		host.Overrides[k] = v
-		updatedVars = append(updatedVars, k)
-	}
-
-	err = host.Commit("updated host overrides: " + strings.Join(updatedVars, ", "))
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("committing updated host overrides failed"))
 		return
 	}
 	mgr.cluster.Update()
@@ -441,7 +294,7 @@ func (mgr *pxeManagerT) setEtcdClusterToken(serial string, w http.ResponseWriter
 	}
 
 	host.EtcdClusterToken = payload.EtcdClusterToken
-	err = host.Commit("updated host etcd cluster token")
+	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("committing updated host etcd cluster token failed"))
@@ -457,21 +310,98 @@ func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (mgr *pxeManagerT) hostCoreOSVersion(r *http.Request) string {
-	coreOSversion := mgr.config.DefaultCoreOSVersion
+func (mgr *pxeManagerT) getNextProfile() string {
+	profileCount := mgr.cluster.GetProfileCount()
 
-	host, exists := mgr.hostFromSerialVar(r)
-	if exists {
-		if version, exist := host.Overrides["CoreOSVersion"]; exist {
-			return version.(string)
+	for _, profile := range mgr.config.Profiles {
+		if profileCount[profile.Name] < profile.Quantity {
+			return profile.Name
 		}
+	}
+	return ""
+}
 
-		if host.CoreOSVersion == "" {
-			return mgr.config.DefaultCoreOSVersion
-		} else {
-			return host.CoreOSVersion
+func (mgr *pxeManagerT) getNextInternalIP() net.IP {
+	assignedIPs := map[string]struct{}{}
+	for _, host := range mgr.cluster.GetAllHosts() {
+		assignedIPs[host.InternalAddr.String()] = struct{}{}
+	}
+
+	IPisAvailable := func(ip net.IP) bool {
+		_, exists := assignedIPs[ip.String()]
+		return !exists
+	}
+
+	currentIP := net.ParseIP(mgr.config.Network.PrimaryNIC.IPRange.Start)
+	rangeEnd := net.ParseIP(mgr.config.Network.PrimaryNIC.IPRange.End)
+
+	for ; ; ipLessThanOrEqual(currentIP, rangeEnd) {
+		if IPisAvailable(currentIP) {
+			return currentIP
+		}
+		currentIP = incIP(currentIP)
+	}
+}
+
+func (mgr *pxeManagerT) getNextAdditionalIP(nicIndex int) net.IP {
+	nicName := mgr.config.Network.ExtraNICs[nicIndex].InterfaceName
+	assignedIPs := map[string]struct{}{}
+	for _, host := range mgr.cluster.GetAllHosts() {
+		if _, exists := host.AdditionalAddrs[nicName]; exists {
+			assignedIPs[host.AdditionalAddrs[nicName].String()] = struct{}{}
 		}
 	}
 
-	return coreOSversion
+	IPisAvailable := func(ip net.IP) bool {
+		_, exists := assignedIPs[ip.String()]
+		return !exists
+	}
+
+	currentIP := net.ParseIP(mgr.config.Network.ExtraNICs[nicIndex].IPRange.Start)
+	rangeEnd := net.ParseIP(mgr.config.Network.ExtraNICs[nicIndex].IPRange.End)
+
+	for ; ; ipLessThanOrEqual(currentIP, rangeEnd) {
+		if IPisAvailable(currentIP) {
+			return currentIP
+		}
+		currentIP = incIP(currentIP)
+	}
+}
+
+// check af all hosts have properly assigned IP addresses to all Network.ExtraNICs entries
+func (mgr *pxeManagerT) checkAdditionalNICAddresses() {
+	hosts := mgr.cluster.GetAllHosts()
+	// sort the array so we have the host ordered by the internal IP
+	// this will sort in a way how hosts are listed with mayuctl
+	sort.SliceStable(hosts, func(i int, j int) bool {
+		return hosts[i].InternalAddr.String() < hosts[j].InternalAddr.String()
+	})
+	for _, h := range hosts {
+		// iterate over all extra NICs
+		for i, nic := range mgr.config.Network.ExtraNICs {
+			if h.AdditionalAddrs == nil {
+				h.AdditionalAddrs = make(map[string]net.IP)
+			}
+			// check if the interface has already entry on the host config
+			if ip, exists := h.AdditionalAddrs[nic.InterfaceName]; !exists {
+				// no entry, lets add a new clean IP from the range
+				h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i)
+			} else {
+				// host have assigned IP on this NIC, but we need to check if the network range matches
+				ipStart := net.ParseIP(nic.IPRange.Start)
+				ipEnd := net.ParseIP(nic.IPRange.End)
+				if ipLessThanOrEqual(ipStart, ip) &&
+					ipMoreThanOrEqual(ipEnd, ip) {
+					// we should be good, IP is in the range of Start and End
+					// DO nothing
+				} else {
+					// the ip is not in the range of Start and End
+					// we need to clear this ip and assign a new one
+					// this is tricky, this might not work as expected
+					h.AdditionalAddrs[nic.InterfaceName] = mgr.getNextAdditionalIP(i)
+				}
+			}
+		}
+		h.Save()
+	}
 }

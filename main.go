@@ -111,14 +111,12 @@ func mainRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	hostmgr.DisableGit = globalFlags.noGit
-
 	var cluster *hostmgr.Cluster
 
 	if fileExists(fmt.Sprintf("%s/cluster.json", globalFlags.clusterDir)) {
 		cluster, err = hostmgr.OpenCluster(globalFlags.clusterDir, logger)
 	} else {
-		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, true, logger)
+		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, logger)
 	}
 
 	if err != nil {
