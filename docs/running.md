@@ -24,7 +24,6 @@ There is also a script to fetch Giant Swarms binaries as an example.
 docker run --rm -it \
   --net=host \
   --cap-add=NET_ADMIN \
-  --net=host \
   --name=mayu \
   -v /var/lib/mayu:/var/lib/mayu \
   -v /etc/mayu/config.yaml:/etc/mayu/config.yaml \
