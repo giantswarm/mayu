@@ -71,6 +71,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 		return microerror.Mask(err)
 	}
 	fmt.Printf("execute  template sucesfull\n")
+	ioutil.WriteFile("./debug.template.yaml", data.Bytes(), os.ModeAppend)
 	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
 	if err != nil {
 		return microerror.Mask(err)
