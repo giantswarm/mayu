@@ -57,21 +57,25 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	fmt.Printf("render filess sucesfull\n")
 
 	ctx.Files = *files
 	tmpl, err := getTemplate(mgr.ignitionConfig, mgr.templateSnippets)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	fmt.Printf("get template sucesfull\n")
 
 	var data bytes.Buffer
 	if err = tmpl.Execute(&data, ctx); err != nil {
 		return microerror.Mask(err)
 	}
+	fmt.Printf("execute  template sucesfull\n")
 	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	fmt.Printf("convert to json sucesfull\n")
 	host.State = hostmgr.Installing
 	fmt.Fprintln(wr, string(ignitionJSON[:]))
 	return nil
