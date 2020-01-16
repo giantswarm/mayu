@@ -1,6 +1,9 @@
 package pxemgr
 
-import "net"
+import (
+	"bytes"
+	"net"
+)
 
 func incIP(ip net.IP) net.IP {
 	ip = ip.To4()
@@ -16,18 +19,10 @@ func incIP(ip net.IP) net.IP {
 
 // ip less or equal
 func ipLessThanOrEqual(ip net.IP, upperBound net.IP) bool {
-	if ip[3] < upperBound[3] {
-		return true
-	}
-	if ip[2] < upperBound[2] {
-		return true
-	}
-	if ip[1] < upperBound[1] {
-		return true
-	}
-	if ip[0] <= upperBound[0] {
-		return true
-	}
+	return bytes.Compare(ip, upperBound) <= 0
+}
 
-	return false
+// ip less or equal
+func ipMoreThanOrEqual(ip net.IP, upperBound net.IP) bool {
+	return bytes.Compare(ip, upperBound) >= 0
 }

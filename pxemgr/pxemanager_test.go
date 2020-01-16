@@ -20,24 +20,22 @@ import (
 const (
 	baseConfig = `default_coreos_version: myversion
 network:
-  ip_range:
-    start: 1.1.1.1
-    end: 1.1.1.2
+  primary_nic:
+    ip_range:
+      start: 1.1.1.1
+      end: 1.1.1.2
 templates_env:
   mayu_https_endpoint: https://mayu
 `
 	configOK  = baseConfig + `  update: "no_updates"`
 	configErr = baseConfig + `  update: "update"`
 	ignition  = `ignition:
-  version:
-    major: 2
-    minor: 0
-    patch: 0
+  version: 2.2.0
 systemd:
 {{if eq  .TemplatesEnv.update "no_updates"}}
   units:
     - name: update-engine.service
-      enable: false
+      enabled: false
       mask: true{{end}}
 `
 )
@@ -78,7 +76,7 @@ func setUp(t *testing.T) *helper {
 		t.Fatalf("failed to create logger cluster: %s", err)
 	}
 
-	h.cluster, err = hostmgr.NewCluster(h.dir, true, logger)
+	h.cluster, err = hostmgr.NewCluster(h.dir, logger)
 	if err != nil {
 		t.Fatalf("creating cluster: %s", err)
 	}
@@ -89,7 +87,7 @@ func setUp(t *testing.T) *helper {
 
 	h.pxeCfg = PXEManagerConfiguration{
 		UseInternalEtcdDiscovery: true,
-		NoTLS: true,
+		NoTLS:                    true,
 		// This port is declared only to allow PXEMAnager instantiation (APIPort and
 		// PXEPort must be different), the server is not going to be started and we
 		// are going to test the handler method directly
@@ -142,7 +140,7 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	}
 
 	actual := h.w.Body.String()
-	expected := `{"ignition":{"version":"2.0.0","config":{}},"storage":{},"systemd":{"units":[{"name":"update-engine.service","mask":true}]},"networkd":{},"passwd":{}}
+	expected := `{"ignition":{"config":{},"security":{"tls":{}},"timeouts":{},"version":"2.2.0"},"networkd":{},"passwd":{},"storage":{},"systemd":{"units":[{"enabled":false,"mask":true,"name":"update-engine.service"}]}}
 `
 	if actual != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",

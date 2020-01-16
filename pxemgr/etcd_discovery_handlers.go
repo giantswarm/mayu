@@ -129,7 +129,6 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 	}
 
 	for i := 0; i <= 10; i++ {
-
 		buf := bytes.NewBuffer(body)
 		mgr.logger.Log("level", "info", "message", fmt.Sprintf("Body '%s'", body))
 

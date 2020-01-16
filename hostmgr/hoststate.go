@@ -7,10 +7,6 @@ import (
 
 type hostState int
 
-//XXX TODO intermediate states:
-//      => initially `installing` would be aok
-//        => eventually a `decommissioning` would be nice to have
-
 const (
 	Unknown hostState = iota
 	Configured

@@ -43,6 +43,7 @@ type PXEManagerConfiguration struct {
 	FilesDir                 string
 	Version                  string
 	CoreosAutologin          bool
+	ConsoleTTY               bool
 
 	Logger micrologger.Logger
 }
@@ -68,6 +69,7 @@ type pxeManagerT struct {
 	version                  string
 	configFile               string
 	coreosAutologin          bool
+	consoleTTY               bool
 
 	config  *Configuration
 	cluster *hostmgr.Cluster
@@ -126,6 +128,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		configFile:               c.ConfigFile,
 		version:                  c.Version,
 		coreosAutologin:          c.CoreosAutologin,
+		consoleTTY:               c.ConsoleTTY,
 
 		config:  &conf,
 		cluster: cluster,
@@ -192,6 +195,9 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		mgr.etcdDiscoveryUrl = mgr.config.TemplatesEnv["mayu_https_endpoint"].(string) + "/etcd"
 	}
 
+	// we need to do this on boot time to ensure all newly added Network.ExtraNICs have properly assigned IP to all hosts
+	mgr.checkAdditionalNICAddresses()
+
 	return mgr, nil
 }
 
@@ -237,12 +243,9 @@ func (mgr *pxeManagerT) startAPIserver() error {
 	mgr.apiRouter = mux.NewRouter()
 	//  api endpoint for setting metadata of machine
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/boot_complete").HandlerFunc(withSerialParam(mgr.bootComplete))
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/mark_fresh").HandlerFunc(withSerialParam(mgr.markFresh))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_provider_id").HandlerFunc(withSerialParam(mgr.setProviderId))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_ipmi_addr").HandlerFunc(withSerialParam(mgr.setIPMIAddr))
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_state").HandlerFunc(withSerialParam(mgr.setState))
 	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/set_etcd_cluster_token").HandlerFunc(withSerialParam(mgr.setEtcdClusterToken))
-	mgr.apiRouter.Methods("PUT").PathPrefix("/admin/host/{serial}/override").HandlerFunc(withSerialParam(mgr.override))
 
 	// list all machines/hosts method
 	mgr.apiRouter.Methods("GET").PathPrefix("/admin/hosts").HandlerFunc(mgr.hostsList)
@@ -333,40 +336,6 @@ func (mgr *pxeManagerT) Start() error {
 	}()
 
 	select {}
-}
-
-func (mgr *pxeManagerT) getNextProfile() string {
-	profileCount := mgr.cluster.GetProfileCount()
-
-	for _, profile := range mgr.config.Profiles {
-		if profileCount[profile.Name] < profile.Quantity {
-			return profile.Name
-		}
-	}
-	return ""
-}
-
-func (mgr *pxeManagerT) getNextInternalIP() net.IP {
-	assignedIPs := map[string]struct{}{}
-	for _, host := range mgr.cluster.GetAllHosts() {
-		assignedIPs[host.InternalAddr.String()] = struct{}{}
-	}
-
-	IPisAvailable := func(ip net.IP) bool {
-		_, exists := assignedIPs[ip.String()]
-		return !exists
-	}
-
-	currentIP := net.ParseIP(mgr.config.Network.IPRange.Start)
-	rangeEnd := net.ParseIP(mgr.config.Network.IPRange.End)
-
-	for ; ; ipLessThanOrEqual(currentIP, rangeEnd) {
-		if IPisAvailable(currentIP) {
-			return currentIP
-		}
-		currentIP = incIP(currentIP)
-	}
-
 }
 
 func (mgr *pxeManagerT) apiURL() string {

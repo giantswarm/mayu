@@ -1,24 +1,21 @@
 ignition:
-  version:
-   major: 2
-   minor: 0
-   patch: 0
+  version: 2.2.0
 systemd:
   units:
     - name: etcd2.service
-      enable: false
+      enabled: false
       mask: true
     - name: fleet.service
-      enable: false
+      enabled: false
       mask: true
     - name: systemd-modules-load.service
-      enable: true
+      enabled: true
     - name: systemd-networkd-wait-online.service
-      enable: true
+      enabled: true
     - name: docker.service
-      enable: true
+      enabled: true
     - name: var-lib-docker.mount
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=Mount /dev/sda to /var/lib/docker
@@ -42,7 +39,7 @@ systemd:
             Environment="DOCKER_OPT_IPMASQ="
             Environment="DOCKER_OPT_MTU="
     - name: ensure-connectivity.service
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=Ensures theres connectivity before starting etcd
@@ -58,7 +55,7 @@ systemd:
         [Install]
         WantedBy=multi-user.target
     - name: finish-install.service
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=finish mayu installation
@@ -75,7 +72,7 @@ systemd:
         WantedBy=multi-user.target
     - name: etcd3.service
       command: start
-      enable: true
+      enabled: true
       contents: |
         [Unit]
         Description=etcd
@@ -112,61 +109,52 @@ systemd:
 {{template "extra_units" .}}
 {{end}}
 
-{{if eq .ClusterNetwork.NetworkModel "bond"}}{{template "net_bond" .}}{{end}}
-{{if eq .ClusterNetwork.NetworkModel "singlenic"}}{{template "net_singlenic" .}}{{end}}
+{{if eq .ClusterNetwork.PrimaryNIC.Model.Type "bond"}}{{template "net_bond" .}}{{end}}
+{{if eq .ClusterNetwork.PrimaryNIC.Model.Type "singlenic"}}{{template "net_singlenic" .}}{{end}}
+{{if eq .ClusterNetwork.ExtraNICs}}{{template "extra_nics" .}}{{end}}
 
 storage:
   filesystems:
     - mount:
         device: "/dev/sda"
         format: "xfs"
-        create:
-          force: true
-          options:
-          - "-Ldocker"
+        label: docker
+        wipeFileSystem: true
   files:
     - filesystem: root
       path: /etc/hostname
-      mode: 0644
+      mode: 420
       user:
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: ",{{if eq .Host.Profile "core"}}master{{else}}worker{{end}}-{{.Host.Hostname}}"
+        source: "data:text/plain;charset=utf-8,{{if eq .Host.Profile "core"}}master{{else}}worker{{end}}-{{.Host.Hostname}}"
     - filesystem: root
       path: /etc/mayu-env
-      mode: 0644
+      mode: 420
       user:
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: ",SERIAL={{.Host.Serial}}"
+        source: "data:text/plain;charset=utf-8,SERIAL={{.Host.Serial}}"
 
 {{if eq .ClusterNetwork.NetworkModel "bond"}}
     - filesystem: root
       path: /etc/modprobe.d/bonding.conf
-      mode: 0644
+      mode: 420
       user:  
         id: 0
         group: 0
       contents:
-        source: 
-     a     scheme: data
-          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "conf/lacp-bonding.conf" }}"
+        source: "data:text/plain;charset=utf-8;base64,{{  index .Files "conf/lacp-bonding.conf" }}"
     - filesystem: root
       path: /etc/modules-load.d/bonding.conf
-      mode: 0644
+      mode: 420
       user:  
         id: 0
         group: 0
       contents:
-        source:
-          scheme: data
-          opaque: "text/plain;charset=utf-8;base64,{{  index .Files "conf/module-bonding.conf" }}"
+        source: "data:text/plain;charset=utf-8;base64,{{  index .Files "conf/module-bonding.conf" }}"
 {{end}}
 
 {{if eq .Host.Profile "core"}}

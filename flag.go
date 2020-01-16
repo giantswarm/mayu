@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+
 	"github.com/giantswarm/mayu/fs"
 )
 
@@ -30,6 +31,7 @@ const (
 	DefaultEtcdEndpoint             string = "http://127.0.0.1:2379"
 	DefaultEtcdCA                   string = ""
 	DefaultCoreosAutologin          bool   = false
+	DefaultConsoleTTY               bool   = false
 )
 
 type MayuFlags struct {
@@ -62,6 +64,7 @@ type MayuFlags struct {
 	etcdEndpoint             string
 	etcdCAfile               string
 	coreosAutologin          bool
+	consoleTTY               bool
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }

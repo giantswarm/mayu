@@ -65,6 +65,7 @@ func init() {
 	pf.StringVar(&globalFlags.etcdEndpoint, "etcd-endpoint", DefaultEtcdEndpoint, "The etcd endpoint for the internal discovery feature (you must also specify protocol).")
 	pf.StringVar(&globalFlags.etcdCAfile, "etcd-cafile", DefaultEtcdCA, "The etcd CA file, if etcd is using non-trustred root CA certificate")
 	pf.BoolVar(&globalFlags.coreosAutologin, "coreos-autologin", DefaultCoreosAutologin, "Sets kernel boot param 'coreos.autologin=1'. This is handy for debugging. Do NOT use for production!")
+	pf.BoolVar(&globalFlags.consoleTTY, "console-tty", DefaultConsoleTTY, "Sets kernel boot param 'console=ttyS0'. This is handy for debugging.")
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
 
@@ -110,14 +111,12 @@ func mainRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	hostmgr.DisableGit = globalFlags.noGit
-
 	var cluster *hostmgr.Cluster
 
 	if fileExists(fmt.Sprintf("%s/cluster.json", globalFlags.clusterDir)) {
 		cluster, err = hostmgr.OpenCluster(globalFlags.clusterDir, logger)
 	} else {
-		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, true, logger)
+		cluster, err = hostmgr.NewCluster(globalFlags.clusterDir, logger)
 	}
 
 	if err != nil {
@@ -150,6 +149,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		ImagesCacheDir:           globalFlags.imagesCacheDir,
 		FilesDir:                 globalFlags.filesDir,
 		CoreosAutologin:          globalFlags.coreosAutologin,
+		ConsoleTTY:               globalFlags.consoleTTY,
 		Version:                  projectVersion,
 
 		Logger: logger,
