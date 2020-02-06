@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	vmlinuzFile = "coreos_production_pxe.vmlinuz"
-	initrdFile  = "coreos_production_pxe_image.cpio.gz"
+	vmlinuzFile = "flatcar_production_pxe.vmlinuz"
+	initrdFile  = "flatcar_production_pxe_image.cpio.gz"
 )
 
 func (mgr *pxeManagerT) pxeKernelImage(coreOSversion string) (*os.File, error) {
