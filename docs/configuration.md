@@ -46,7 +46,7 @@ this default value.
 Most importantly you also need to fetch the Container Linux image version. This is explained in the [Running Mayu](running.md) section.
 
 ```yaml
-default_coreos_version: 1409.7.0
+default_flatcar_version: 2543.3.0
 ```
 
 ### Network

@@ -3,11 +3,12 @@ package hostmgr
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/giantswarm/microerror"
 	"net"
 	"os"
 	"path"
 	"time"
+
+	"github.com/giantswarm/microerror"
 )
 
 const hostConfFile = "conf.json"
@@ -33,7 +34,7 @@ type Host struct {
 
 	State hostState
 
-	CoreOSVersion string `json:",omitempty"`
+	FlatcarVersion string `json:",omitempty"`
 
 	hostDir     *os.File
 	lastModTime time.Time

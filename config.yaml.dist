@@ -1,6 +1,6 @@
 # used to install machines and if no coreos
 # version is given in the profile
-default_coreos_version: 1409.7.0
+default_flatcar_version: 1409.7.0
 
 network:
     bind_addr: 10.0.0.254

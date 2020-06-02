@@ -77,7 +77,7 @@ func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
 			if host.Profile == "" {
 				host.Profile = defaultProfileName
 			}
-			host.CoreOSVersion = mgr.config.DefaultCoreOSVersion
+			host.FlatcarVersion = mgr.config.DefaultFlatcarVersion
 		}
 		if host.EtcdClusterToken == "" {
 			host.EtcdClusterToken = mgr.cluster.Config.DefaultEtcdClusterToken
@@ -150,7 +150,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	var img *os.File
 	var err error
 
-	coreOSversion := mgr.config.DefaultCoreOSVersion
+	coreOSversion := mgr.config.DefaultFlatcarVersion
 	mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
 
 	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
@@ -208,7 +208,7 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 
 	host.State = hostmgr.Running
 	host.LastBoot = time.Now()
-	host.CoreOSVersion = payload.CoreOSVersion
+	host.FlatcarVersion = payload.FlatcarVersion
 
 	err = host.Save()
 	if err != nil {

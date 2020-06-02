@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	baseConfig = `default_coreos_version: myversion
+	baseConfig = `default_flatcar_version: myversion
 network:
   primary_nic:
     ip_range:
