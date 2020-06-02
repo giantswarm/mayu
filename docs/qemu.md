@@ -6,21 +6,21 @@ Btw if you are looking for a way to test Mayu with Qemu. We have created [Onsho]
 
 ## Prepare Mayu
 
-Within a release (or after running `make bin-dist`) you will find a script called `./fetch-coreos-qemu-image.sh`. This image will download the PXE image and kernel but extract the `/usr` filesystem and put it in a folder that can be served by Mayu.
+Within a release (or after running `make bin-dist`) you will find a script called `./fetch-flatcar-qemu-image.sh`. This image will download the PXE image and kernel but extract the `/usr` filesystem and put it in a folder that can be served by Mayu.
 
-Note: You need to install the Container Linux image signing key to be able to verify the downloads. See https://coreos.com/os/docs/latest/verify-images.html
+Note: You need to install the Container Linux image signing key to be able to verify the downloads. See https://docs.flatcar-linux.org/os/verify-images/
 
 To fetch Container Linux `1122.2.0` you can run:
 ```
-./fetch-coreos-qemu-image 1122.2.0
+./fetch-flatcar-qemu-image 1122.2.0
 ```
 
 Or if you prefer the alpha channel use:
 ```
-./fetch-coreos-qemu-image 1068.0.0 alpha
+./fetch-flatcar-qemu-image 1068.0.0 alpha
 ```
 
-This will download the image into a folder called `./images/qemu/<coreos-version>`
+This will download the image into a folder called `./images/qemu/<flatcar-version>`
 
 ## Create a container
 
@@ -51,8 +51,8 @@ set -eu
 echo "allow br0" > /etc/qemu/bridge.conf
 
 ROOTFS=/usr/code/rootfs/rootfs.img
-KERNEL=/usr/code/images/coreos_production_qemu.vmlinuz
-USRFS=/usr/code/images/coreos_production_qemu_usr_image.squashfs
+KERNEL=/usr/code/images/flatcar_production_qemu.vmlinuz
+USRFS=/usr/code/images/flatcar_production_qemu_usr_image.squashfs
 MAC_ADDRESS=$(printf '%02X:%02X:%02X:%02X:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)))
 
 if [ ! -f $ROOTFS ]; then
@@ -82,14 +82,14 @@ exec /usr/bin/qemu-system-x86_64 \
     -append "console=ttyS0 root=/dev/disk/by-id/virtio-rootfs rootflags=rw mount.usr=/dev/disk/by-id/virtio-usr.readonly mount.usrflags=ro"
 ```
 
-Don't forget to add your own cloudconfig.yaml for your VM. Then build the container image: `docker build -t giantswarm/coreos-qemu .`.
+Don't forget to add your own cloudconfig.yaml for your VM. Then build the container image: `docker build -t giantswarm/flatcar-qemu .`.
 
 ## Fetch the image
 
 Now you just have to fetch the assets from Mayu and start the VM on the host itself. Fetching can be done via a cloudconfig unit on the host. So you need to include this snippet in your `./templates/last_stage_cloudconfig.yaml`.
 
 ```
-coreos:
+flatcar:
   units:
   - name: fetch-qemu-images.service
     command: start
@@ -103,8 +103,8 @@ coreos:
       [Service]
       Type=oneshot
       Environment="IMAGE_DIR=/home/core/images"
-      Environment="KERNEL=coreos_production_qemu.vmlinuz"
-      Environment="USRFS=coreos_production_qemu_usr_image.squashfs"
+      Environment="KERNEL=flatcar_production_qemu.vmlinuz"
+      Environment="USRFS=flatcar_production_qemu_usr_image.squashfs"
       ExecStartPre=/bin/mkdir -p ${IMAGE_DIR}
       ExecStartPre=/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/images/{{.Host.Serial}}/qemu/${KERNEL} -O ${IMAGE_DIR}/${KERNEL}
       ExecStartPre=/usr/bin/wget {{index .TemplatesEnv "mayu_http_endpoint"}}/images/{{.Host.Serial}}/qemu/${KERNEL}.sha256 -O ${IMAGE_DIR}/${KERNEL}.sha256
@@ -127,5 +127,5 @@ docker run -ti
     --net=host \
     -v $(pwd)/images:/usr/code/images \
     -v /home/core/vms/foo/:/usr/code/rootfs/ \
-    giantswarm/coreos-qemu
+    giantswarm/flatcar-qemu
 ```

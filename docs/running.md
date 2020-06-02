@@ -6,10 +6,10 @@ Before you start up Mayu you need to download a Container Linux image. In fact y
 all the Container Linux versions that you specified in your `config.yaml`. You definitely need your
 default Container Linux version. But you might also define different Container Linux versions within your profiles.
 
-*Note:* the script is part of a release tarball or if you've build Mayu yourself it is in `bin-dist/`. Please do not run `scripts/fetch-coreos-image` - you need to fetch or build a distribution first.
+*Note:* the script is part of a release tarball or if you've build Mayu yourself it is in `bin-dist/`. Please do not run `scripts/fetch-flatcar-image` - you need to fetch or build a distribution first.
 
 ```
-./fetch-coreos-image 1122.2.0
+./fetch-flatcar-image 1122.2.0
 ```
 
 If you like to distribute your own binaries for docker, etcd or fleet have a look at [Yochu](https://github.com/giantswarm/yochu).
