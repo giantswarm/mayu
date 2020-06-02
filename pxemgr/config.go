@@ -32,10 +32,10 @@ func LoadConfig(filePath string) (Configuration, error) {
 }
 
 type Configuration struct {
-	DefaultCoreOSVersion string `yaml:"default_coreos_version"`
-	Network              Network
-	Profiles             []Profile
-	TemplatesEnv         map[string]interface{} `yaml:"templates_env"`
+	DefaultFlatcarVersion string `yaml:"default_flatcar_version"`
+	Network               Network
+	Profiles              []Profile
+	TemplatesEnv          map[string]interface{} `yaml:"templates_env"`
 }
 
 type Profile struct {
@@ -43,7 +43,7 @@ type Profile struct {
 	Name             string
 	Tags             []string
 	DisableEngine    bool   `yaml:"disable_engine"`
-	CoreOSVersion    string `yaml:"coreos_version"`
+	FlatcarVersion   string `yaml:"flatcar_version"`
 	EtcdClusterToken string `yaml:"etcd_cluster_token"`
 }
 

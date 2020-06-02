@@ -1,0 +1,43 @@
+#!/bin/sh
+
+set -eu
+
+: ${1?"Usage: $0 <flatcar-version> <path-to-store-images>"}
+
+FLATCAR_VERSION=$1
+DEFAULT_IMAGES_DIR=$(pwd)/images
+IMAGES_DIR=${IMAGES_DIR:-$DEFAULT_IMAGES_DIR}
+KEEP_IMAGES=${KEEP_IMAGES:-"false"}
+
+if [ ${KEEP_IMAGES} = "false" ]; then
+    # remove old images
+    rm -rf ${IMAGES_DIR}/${FLATCAR_VERSION}
+fi
+
+mkdir -p ${IMAGES_DIR}/${FLATCAR_VERSION}
+
+if [ ! -f ${IMAGES_DIR}/${FLATCAR_VERSION}/keep ]; then
+    wget -O ${IMAGES_DIR}/${FLATCAR_VERSION}/flatcar_production_image.bin.bz2 http://stable.release.flatcar-linux.net/amd64-usr/${FLATCAR_VERSION}/flatcar_production_image.bin.bz2 && \
+    wget -O ${IMAGES_DIR}/${FLATCAR_VERSION}/flatcar_production_pxe.vmlinuz  http://stable.release.flatcar-linux.net/amd64-usr/${FLATCAR_VERSION}/flatcar_production_pxe.vmlinuz && \
+    wget -O ${IMAGES_DIR}/${FLATCAR_VERSION}/flatcar_pxe_image.cpio.gz  http://stable.release.flatcar-linux.net/amd64-usr/${FLATCAR_VERSION}/flatcar_production_pxe_image.cpio.gz
+    echo "$FLATCAR_VERSION" > ${IMAGES_DIR}/${FLATCAR_VERSION}/flatcar-version
+
+    mkdir -p ${IMAGES_DIR}/${FLATCAR_VERSION}/etc/systemd/system/ignition-disks.service.d/
+    cp inject_pxe/00-ignition-delay.conf ${IMAGES_DIR}/${FLATCAR_VERSION}/etc/systemd/system/ignition-disks.service.d/
+
+    docker run  --net=host --rm -v ${IMAGES_DIR}/${FLATCAR_VERSION}:/usr/code/images \
+        alpine:3.8 /bin/sh -c "apk add cpio gzip && \
+        zcat /usr/code/images/flatcar_pxe_image.cpio.gz > /usr/code/images/flatcar_production_pxe_image.cpio && \
+        cd /usr/code/images && find etc | cpio -o -A -H newc -O flatcar_production_pxe_image.cpio && \
+        gzip -f flatcar_production_pxe_image.cpio && echo DONE"
+
+    rm -rf ${IMAGES_DIR}/${FLATCAR_VERSION}/etc
+    rm -f ${IMAGES_DIR}/${FLATCAR_VERSION}/flatcar_pxe_image.cpio.gz
+
+    if [ ${KEEP_IMAGES} = "true" ]; then
+        touch ${IMAGES_DIR}/${FLATCAR_VERSION}/keep
+    fi
+
+else
+    echo "Images for ${FLATCAR_VERSION} already exist on filesystem"
+fi

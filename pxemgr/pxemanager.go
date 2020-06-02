@@ -89,8 +89,8 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		return nil, microerror.Maskf(err, "failed to load config from file")
 	}
 
-	if conf.DefaultCoreOSVersion == "" {
-		return nil, microerror.Maskf(invalidConfigError, "No default_coreos_version specified in %s", c.ConfigFile)
+	if conf.DefaultFlatcarVersion == "" {
+		return nil, microerror.Maskf(invalidConfigError, "No default_flatcar_version specified in %s", c.ConfigFile)
 	}
 
 	if c.APIPort == c.PXEPort {
