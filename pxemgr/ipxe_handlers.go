@@ -40,6 +40,11 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
 	}
 
+	if mgr.systemdShell {
+		extraFlags += " rd.shell"
+		mgr.logger.Log("level", "info", "message", "adding rd.shell to kernel args")
+	}
+
 	if mgr.rescueShell {
 		extraFlags += " rd.rescue"
 		mgr.logger.Log("level", "info", "message", "adding rd.rescue to kernel args")

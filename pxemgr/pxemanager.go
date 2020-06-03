@@ -44,6 +44,7 @@ type PXEManagerConfiguration struct {
 	Version                  string
 	CoreosAutologin          bool
 	ConsoleTTY               bool
+	SystemdShell             bool
 	RescueShell              bool
 	EmergencyShell           bool
 
@@ -72,6 +73,7 @@ type pxeManagerT struct {
 	configFile               string
 	coreosAutologin          bool
 	consoleTTY               bool
+	systemdShell             bool
 	rescueShell              bool
 	emergencyShell           bool
 
@@ -133,6 +135,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		version:                  c.Version,
 		coreosAutologin:          c.CoreosAutologin,
 		consoleTTY:               c.ConsoleTTY,
+		systemdShell:             c.SystemdShell,
 		rescueShell:              c.RescueShell,
 		emergencyShell:           c.EmergencyShell,
 

@@ -32,6 +32,7 @@ const (
 	DefaultEtcdCA                   string = ""
 	DefaultCoreosAutologin          bool   = false
 	DefaultConsoleTTY               bool   = false
+	DefaultSystemdShell             bool   = false
 	DefaultRescueShell              bool   = false
 	DefaultEmergencyShell           bool   = false
 )
@@ -67,6 +68,7 @@ type MayuFlags struct {
 	etcdCAfile               string
 	coreosAutologin          bool
 	consoleTTY               bool
+	systemdShell             bool
 	rescueShell              bool
 	emergencyShell           bool
 
