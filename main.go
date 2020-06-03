@@ -66,6 +66,8 @@ func init() {
 	pf.StringVar(&globalFlags.etcdCAfile, "etcd-cafile", DefaultEtcdCA, "The etcd CA file, if etcd is using non-trustred root CA certificate")
 	pf.BoolVar(&globalFlags.coreosAutologin, "coreos-autologin", DefaultCoreosAutologin, "Sets kernel boot param 'coreos.autologin=1'. This is handy for debugging. Do NOT use for production!")
 	pf.BoolVar(&globalFlags.consoleTTY, "console-tty", DefaultConsoleTTY, "Sets kernel boot param 'console=ttyS0'. This is handy for debugging.")
+	pf.BoolVar(&globalFlags.rescueShell, "rescue-shell", DefaultRescueShell, "Sets kernel boot param 'rd.rescue'. Filesystems will be mounted R/W and network interfaces won't be activated. Equivalent to single-user mode.")
+	pf.BoolVar(&globalFlags.emergencyShell, "emergency-shell", DefaultEmergencyShell, "Sets kernel boot param 'rd.emergency'. Filesystems will be mounted R/O and network interfaces won't be activated.")
 	globalFlags.filesystem = fs.DefaultFilesystem
 }
 
@@ -150,6 +152,8 @@ func mainRun(cmd *cobra.Command, args []string) {
 		FilesDir:                 globalFlags.filesDir,
 		CoreosAutologin:          globalFlags.coreosAutologin,
 		ConsoleTTY:               globalFlags.consoleTTY,
+		RescueShell:              globalFlags.rescueShell,
+		EmergencyShell:           globalFlags.emergencyShell,
 		Version:                  projectVersion,
 
 		Logger: logger,
