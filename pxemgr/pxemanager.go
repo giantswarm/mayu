@@ -72,8 +72,8 @@ type pxeManagerT struct {
 	configFile               string
 	coreosAutologin          bool
 	consoleTTY               bool
-	RescueShell              bool
-	EmergencyShell           bool
+	rescueShell              bool
+	emergencyShell           bool
 
 	config  *Configuration
 	cluster *hostmgr.Cluster
