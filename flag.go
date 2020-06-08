@@ -32,6 +32,7 @@ const (
 	DefaultEtcdCA                   string = ""
 	DefaultCoreosAutologin          bool   = false
 	DefaultConsoleTTY               bool   = false
+	DefaultSystemdShell             bool   = false
 )
 
 type MayuFlags struct {
@@ -65,6 +66,7 @@ type MayuFlags struct {
 	etcdCAfile               string
 	coreosAutologin          bool
 	consoleTTY               bool
+	systemdShell             bool
 
 	filesystem fs.FileSystem // internal filesystem abstraction to enable testing of file operations.
 }
