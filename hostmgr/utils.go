@@ -2,8 +2,9 @@ package hostmgr
 
 import (
 	"encoding/json"
-	"github.com/giantswarm/microerror"
 	"os"
+
+	"github.com/giantswarm/microerror"
 )
 
 func saveJson(data interface{}, filepath string) error {

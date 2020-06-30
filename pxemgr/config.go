@@ -5,9 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/microerror"
 	"gopkg.in/yaml.v2"
+
+	"github.com/giantswarm/mayu/hostmgr"
 )
 
 func LoadConfig(filePath string) (Configuration, error) {

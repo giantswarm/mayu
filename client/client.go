@@ -9,9 +9,10 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/giantswarm/microerror"
+
 	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/mayu/httputil"
-	"github.com/giantswarm/microerror"
 )
 
 const contentType = "application/json"

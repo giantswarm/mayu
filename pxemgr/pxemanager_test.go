@@ -12,9 +12,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/giantswarm/micrologger"
+
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/micrologger"
 )
 
 const (

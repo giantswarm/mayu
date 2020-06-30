@@ -8,12 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/giantswarm/mayu/fs"
-	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/mayu/pxemgr"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"github.com/giantswarm/mayu/fs"
+	"github.com/giantswarm/mayu/hostmgr"
+	"github.com/giantswarm/mayu/pxemgr"
 )
 
 var (
