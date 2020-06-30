@@ -82,7 +82,7 @@ func (mgr *pxeManagerT) etcdDiscoveryNewCluster(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	mgr.logger.Log("level", "info", "message", fmt.Sprintf("New cluster created '%s'", token))
+	_ = mgr.logger.Log("level", "info", "message", fmt.Sprintf("New cluster created '%s'", token))
 
 	fmt.Fprintf(w, "%s/%s", mgr.etcdDiscoveryBaseURL(), token)
 }
@@ -99,7 +99,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyHandler(w http.ResponseWriter, r *http
 
 	copyHeader(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, _ = io.Copy(w, resp.Body)
 }
 
 func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Response, error) {
@@ -129,9 +129,9 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 		}
 	}
 
-	for i := 0; i <= 10; i++ {
+	for i := 0; i <= 10; i++ { // nolint
 		buf := bytes.NewBuffer(body)
-		mgr.logger.Log("level", "info", "message", fmt.Sprintf("Body '%s'", body))
+		_ = mgr.logger.Log("level", "info", "message", fmt.Sprintf("Body '%s'", body))
 
 		outreq, err := http.NewRequest(r.Method, u.String(), buf)
 		if err != nil {
@@ -146,7 +146,7 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 			return nil, microerror.Mask(err)
 		}
 
-		return resp, nil
+		return resp, nil // nolint
 	}
 
 	return nil, microerror.Mask(errors.New("all attempts at proxying to etcd failed"))

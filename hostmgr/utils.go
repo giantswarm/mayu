@@ -18,7 +18,7 @@ func saveJson(data interface{}, filepath string) error {
 	}
 	defer file.Close()
 
-	file.Write(marshalled)
+	_, _ = file.Write(marshalled)
 	return nil
 }
 

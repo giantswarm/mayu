@@ -77,7 +77,7 @@ func Test_Client_004(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 	defer ts.Close()
 
@@ -107,7 +107,7 @@ func Test_Client_004(t *testing.T) {
 func Test_Client_005(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer ts.Close()
 
@@ -122,7 +122,7 @@ func Test_Client_005(t *testing.T) {
 func Test_Client_006(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	// Immediatelly close the server.
 	ts.Close()
@@ -157,7 +157,7 @@ func Test_Client_007(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 	defer ts.Close()
 
@@ -187,7 +187,7 @@ func Test_Client_007(t *testing.T) {
 func Test_Client_008(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer ts.Close()
 
@@ -202,7 +202,7 @@ func Test_Client_008(t *testing.T) {
 func Test_Client_009(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	// Immediatelly close the server.
 	ts.Close()
@@ -267,7 +267,7 @@ func Test_Client_013(t *testing.T) {
 func Test_Client_014(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer ts.Close()
 
@@ -282,7 +282,7 @@ func Test_Client_014(t *testing.T) {
 func Test_Client_015(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	// Immediatelly close the server.
 	ts.Close()
@@ -356,7 +356,7 @@ func Test_Client_016(t *testing.T) {
 func Test_Client_017(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer ts.Close()
 
@@ -371,7 +371,7 @@ func Test_Client_017(t *testing.T) {
 func Test_Client_018(t *testing.T) {
 	newClient, ts := newClientAndServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	// Immediatelly close the server.
 	ts.Close()
