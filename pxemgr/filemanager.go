@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/giantswarm/microerror"
 	"io/ioutil"
 	"path"
 	"text/template"
+
+	"github.com/giantswarm/microerror"
 )
 
 // Files is map[string]string for files that we fetched from disk and then filled with data.

@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/giantswarm/microerror"
+
 	"github.com/giantswarm/mayu-infopusher/machinedata"
 	"github.com/giantswarm/mayu/hostmgr"
-	"github.com/giantswarm/microerror"
 )
 
 const (

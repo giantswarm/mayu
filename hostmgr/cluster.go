@@ -16,6 +16,7 @@ import (
 
 	"crypto/tls"
 	"crypto/x509"
+
 	"github.com/coreos/etcd/client"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"

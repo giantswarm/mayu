@@ -14,8 +14,9 @@ import (
 	"path"
 	"text/template"
 
-	"github.com/giantswarm/mayu/hostmgr"
 	"github.com/giantswarm/microerror"
+
+	"github.com/giantswarm/mayu/hostmgr"
 )
 
 func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) error {

@@ -2,6 +2,7 @@ package hostmgr
 
 import (
 	"fmt"
+
 	"github.com/giantswarm/microerror"
 )
 
