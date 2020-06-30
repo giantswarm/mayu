@@ -33,17 +33,17 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	extraFlags := ""
 	if mgr.consoleTTY {
 		extraFlags += " console=ttyS0"
-		mgr.logger.Log("level", "info", "message", "adding 'console=ttyS0' to kernel args")
+		_ = mgr.logger.Log("level", "info", "message", "adding 'console=ttyS0' to kernel args")
 	}
 
 	if mgr.coreosAutologin {
 		extraFlags += " coreos.autologin"
-		mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
+		_ = mgr.logger.Log("level", "info", "message", "adding coreos.autologin to kernel args")
 	}
 
 	if mgr.systemdShell {
 		extraFlags += " rd.shell"
-		mgr.logger.Log("level", "info", "message", "adding rd.shell to kernel args")
+		_ = mgr.logger.Log("level", "info", "message", "adding rd.shell to kernel args")
 	}
 
 	// for ignition we use only 1phase installation without mayu-infopusher
@@ -56,7 +56,7 @@ func (mgr *pxeManagerT) ipxeBootScript(w http.ResponseWriter, r *http.Request) {
 	buffer.WriteString(initrd)
 	buffer.WriteString("boot\n")
 
-	w.Write(buffer.Bytes())
+	_, _ = w.Write(buffer.Bytes())
 }
 
 func (mgr *pxeManagerT) maybeCreateHost(serial string) (*hostmgr.Host, error) {
@@ -116,39 +116,39 @@ func (mgr *pxeManagerT) ignitionGenerator(w http.ResponseWriter, r *http.Request
 	}
 
 	if hostData.Serial == "" {
-		mgr.logger.Log("level", "error", "message", fmt.Sprintf("empty serial. %+v\n", hostData))
+		_ = mgr.logger.Log("level", "error", "message", fmt.Sprintf("empty serial. %+v\n", hostData))
 		w.WriteHeader(400)
-		w.Write([]byte("no serial ? :/"))
+		_, _ = w.Write([]byte("no serial ? :/"))
 		return
 	}
 
 	host, err := mgr.maybeCreateHost(hostData.Serial)
 	if err != nil {
-		mgr.logger.Log("level", "error", "message", fmt.Sprintf("failed to create machine host %+v\n", hostData))
+		_ = mgr.logger.Log("level", "error", "message", fmt.Sprintf("failed to create machine host %+v\n", hostData))
 	}
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
-	mgr.logger.Log("level", "info", "message", fmt.Sprintf("got host %+v\n", host))
+	_ = mgr.logger.Log("level", "info", "message", fmt.Sprintf("got host %+v\n", host))
 
 	host.State = hostmgr.Installing
 	host.Hostname = strings.Replace(host.InternalAddr.String(), ".", "-", 4)
-	host.Save()
+	_ = host.Save()
 
-	mgr.cluster.Update()
+	_ = mgr.cluster.Update()
 
 	buf := &bytes.Buffer{}
-	mgr.logger.Log("level", "info", "message", "generating a ignition config")
+	_ = mgr.logger.Log("level", "info", "message", "generating a ignition config")
 
 	if err := mgr.WriteIgnitionConfig(*host, buf); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte("generating ignition config failed: " + err.Error()))
+		_, _ = w.Write([]byte("generating ignition config failed: " + err.Error()))
 
-		mgr.logger.Log("level", "error", "message", "generating ignition config failed", "stack", err)
+		_ = mgr.logger.Log("level", "error", "message", "generating ignition config failed", "stack", err)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		mgr.logger.Log("level", "error", "message", "failed to write response", "stack", err)
+		_ = mgr.logger.Log("level", "error", "message", "failed to write response", "stack", err)
 	}
 }
 
@@ -157,7 +157,7 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	coreOSversion := mgr.config.DefaultFlatcarVersion
-	mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
+	_ = mgr.logger.Log("level", "info", "message", fmt.Sprintf("sending Container Linux %s image", coreOSversion))
 
 	if strings.HasSuffix(r.URL.Path, "/vmlinuz") {
 		img, err = mgr.pxeKernelImage(coreOSversion)
@@ -171,9 +171,9 @@ func (mgr *pxeManagerT) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	setContentLength(w, img)
+	_ = setContentLength(w, img)
 	defer img.Close()
-	io.Copy(w, img)
+	_, _ = io.Copy(w, img)
 }
 
 func setContentLength(w http.ResponseWriter, f *os.File) error {
@@ -190,25 +190,25 @@ func (mgr *pxeManagerT) hostsList(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	enc := json.NewEncoder(w)
-	enc.Encode(hosts)
+	_ = enc.Encode(hosts)
 }
 
 func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *http.Request) {
 	host, exists := mgr.cluster.HostWithSerial(serial)
 	if !exists {
 		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
+		_, _ = w.Write([]byte("host doesn't exist"))
 		return
 	}
 
-	mgr.logger.Log("level", "info", "message", fmt.Sprintf("host '%s' just finished booting", serial))
+	_ = mgr.logger.Log("level", "info", "message", fmt.Sprintf("host '%s' just finished booting", serial))
 
 	decoder := json.NewDecoder(r.Body)
 	payload := hostmgr.Host{}
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in boot_complete request"))
+		_, _ = w.Write([]byte("unable to parse json data in boot_complete request"))
 		return
 	}
 
@@ -219,10 +219,10 @@ func (mgr *pxeManagerT) bootComplete(serial string, w http.ResponseWriter, r *ht
 	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte("committing updated host state=running failed"))
+		_, _ = w.Write([]byte("committing updated host state=running failed"))
 		return
 	}
-	mgr.cluster.Update()
+	_ = mgr.cluster.Update()
 	w.WriteHeader(202)
 }
 
@@ -230,7 +230,7 @@ func (mgr *pxeManagerT) setProviderId(serial string, w http.ResponseWriter, r *h
 	host, exists := mgr.cluster.HostWithSerial(serial)
 	if !exists {
 		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
+		_, _ = w.Write([]byte("host doesn't exist"))
 		return
 	}
 
@@ -239,7 +239,7 @@ func (mgr *pxeManagerT) setProviderId(serial string, w http.ResponseWriter, r *h
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in set_provider_id request"))
+		_, _ = w.Write([]byte("unable to parse json data in set_provider_id request"))
 		return
 	}
 
@@ -247,10 +247,10 @@ func (mgr *pxeManagerT) setProviderId(serial string, w http.ResponseWriter, r *h
 	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte("committing updated host provider id failed"))
+		_, _ = w.Write([]byte("committing updated host provider id failed"))
 		return
 	}
-	mgr.cluster.Update()
+	_ = mgr.cluster.Update()
 	w.WriteHeader(202)
 }
 
@@ -258,7 +258,7 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	host, exists := mgr.cluster.HostWithSerial(serial)
 	if !exists {
 		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
+		_, _ = w.Write([]byte("host doesn't exist"))
 		return
 	}
 
@@ -267,7 +267,7 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in set_ipmi_addr request"))
+		_, _ = w.Write([]byte("unable to parse json data in set_ipmi_addr request"))
 		return
 	}
 
@@ -275,10 +275,10 @@ func (mgr *pxeManagerT) setIPMIAddr(serial string, w http.ResponseWriter, r *htt
 	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte("committing updated host ipmi address failed"))
+		_, _ = w.Write([]byte("committing updated host ipmi address failed"))
 		return
 	}
-	mgr.cluster.Update()
+	_ = mgr.cluster.Update()
 	w.WriteHeader(202)
 }
 
@@ -286,7 +286,7 @@ func (mgr *pxeManagerT) setEtcdClusterToken(serial string, w http.ResponseWriter
 	host, exists := mgr.cluster.HostWithSerial(serial)
 	if !exists {
 		w.WriteHeader(400)
-		w.Write([]byte("host doesn't exist"))
+		_, _ = w.Write([]byte("host doesn't exist"))
 		return
 	}
 
@@ -295,7 +295,7 @@ func (mgr *pxeManagerT) setEtcdClusterToken(serial string, w http.ResponseWriter
 	err := decoder.Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("unable to parse json data in set_etcd_cluster_token request"))
+		_, _ = w.Write([]byte("unable to parse json data in set_etcd_cluster_token request"))
 		return
 	}
 
@@ -303,17 +303,16 @@ func (mgr *pxeManagerT) setEtcdClusterToken(serial string, w http.ResponseWriter
 	err = host.Save()
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte("committing updated host etcd cluster token failed"))
+		_, _ = w.Write([]byte("committing updated host etcd cluster token failed"))
 		return
 	}
-	mgr.cluster.Update()
+	_ = mgr.cluster.Update()
 	w.WriteHeader(202)
 }
 
 func (mgr *pxeManagerT) welcomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-	w.Write([]byte("this is the iPXE server of mayu " + mgr.version))
-	return
+	_, _ = w.Write([]byte("this is the iPXE server of mayu " + mgr.version))
 }
 
 func (mgr *pxeManagerT) getNextProfile() string {
@@ -408,6 +407,6 @@ func (mgr *pxeManagerT) checkAdditionalNICAddresses() {
 				}
 			}
 		}
-		h.Save()
+		_ = h.Save()
 	}
 }

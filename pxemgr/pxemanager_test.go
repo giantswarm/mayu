@@ -59,13 +59,13 @@ func setUp(t *testing.T) *helper {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(h.dir, "config_ok.yaml"), []byte(configOK), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(h.dir, "config_ok.yaml"), []byte(configOK), 0644); err != nil { // nolint
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(h.dir, "config_err.yaml"), []byte(configErr), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(h.dir, "config_err.yaml"), []byte(configErr), 0644); err != nil { // nolint
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(h.dir, "ignition.yaml"), []byte(ignition), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(h.dir, "ignition.yaml"), []byte(ignition), 0644); err != nil { // nolint
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(filepath.Join(h.dir, "files"), 0644); err != nil {
@@ -102,7 +102,7 @@ func setUp(t *testing.T) *helper {
 		Serial: "myserial",
 	}
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(hostData)
+	_ = json.NewEncoder(b).Encode(hostData)
 	h.req = httptest.NewRequest("GET", "http://127.0.0.1:4080/ignition?serial=test1234", b)
 	h.w = httptest.NewRecorder()
 

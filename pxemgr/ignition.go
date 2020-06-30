@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
 
 	"gopkg.in/yaml.v2"
 
@@ -135,41 +134,4 @@ func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	}
 
 	return dataOut, nil
-}
-
-// hasUnrecognizedKeys finds unrecognized keys and warns about them on stderr.
-// returns false when no unrecognized keys were found, true otherwise.
-func hasUnrecognizedKeys(inCfg interface{}, refType reflect.Type) (warnings bool) {
-	if refType.Kind() == reflect.Ptr {
-		refType = refType.Elem()
-	}
-	switch inCfg.(type) {
-	case map[interface{}]interface{}:
-		ks := inCfg.(map[interface{}]interface{})
-	keys:
-		for key := range ks {
-			for i := 0; i < refType.NumField(); i++ {
-				sf := refType.Field(i)
-				tv := sf.Tag.Get("yaml")
-				if tv == key {
-					if warn := hasUnrecognizedKeys(ks[key], sf.Type); warn {
-						warnings = true
-					}
-					continue keys
-				}
-			}
-
-			fmt.Printf("Unrecognized keyword: %v", key)
-			warnings = true
-		}
-	case []interface{}:
-		ks := inCfg.([]interface{})
-		for i := range ks {
-			if warn := hasUnrecognizedKeys(ks[i], refType.Elem()); warn {
-				warnings = true
-			}
-		}
-	default:
-	}
-	return
 }

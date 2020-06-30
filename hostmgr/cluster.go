@@ -101,8 +101,8 @@ func (c *Cluster) CreateNewHost(serial string) (*Host, error) {
 	if newHost.InternalAddr != nil {
 		newHost.Hostname = strings.Replace(newHost.InternalAddr.String(), ".", "-", 4)
 	}
-	c.logger.Log("level", "info", "message", fmt.Sprintf("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname))
-	newHost.Save()
+	_ = c.logger.Log("level", "info", "message", fmt.Sprintf("hostname for  '%s' is %s", newHost.InternalAddr.String(), newHost.Hostname))
+	_ = newHost.Save()
 
 	return newHost, nil
 }
@@ -134,7 +134,7 @@ func (c *Cluster) Update() error {
 // returned as second return value.
 func (c *Cluster) HostWithSerial(serial string) (*Host, bool) {
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "message", "error getting the serial number using the internal cache", "stack", err)
+		_ = c.logger.Log("level", "error", "message", "error getting the serial number using the internal cache", "stack", err)
 		return nil, false
 	}
 	c.mu.Lock()
@@ -176,7 +176,7 @@ func (c *Cluster) GetAllHosts() []*Host {
 	hosts := make([]*Host, 0, len(c.hostsCache))
 
 	if err := c.Update(); err != nil {
-		c.logger.Log("level", "error", "message", "error getting the list of hosts based on the internal cache: %#v", "stack", err)
+		_ = c.logger.Log("level", "error", "message", "error getting the list of hosts based on the internal cache: %#v", "stack", err)
 		return hosts
 	}
 
@@ -322,7 +322,7 @@ func (c *Cluster) cacheHosts() error {
 			if fileExists(hostConfPath) {
 				host, err := HostFromDir(path.Join(c.baseDir, fi.Name()))
 				if err != nil {
-					c.logger.Log("level", "warning", "message", fmt.Sprintf("unable to process '%s'", hostConfPath), "stack", err)
+					_ = c.logger.Log("level", "warning", "message", fmt.Sprintf("unable to process '%s'", hostConfPath), "stack", err)
 				}
 				newCache[strings.ToLower(fi.Name())] = &cachedHost{
 					host:        host,
