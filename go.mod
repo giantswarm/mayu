@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/beorn7/perks v1.0.1
-	github.com/coreos/etcd v3.3.10+incompatible
+	github.com/coreos/etcd v3.3.15+incompatible
 	github.com/coreos/go-semver v0.3.0
 	github.com/giantswarm/mayu-infopusher v1.0.1
 	github.com/giantswarm/microerror v0.0.0-20191011121515-e0ebc4ecf5a5
