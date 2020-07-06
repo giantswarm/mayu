@@ -2,6 +2,7 @@ package pxemgr
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -114,8 +115,11 @@ func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 		Global:  dnsmasq.conf,
 	}
 
+	_ = dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", fmt.Sprintf("Creating: %s", dnsmasq.confpath))
+
 	file, err := os.Create(dnsmasq.confpath)
 	if err != nil {
+		_ = dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", fmt.Sprintf("error: %s", err.Error()))
 		return microerror.Mask(err)
 	}
 	defer file.Close()
