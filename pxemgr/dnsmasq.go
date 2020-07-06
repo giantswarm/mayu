@@ -104,6 +104,8 @@ func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 		return microerror.Mask(err)
 	}
 
+	_ = dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "template parsed")
+
 	tmplArgs := struct {
 		Network Network
 		Global  DNSmasqConfiguration
@@ -118,9 +120,14 @@ func (dnsmasq *DNSmasqInstance) updateConf(net Network) error {
 	}
 	defer file.Close()
 
+	_ = dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "file created")
+
 	err = tmpl.Execute(file, tmplArgs)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+
+	_ = dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "template executed")
+
 	return nil
 }
