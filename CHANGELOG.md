@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2020-07-09
+
 ### Changed
 
 - Fix killing `dnsmasq` process if it is running.
@@ -24,5 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Switch from `dep` to go modules.
 - Use `architect-orb` `0.9.0`.
 
-[Unreleased]: https://github.com/giantswarm/mayu/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/giantswarm/mayu/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/giantswarm/mayu/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/giantswarm/mayu/releases/tag/v1.1.0
