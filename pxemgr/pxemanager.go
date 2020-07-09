@@ -314,12 +314,12 @@ func (mgr *pxeManagerT) updateDNSmasqs() error {
 }
 
 func (mgr *pxeManagerT) Start() error {
-	err := mgr.DNSmasq.Start()
+	err := mgr.updateDNSmasqs()
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	err = mgr.updateDNSmasqs()
+	err = mgr.DNSmasq.Start()
 	if err != nil {
 		return microerror.Mask(err)
 	}
