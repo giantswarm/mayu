@@ -83,11 +83,7 @@ func (dnsmasq *DNSmasqInstance) Restart() error {
 	_ = dnsmasq.conf.Logger.Log("level", "info", "component", "dnsmasq", "message", "restarting Dnsmasq server")
 
 	if dnsmasq.cmd != nil {
-		err := dnsmasq.cmd.Process.Kill()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-
+		_ = dnsmasq.cmd.Process.Kill()
 	}
 	err := dnsmasq.Start()
 	if err != nil {
