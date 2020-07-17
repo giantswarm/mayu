@@ -2,9 +2,10 @@
 
 set -eu
 
-: ${1?"Usage: $0 <flatcar-version> <path-to-store-images>"}
+: ${1?"Usage: $0 <flatcar-version> <flatcar-channel> <path-to-store-images>"}
 
 FLATCAR_VERSION=$1
+FLATCAR_CHANNEL=$2
 DEFAULT_IMAGES_DIR=$(pwd)/images
 IMAGES_DIR=${IMAGES_DIR:-$DEFAULT_IMAGES_DIR}
 KEEP_IMAGES=${KEEP_IMAGES:-"false"}
