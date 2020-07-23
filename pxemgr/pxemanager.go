@@ -42,7 +42,7 @@ type PXEManagerConfiguration struct {
 	ImagesCacheDir           string
 	FilesDir                 string
 	Version                  string
-	CoreosAutologin          bool
+	FlatcarAutologin         bool
 	ConsoleTTY               bool
 	SystemdShell             bool
 
@@ -69,7 +69,7 @@ type pxeManagerT struct {
 	etcdCAFile               string
 	version                  string
 	configFile               string
-	coreosAutologin          bool
+	flatcarAutologin         bool
 	consoleTTY               bool
 	systemdShell             bool
 
@@ -129,7 +129,7 @@ func PXEManager(c PXEManagerConfiguration, cluster *hostmgr.Cluster) (*pxeManage
 		etcdCAFile:               c.EtcdCAFile,
 		configFile:               c.ConfigFile,
 		version:                  c.Version,
-		coreosAutologin:          c.CoreosAutologin,
+		flatcarAutologin:         c.FlatcarAutologin,
 		consoleTTY:               c.ConsoleTTY,
 		systemdShell:             c.SystemdShell,
 
@@ -220,7 +220,7 @@ func (mgr *pxeManagerT) startIPXEserver() error {
 	// get ignition
 	mgr.pxeRouter.Methods("GET").PathPrefix("/ignition").HandlerFunc(mgr.ignitionGenerator)
 
-	// endpoint for fetching coreos images defined by machine serial number
+	// endpoint for fetching flatcar images defined by machine serial number
 	mgr.pxeRouter.Methods("GET").PathPrefix("/images/{serial}").HandlerFunc(mgr.imagesHandler)
 
 	// serve static files like

@@ -30,7 +30,7 @@ const (
 	DefaultEtcdDiscoveryUrl         string = ""
 	DefaultEtcdEndpoint             string = "http://127.0.0.1:2379"
 	DefaultEtcdCA                   string = ""
-	DefaultCoreosAutologin          bool   = false
+	DefaultFlatcarAutologin         bool   = false
 	DefaultConsoleTTY               bool   = false
 	DefaultSystemdShell             bool   = false
 )
@@ -64,7 +64,7 @@ type MayuFlags struct {
 	etcdDiscoveryUrl         string
 	etcdEndpoint             string
 	etcdCAfile               string
-	coreosAutologin          bool
+	flatcarAutologin         bool
 	consoleTTY               bool
 	systemdShell             bool
 
