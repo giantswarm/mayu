@@ -209,8 +209,11 @@ func (c *Cluster) StoreEtcdDiscoveryToken(etcdEndpoint, etcdCAFile, token string
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: customCA},
-			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{
+				RootCAs:    customCA,
+				MinVersion: tls.VersionTLS12,
+			},
+			Proxy: http.ProxyFromEnvironment,
 			Dial: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,

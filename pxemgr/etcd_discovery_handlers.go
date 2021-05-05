@@ -2,6 +2,8 @@ package pxemgr
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -11,9 +13,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-
-	"crypto/tls"
-	"crypto/x509"
 
 	"github.com/giantswarm/microerror"
 	"github.com/gorilla/mux"
@@ -125,7 +124,10 @@ func (mgr *pxeManagerT) etcdDiscoveryProxyRequest(r *http.Request) (*http.Respon
 		}
 		customCA.AppendCertsFromPEM(pemData)
 		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: customCA},
+			TLSClientConfig: &tls.Config{
+				RootCAs:    customCA,
+				MinVersion: tls.VersionTLS12,
+			},
 		}
 	}
 
