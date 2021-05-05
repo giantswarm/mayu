@@ -38,6 +38,10 @@ systemd:
             Environment="DOCKER_OPT_BIP="
             Environment="DOCKER_OPT_IPMASQ="
             Environment="DOCKER_OPT_MTU="
+{{if (index .TemplatesEnv "http_proxy_enabled")}}
+            Environment=\"HTTP_PROXY=http://{{index .TemplatesEnv "http_proxy.username"}}:{{index .TemplatesEnv "http_proxy.password"}}@{{index .TemplatesEnv "http_proxy.uri"}}:{{index .TemplatesEnv "http_proxy.port"}}\"
+            Environment=\"HTTPS_PROXY=HTTP_PROXY=http://{{index .TemplatesEnv "http_proxy.username"}}:{{index .TemplatesEnv "http_proxy.password"}}@{{index .TemplatesEnv "http_proxy.uri"}}:{{index .TemplatesEnv "http_proxy.port"}}\"
+{{end}}
     - name: ensure-connectivity.service
       enabled: true
       contents: |
