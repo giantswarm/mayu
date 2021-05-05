@@ -2,6 +2,8 @@ package hostmgr
 
 import (
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -13,9 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"crypto/tls"
-	"crypto/x509"
 
 	"github.com/coreos/etcd/client"
 	"github.com/giantswarm/microerror"
