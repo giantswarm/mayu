@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -95,9 +96,12 @@ func maybeInitSnippets(snippets string) {
 	}
 }
 
-func join(s ...string) string {
-	// first arg is sep, remaining args are strings to join
-	return strings.Join(s[1:], s[0])
+func join(sep string, i []interface{}) string {
+	var s []string
+	for _, si := range i {
+		s = append(s, si.(string))
+	}
+	return strings.Join(s, sep)
 }
 
 func getTemplate(path, snippets string) (*template.Template, error) {
@@ -105,14 +109,17 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 	templates := []string{path}
 	templates = append(templates, snippetsFiles...)
 
-	tmpl, err := template.ParseFiles(templates...)
-	if err != nil {
-		return nil, microerror.Mask(err)
-	}
-
+	name := filepath.Base(path)
+	tmpl := template.New(name)
 	tmpl.Funcs(map[string]interface{}{
 		"join": join,
 	})
+
+	var err error
+	tmpl, err = tmpl.ParseFiles(templates...)
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
 
 	return tmpl, nil
 }
