@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	"gopkg.in/yaml.v2"
-
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"text/template"
 
 	"github.com/giantswarm/microerror"
+	"gopkg.in/yaml.v2"
 
 	"github.com/giantswarm/mayu/hostmgr"
 )
@@ -68,7 +67,7 @@ func (mgr *pxeManagerT) WriteIgnitionConfig(host hostmgr.Host, wr io.Writer) err
 	if err = tmpl.Execute(&data, ctx); err != nil {
 		return microerror.Mask(err)
 	}
-	ignitionJSON, err := convertTemplatetoJSON(data.Bytes(), false)
+	ignitionJSON, err := convertTemplateToJSON(data.Bytes(), false)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -96,6 +95,11 @@ func maybeInitSnippets(snippets string) {
 	}
 }
 
+func join(s ...string) string {
+	// first arg is sep, remaining args are strings to join
+	return strings.Join(s[1:], s[0])
+}
+
 func getTemplate(path, snippets string) (*template.Template, error) {
 	maybeInitSnippets(snippets)
 	templates := []string{path}
@@ -105,10 +109,15 @@ func getTemplate(path, snippets string) (*template.Template, error) {
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
+
+	tmpl.Funcs(map[string]interface{}{
+		"join": join,
+	})
+
 	return tmpl, nil
 }
 
-func convertTemplatetoJSON(dataIn []byte, pretty bool) ([]byte, error) {
+func convertTemplateToJSON(dataIn []byte, pretty bool) ([]byte, error) {
 	cfg := Config{}
 
 	if err := yaml.Unmarshal(dataIn, &cfg); err != nil {
