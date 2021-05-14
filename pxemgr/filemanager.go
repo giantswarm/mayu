@@ -35,6 +35,7 @@ func (mgr *pxeManagerT) RenderFiles(ctx interface{}) (*Files, error) {
 				_ = mgr.logger.Log("level", "error", "message", fmt.Sprintf("Failed to file: %s", path.Join(mgr.filesDir, dir.Name(), file.Name())), "stack", err)
 				return nil, microerror.Mask(err)
 			}
+
 			var data bytes.Buffer
 			err = tmpl.Execute(&data, ctx)
 			if err != nil {

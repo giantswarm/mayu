@@ -15,6 +15,7 @@ import (
 	"github.com/giantswarm/micrologger"
 
 	"github.com/giantswarm/mayu-infopusher/machinedata"
+
 	"github.com/giantswarm/mayu/hostmgr"
 )
 
@@ -27,6 +28,15 @@ network:
       end: 1.1.1.2
 templates_env:
   mayu_https_endpoint: https://mayu
+  http_proxy_enabled: true
+  http_proxy:
+    username: username
+    password: password
+    uri: uri
+    port: 123
+    no_proxy:
+      - example.com
+      - other.example.com
 `
 	configOK  = baseConfig + `  update: "no_updates"`
 	configErr = baseConfig + `  update: "update"`
@@ -38,6 +48,20 @@ systemd:
     - name: update-engine.service
       enabled: false
       mask: true{{end}}
+    - name: docker.service
+      dropins:
+        - name: 40-docker.conf
+          contents: |
+            [Service]
+            {{- if .TemplatesEnv.http_proxy_enabled }}
+            {{- with .TemplatesEnv.http_proxy }}
+            Environment="HTTP_PROXY=http://{{ .username }}:{{ .password }}@{{ .uri }}:{{ .port }}"
+            Environment="HTTPS_PROXY=http://{{ .username }}:{{ .password }}@{{ .uri }}:{{ .port }}"
+            {{- if .no_proxy }}
+            Environment="NO_PROXY={{ join "," .no_proxy }}"
+            {{- end }}
+            {{- end }}
+            {{- end }}
 `
 )
 
@@ -141,7 +165,7 @@ func TestFinalCloudConfigChecksErrorOk(t *testing.T) {
 	}
 
 	actual := h.w.Body.String()
-	expected := `{"ignition":{"config":{},"security":{"tls":{}},"timeouts":{},"version":"2.2.0"},"networkd":{},"passwd":{},"storage":{},"systemd":{"units":[{"enabled":false,"mask":true,"name":"update-engine.service"}]}}
+	expected := `{"ignition":{"config":{},"security":{"tls":{}},"timeouts":{},"version":"2.2.0"},"networkd":{},"passwd":{},"storage":{},"systemd":{"units":[{"enabled":false,"mask":true,"name":"update-engine.service"},{"dropins":[{"contents":"[Service]\nEnvironment=\"HTTP_PROXY=http://username:password@uri:123\"\nEnvironment=\"HTTPS_PROXY=http://username:password@uri:123\"\nEnvironment=\"NO_PROXY=example.com,other.example.com\"\n","name":"40-docker.conf"}],"name":"docker.service"}]}}
 `
 	if actual != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
