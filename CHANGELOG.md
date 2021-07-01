@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2021-07-01
+
 ### Changed
 
 - Switch all legacy `coreos` flags to `flatcar` (drops CoreOS support).
@@ -34,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Switch from `dep` to go modules.
 - Use `architect-orb` `0.9.0`.
 
-[Unreleased]: https://github.com/giantswarm/mayu/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/giantswarm/mayu/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/giantswarm/mayu/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/giantswarm/mayu/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/giantswarm/mayu/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/giantswarm/mayu/releases/tag/v1.1.0
