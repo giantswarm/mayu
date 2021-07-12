@@ -19,7 +19,7 @@ require (
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/uuid v1.0.0 // indirect
 	github.com/gorilla/handlers v1.4.2
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v0.0.0-20170926233335-4201258b820c // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
