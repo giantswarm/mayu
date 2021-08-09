@@ -1,4 +1,4 @@
-FROM alpine:3.13.5
+FROM alpine:3.14.1
 
 RUN apk add --no-cache git ca-certificates dnsmasq 
 
