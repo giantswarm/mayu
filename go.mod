@@ -42,7 +42,7 @@ require (
 	golang.org/x/net v0.0.0-20210505024714-0287a6fb4125
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/grpc v1.26.0 // indirect
-	gopkg.in/yaml.v2 v2.2.7
+	gopkg.in/yaml.v2 v2.4.0
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
 
