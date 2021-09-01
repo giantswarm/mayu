@@ -34,4 +34,5 @@ replace (
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
 	github.com/gogo/protobuf v1.2.1 => github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket v0.0.0-20170926233335-4201258b820c => github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.4.0 => github.com/gorilla/websocket v1.4.2
 )
