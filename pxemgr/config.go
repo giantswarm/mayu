@@ -71,6 +71,7 @@ type NetworkInterface struct {
 	IPRange       NetworkRange   `yaml:"ip_range"`
 	SubnetSize    string         `yaml:"subnet_size"`
 	SubnetGateway string         `yaml:"subnet_gateway"`
+	MTU 		  string         `yaml:"mtu"`
 	Model         NetworkModel   `yaml:"network_model"`
 
 	DNS []string `yaml:"dns"`
