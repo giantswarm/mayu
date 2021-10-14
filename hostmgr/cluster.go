@@ -277,7 +277,7 @@ func Has(host *Host, exists bool) bool {
 	return exists
 }
 
-func (cached cachedHost) get() *Host {
+func (cached *cachedHost) get() *Host {
 	fi, err := os.Stat(cached.host.confPath())
 	if err != nil {
 		panic(err)
