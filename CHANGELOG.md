@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add mtu support
+- Add MTU configuration support.
 
 ## [1.3.0] - 2021-07-01
 
