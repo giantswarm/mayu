@@ -11,19 +11,18 @@ require (
 	github.com/giantswarm/mayu-infopusher v1.0.1
 	github.com/giantswarm/microerror v0.0.0-20191011121515-e0ebc4ecf5a5
 	github.com/giantswarm/micrologger v0.0.0-20191014091141-d866337f7393
-	github.com/google/uuid v1.0.0 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.9.5 // indirect
 	github.com/juju/errgo v0.0.0-20140925100237-08cceb5d0b53 // indirect
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.uber.org/zap v1.14.1 // indirect
-	golang.org/x/net v0.0.0-20210505024714-0287a6fb4125
-	google.golang.org/grpc v1.26.0 // indirect
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
+	google.golang.org/grpc/examples v0.0.0-20220127230330-593ff8d017c6 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
