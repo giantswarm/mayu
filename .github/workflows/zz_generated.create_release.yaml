@@ -1,6 +1,6 @@
 # DO NOT EDIT. Generated with:
 #
-#    devctl@4.16.1
+#    devctl@4.19.0
 #
 name: Create Release
 on:
@@ -259,7 +259,7 @@ jobs:
           - linux-arm64
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GO_VERSION: 1.17.6
+      GO_VERSION: 1.17.7
       ARTIFACT_DIR: bin-dist
       TAG: v${{ needs.gather_facts.outputs.version }}
     needs:
@@ -270,9 +270,9 @@ jobs:
         uses: giantswarm/install-binary-action@v1.0.0
         with:
           binary: "architect"
-          version: "6.1.0"
+          version: "6.2.0"
       - name: Set up Go ${{ env.GO_VERSION }}
-        uses: actions/setup-go@v2.1.5
+        uses: actions/setup-go@v2.2.0
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Checkout code
