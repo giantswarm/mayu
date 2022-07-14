@@ -1,6 +1,6 @@
 # DO NOT EDIT. Generated with:
 #
-#    devctl@4.20.1
+#    devctl@5.8.0
 #
 
 PACKAGE_DIR    := ./bin-dist
@@ -23,7 +23,7 @@ LDFLAGS        ?= -w -linkmode 'auto' -extldflags '$(EXTLDFLAGS)' \
 
 ##@ Go
 
-.PHONY: build build-darwin build-darwin-64 build-linux build-linux-arm64
+.PHONY: build build-darwin build-darwin-64 build-linux build-linux-arm64 build-windows-amd64
 build: $(APPLICATION) ## Builds a local binary.
 	@echo "====> $@"
 build-darwin: $(APPLICATION)-darwin ## Builds a local binary for darwin/amd64.
@@ -33,6 +33,8 @@ build-darwin-arm64: $(APPLICATION)-darwin-arm64 ## Builds a local binary for dar
 build-linux: $(APPLICATION)-linux ## Builds a local binary for linux/amd64.
 	@echo "====> $@"
 build-linux-arm64: $(APPLICATION)-linux-arm64 ## Builds a local binary for linux/arm64.
+	@echo "====> $@"
+build-windows-amd64: $(APPLICATION)-windows-amd64.exe ## Builds a local binary for windows/amd64.
 	@echo "====> $@"
 
 $(APPLICATION): $(APPLICATION)-v$(VERSION)-$(OS)-amd64
@@ -55,6 +57,10 @@ $(APPLICATION)-linux-arm64: $(APPLICATION)-v$(VERSION)-linux-arm64
 	@echo "====> $@"
 	cp -a $< $@
 
+$(APPLICATION)-windows-amd64.exe: $(APPLICATION)-v$(VERSION)-windows-amd64.exe
+	@echo "====> $@"
+	cp -a $< $@
+
 $(APPLICATION)-v$(VERSION)-%-amd64: $(SOURCES)
 	@echo "====> $@"
 	CGO_ENABLED=0 GOOS=$* GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $@ .
@@ -63,7 +69,11 @@ $(APPLICATION)-v$(VERSION)-%-arm64: $(SOURCES)
 	@echo "====> $@"
 	CGO_ENABLED=0 GOOS=$* GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $@ .
 
-.PHONY: package-darwin-amd64 package-darwin-arm64 package-linux-amd64 package-linux-arm64
+$(APPLICATION)-v$(VERSION)-windows-amd64.exe: $(SOURCES)
+	@echo "====> $@"
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $@ .
+
+.PHONY: package-darwin-amd64 package-darwin-arm64 package-linux-amd64 package-linux-arm64 package-windows-amd64
 package-darwin-amd64: $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-darwin-amd64.tar.gz ## Prepares a packaged darwin/amd64 version.
 	@echo "====> $@"
 package-darwin-arm64: $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-darwin-arm64.tar.gz ## Prepares a packaged darwin/arm64 version.
@@ -72,6 +82,20 @@ package-linux-amd64: $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-linux-amd64.tar.g
 	@echo "====> $@"
 package-linux-arm64: $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-linux-arm64.tar.gz ## Prepares a packaged linux/arm64 version.
 	@echo "====> $@"
+package-windows-amd64: $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-windows-amd64.zip ## Prepares a packaged windows/amd64 version.
+	@echo "====> $@"
+
+$(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-windows-amd64.zip: DIR=$(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-windows-amd64
+$(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-windows-amd64.zip: $(APPLICATION)-v$(VERSION)-windows-amd64.exe
+	@echo "====> $@"
+	/bin/sh .github/zz_generated.windows-code-signing.sh $(APPLICATION) $(VERSION)
+	@echo "Creating directory $(DIR)"
+	mkdir -p $(DIR)
+	cp $< $(DIR)/$(APPLICATION).exe
+	cp README.md LICENSE $(DIR)
+	cd ./bin-dist && zip $(APPLICATION)-v$(VERSION)-windows-amd64.zip $(APPLICATION)-v$(VERSION)-windows-amd64/*
+	rm -rf $(DIR)
+	rm -rf $<
 
 $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-%-amd64.tar.gz: DIR=$(PACKAGE_DIR)/$<
 $(PACKAGE_DIR)/$(APPLICATION)-v$(VERSION)-%-amd64.tar.gz: $(APPLICATION)-v$(VERSION)-%-amd64
@@ -118,6 +142,11 @@ imports: ## Runs goimports.
 lint: ## Runs golangci-lint.
 	@echo "====> $@"
 	golangci-lint run -E gosec -E goconst --timeout=15m ./...
+
+.PHONY: nancy
+nancy: ## Runs nancy (requires v1.0.37 or newer).
+	@echo "====> $@"
+	CGO_ENABLED=0 go list -json -m all | nancy sleuth --skip-update-check --quiet --exclude-vulnerability-file ./.nancy-ignore --additional-exclude-vulnerability-files ./.nancy-ignore.generated
 
 .PHONY: test
 test: ## Runs go test with default values.
