@@ -1,6 +1,6 @@
 # DO NOT EDIT. Generated with:
 #
-#    devctl@4.20.1
+#    devctl@5.8.0
 #
 name: Create Release PR
 on:
@@ -44,6 +44,7 @@ jobs:
       repo_name: ${{ steps.gather_facts.outputs.repo_name }}
       branch: ${{ steps.gather_facts.outputs.branch }}
       base: ${{ steps.gather_facts.outputs.base }}
+      is_major: ${{ steps.gather_facts.outputs.is_major }}
       skip: ${{ steps.pr_exists.outputs.skip }}
       version: ${{ steps.gather_facts.outputs.version }}
     steps:
@@ -81,6 +82,7 @@ jobs:
                 version_major=$((version_major+1))
                 version_minor=0
                 version_patch=0
+                echo "::set-output name=is_major::true"
                 ;;
               *)
                 echo "Unknown Semver level provided"
@@ -90,6 +92,12 @@ jobs:
             version="${version_major}.${version_minor}.${version_patch}"
           else
             version="${version#v}" # Strip "v" prefix.
+            version_major=$(echo "${version}" | cut -d "." -f 1)
+            version_minor=$(echo "${version}" | cut -d "." -f 2)
+            version_patch=$(echo "${version}" | cut -d "." -f 3)
+            if [[ $version_minor = 0 && $version_patch = 0 ]]; then
+              echo "::set-output name=is_major::true"
+            fi
           fi
           repo_name="$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')"
           echo "repo_name=\"$repo_name\" base=\"$base\" head=\"$head\" version=\"$version\""
@@ -117,6 +125,9 @@ jobs:
     env:
       architect_flags: "--organisation ${{ github.repository_owner }} --project ${{ needs.gather_facts.outputs.repo_name }}"
     steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '=1.18.1'
       - name: Install architect
         uses: giantswarm/install-binary-action@v1.0.0
         with:
@@ -129,12 +140,62 @@ jobs:
       - name: Prepare release changes
         run: |
           architect prepare-release ${{ env.architect_flags }} --version "${{ needs.gather_facts.outputs.version }}"
+      - name: Update version field in Chart.yaml
+        run: |
+          # Define chart_dir
+          repository="${{ needs.gather_facts.outputs.repo_name }}"
+          chart="helm/${repository}"
+
+          # Check chart directory.
+          if [ ! -d "${chart}" ]
+          then
+            echo "Could not find chart directory '${chart}', adding app suffix."
+
+            # Add app suffix.
+            chart="helm/${repository}-app"
+
+            # Check chart directory with app suffix.
+            if [ ! -d "${chart}" ]
+            then
+              echo "Could not find chart directory '${chart}', removing app suffix."
+
+              # Remove app suffix.
+              chart="helm/${repository%-app}"
+
+              if [ ! -d "${chart}" ]
+              then
+                # Print error.
+                echo "Could not find chart directory '${chart}', doing nothing."
+              fi
+            fi
+          fi
+
+          # Define chart YAML.
+          chart_yaml="${chart}/Chart.yaml"
+
+          # Check chart YAML.
+          if [ -f "${chart_yaml}" ]
+          then
+            # check if version in Chart.yaml is templated using architect
+            if [ $(grep -c "^version:.*\.Version.*$" "${chart_yaml}") = "0" ]; then
+              yq -i '.version = "${{ needs.gather_facts.outputs.version }}"' "${chart_yaml}"
+            fi
+          fi
+
+      - name: Bump go module defined in go.mod if needed
+        run: |
+          if [ "${{ needs.gather_facts.outputs.is_major }}" = true ] && test -f "go.mod"; then
+            go install github.com/marwan-at-work/mod/cmd/mod@v0.4.2
+            mod upgrade
+          fi
+      - name: Set up git identity
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
       - name: Create release commit
         env:
           version: "${{ needs.gather_facts.outputs.version }}"
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "github-actions"
           git add -A
           git commit -m "Release v${{ env.version }}"
       - name: Push changes
@@ -148,4 +209,4 @@ jobs:
           base: "${{ needs.gather_facts.outputs.base }}"
           version: "${{ needs.gather_facts.outputs.version }}"
         run: |
-          hub pull-request -f  -m "Release v${{ env.version }}" -a ${{ github.actor }} -b ${{ env.base }} -h ${{ needs.gather_facts.outputs.branch }}
+          hub pull-request -f -m "Release v${{ env.version }}" -a ${{ github.actor }} -b ${{ env.base }} -h ${{ needs.gather_facts.outputs.branch }}
