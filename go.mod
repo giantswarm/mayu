@@ -22,7 +22,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.uber.org/zap v1.14.1 // indirect
-	golang.org/x/net v0.0.0-20210505024714-0287a6fb4125
+	golang.org/x/net v0.7.0
 	google.golang.org/grpc v1.26.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	sigs.k8s.io/yaml v1.1.0 // indirect
