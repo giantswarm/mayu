@@ -1,7 +1,7 @@
-[![CircleCI](https://circleci.com/gh/giantswarm/mayu.svg?&style=shield)](https://circleci.com/gh/giantswarm/mayu)
-[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](http://godoc.org/github.com/giantswarm/mayu) [![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/giantswarm/mayu/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/giantswarm/mayu/tree/master)
+[![](https://godoc.org/github.com/giantswarm/mayu?status.svg)](https://pkg.go.dev/github.com/giantswarm/mayu)
+[![](https://img.shields.io/docker/pulls/giantswarm/mayu.svg)](http://hub.docker.com/giantswarm/mayu)
 [![Go Report Card](https://goreportcard.com/badge/github.com/giantswarm/mayu)](https://goreportcard.com/report/github.com/giantswarm/mayu)
-[![Docker Repository on Quay](https://quay.io/repository/giantswarm/mayu/status "Docker Repository on Quay")](https://quay.io/repository/giantswarm/mayu)
 
 # Mayu
 Mayu provides a set of mechanisms to bootstrap PXE-enabled bare metal nodes
