@@ -150,10 +150,9 @@ func (c *Cluster) HostWithSerial(serial string) (*Host, bool) {
 // known to the cluster. Imagine there is a provile name core. If there are 2
 // core nodes known to the cluster, the map would look like this.
 //
-//   map[string]int{
-//     "core": 2,
-//   }
-//
+//	map[string]int{
+//	    "core": 2,
+//	}
 func (c *Cluster) GetProfileCount() map[string]int {
 	count := map[string]int{}
 	allHosts := c.GetAllHosts()
