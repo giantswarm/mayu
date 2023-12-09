@@ -1,0 +1,8 @@
+linters-settings:
+  staticcheck:
+    checks:
+      - all
+      - '-SA4005'
+  gosec:
+    excludes:
+      - 'G114'
